@@ -1,0 +1,5 @@
+{
+  "name": "Purchase Master",
+  "description": "A comprehensive purchase management system for tracking vendors, bills, stock, and reports.",
+  "requestFramePermissions": []
+}
