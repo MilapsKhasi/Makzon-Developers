@@ -122,71 +122,68 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     }
 
     if (!submissionDate || !formData.bill_number || !formData.vendor_name) {
-      alert("Mandatory: Please provide Date, Bill Number, and Vendor Name.");
+      alert("Missing Information: Date, Bill Number, and Vendor Name are required.");
       return;
     }
     
     const validItems = formData.items.filter((it: any) => it.itemName && it.itemName.trim() !== '');
     if (validItems.length === 0) {
-      alert("Voucher rejected: At least one item is required.");
+      alert("Validation Error: Please add at least one item to the bill.");
       return;
     }
 
     if (!cid) {
-      alert("Error: Workspace context lost. Please select a company again.");
+      alert("Session Error: Company context lost.");
       return;
     }
 
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Session expired. Please log in again.");
+      if (!user) throw new Error("Authentication session expired.");
 
-      // 1. Auto-create Vendor check
-      const vendorExists = vendors.some(v => v.name.toLowerCase() === formData.vendor_name.toLowerCase());
+      // 1. Auto-create Vendor
+      const vendorExists = vendors.some(v => v.name.toLowerCase().trim() === formData.vendor_name.toLowerCase().trim());
       if (!vendorExists) {
-        const { error: vErr } = await supabase.from('vendors').insert([{
+        await supabase.from('vendors').insert([{
           company_id: cid,
           user_id: user.id,
-          name: formData.vendor_name,
+          name: formData.vendor_name.trim(),
           gstin: formData.gstin || '',
           address: formData.address || '',
           balance: 0,
           is_deleted: false
         }]);
-        if (vErr) console.warn("Vendor auto-creation warning:", vErr);
       }
 
-      // 2. Auto-create Items check with "Actual Bill Data" (Rate, Unit, HSN)
+      // 2. Auto-create Items (CRITICAL: Syncs Item Form Data with Stock Master)
       for (const item of validItems) {
-        const itemExists = stockItems.some(si => si.name.toLowerCase() === item.itemName.toLowerCase());
+        const itemExists = stockItems.some(si => si.name.toLowerCase().trim() === item.itemName.toLowerCase().trim());
         if (!itemExists) {
-          const { error: sErr } = await supabase.from('stock_items').insert([{
+          await supabase.from('stock_items').insert([{
             company_id: cid,
             user_id: user.id,
-            name: item.itemName,
+            name: item.itemName.trim(),
             sku: `STK-${Math.floor(1000 + Math.random() * 9000)}`,
             unit: item.unit || 'PCS',
             rate: Number(item.rate) || 0,
             hsn: item.hsnCode || '',
-            in_stock: 0, // Opening stock is zero, purchases will increase it later if logic added
+            in_stock: 0,
             is_deleted: false
           }]);
-          if (sErr) console.warn("Stock auto-creation warning:", sErr);
         }
       }
 
-      // 3. Prepare Clean Payload - STRICTLY OMITTING COLUMNS NOT IN SCHEMA
-      // The error PGRST204 confirmed 'description' column does not exist on 'bills' table.
+      // 3. Prepare Clean Payload (Storing description in items JSON as per table constraints)
       const payload: any = {
         company_id: cid,
         user_id: user.id,
-        vendor_name: formData.vendor_name,
-        bill_number: formData.bill_number,
+        vendor_name: formData.vendor_name.trim(),
+        bill_number: formData.bill_number.trim(),
         date: submissionDate,
-        items: validItems.map((it: any) => ({
-          ...it,
-          description: formData.description // Storing the narration inside the items JSON
+        items: validItems.map(it => ({
+            ...it,
+            bill_note: formData.description
         })),
         total_without_gst: Number(formData.total_without_gst) || 0,
         total_gst: Number(formData.total_gst) || 0,
@@ -197,24 +194,19 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
       let opResult;
       if (initialData?.id) {
-        // Explicitly check ID to fix "cannot edit"
         opResult = await supabase.from('bills').update(payload).eq('id', initialData.id);
       } else {
         opResult = await supabase.from('bills').insert([payload]);
       }
 
-      if (opResult.error) {
-        console.error("Supabase Operation Failed:", opResult.error);
-        throw opResult.error;
-      }
+      if (opResult.error) throw opResult.error;
       
+      // Notify all components to reload (very important for Stock screen)
       window.dispatchEvent(new Event('appSettingsChanged'));
       onSubmit(payload);
     } catch (err: any) {
-      // Improved error parsing to avoid [object Object]
-      const errMsg = err.message || err.details || (typeof err === 'object' ? JSON.stringify(err) : String(err));
-      alert("Database Submission Error:\n\n" + errMsg);
-      console.error("Full Submission Error Object:", err);
+      console.error("Submission Process Failure:", err);
+      alert("Database Error: " + (err.message || "Failed to save record."));
     } finally {
       setLoading(false);
     }
@@ -260,11 +252,11 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">GSTIN (Saved to Vendor)</label>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">GSTIN (Notes Only)</label>
           <input value={formData.gstin || ''} onChange={(e) => setFormData({...formData, gstin: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono outline-none focus:border-slate-400 bg-white" placeholder="Optional" />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Address (Saved to Vendor)</label>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Address (Notes Only)</label>
           <input value={formData.address || ''} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 bg-white" placeholder="City, State" />
         </div>
         <div className="space-y-1">
@@ -278,10 +270,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Line Items (New Stock Items Auto-Created)</label>
-           {formData.items.filter((it: any) => it.itemName).length === 0 && (
-              <span className="text-[9px] font-bold text-red-500 flex items-center animate-pulse"><AlertCircle className="w-3 h-3 mr-1" /> At least one item required</span>
-           )}
+           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Line Items (Autosync with Stock Master)</label>
         </div>
         <div className="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
           <table className="w-full text-xs">
@@ -304,26 +293,18 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                       onChange={(e) => handleFieldChange(idx, 'itemName', e.target.value)} 
                       list="sil" 
                       className="w-full p-3 outline-none border-none bg-transparent" 
-                      placeholder="Search/Add item..." 
+                      placeholder="Enter new or existing item..." 
                     />
                   </td>
-                  <td className="p-0 border-r border-slate-200">
-                    <input type="number" value={it.qty || 0} onChange={(e) => handleFieldChange(idx, 'qty', e.target.value)} className="w-full p-3 text-center outline-none border-none bg-transparent" />
-                  </td>
-                  <td className="p-0 border-r border-slate-200">
-                    <input type="number" value={it.rate || 0} onChange={(e) => handleFieldChange(idx, 'rate', e.target.value)} className="w-full p-3 text-right outline-none border-none bg-transparent font-medium" />
-                  </td>
+                  <td className="p-0 border-r border-slate-200"><input type="number" value={it.qty || 0} onChange={(e) => handleFieldChange(idx, 'qty', e.target.value)} className="w-full p-3 text-center outline-none border-none bg-transparent" /></td>
+                  <td className="p-0 border-r border-slate-200"><input type="number" value={it.rate || 0} onChange={(e) => handleFieldChange(idx, 'rate', e.target.value)} className="w-full p-3 text-right outline-none border-none bg-transparent font-medium" /></td>
                   <td className="p-0 border-r border-slate-200">
                     <select value={it.igstRate || it.cgstRate || 0} onChange={(e) => handleFieldChange(idx, 'igstRate', e.target.value)} className="w-full p-3 outline-none border-none bg-transparent cursor-pointer text-center">
                       {TAX_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
                     </select>
                   </td>
                   <td className="p-3 text-right font-bold text-slate-900">{formatCurrency(it.amount)}</td>
-                  <td className="text-center">
-                    <button type="button" onClick={() => { const i = [...(formData.items || [])]; i.splice(idx, 1); updateTotals(i); }} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
+                  <td className="text-center"><button type="button" onClick={() => { const i = [...(formData.items || [])]; i.splice(idx, 1); updateTotals(i); }} className="p-2 text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button></td>
                 </tr>
               ))}
             </tbody>
@@ -334,14 +315,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
       <div className="flex flex-col md:flex-row justify-between items-start gap-8 pt-6">
         <div className="w-full md:flex-1">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Narrations / Notes (Stored in Bill Data)</label>
-          <textarea 
-            value={formData.description || ''} 
-            onChange={(e) => setFormData({...formData, description: e.target.value})} 
-            rows={4} 
-            className="w-full border border-slate-200 rounded-lg p-4 text-sm outline-none focus:border-slate-400 resize-none bg-white shadow-inner" 
-            placeholder="Enter transaction remarks..." 
-          />
+          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Narrations / Remarks</label>
+          <textarea value={formData.description || ''} onChange={(e) => setFormData({...formData, description: e.target.value})} rows={4} className="w-full border border-slate-200 rounded-lg p-4 text-sm outline-none focus:border-slate-400 resize-none bg-white shadow-inner" placeholder="Enter transaction remarks..." />
         </div>
         <div className="w-full md:w-96 bg-slate-50 p-6 border border-slate-200 rounded-lg space-y-4 shadow-sm">
             <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -349,11 +324,11 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                 <span className="text-slate-800 font-mono text-sm">{formatCurrency(formData.total_without_gst)}</span>
             </div>
             <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <span>GST Aggregate</span>
+                <span>GST Total</span>
                 <span className="text-slate-800 font-mono text-sm">{formatCurrency(formData.total_gst)}</span>
             </div>
             <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase italic">
-                <span>Adjustment (Round Off)</span>
+                <span>Round Off</span>
                 <span className="text-slate-500 font-mono text-sm">{formData.round_off >= 0 ? '+' : ''}{(formData.round_off || 0).toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center pt-4 border-t border-slate-300">

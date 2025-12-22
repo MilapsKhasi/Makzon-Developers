@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, History, Trash2, Edit, Package, Maximize2, Minimize2, Loader2, AlertCircle } from 'lucide-react';
+import { Search, History, Trash2, Edit, Package, Maximize2, Minimize2, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { getActiveCompanyId, formatCurrency, formatDate } from '../utils/helpers';
 import Modal from '../components/Modal';
 import StockForm from '../components/StockForm';
@@ -21,6 +21,7 @@ const Stock = () => {
   const [items, setItems] = useState<any[]>([]);
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -32,18 +33,20 @@ const Stock = () => {
     item: null
   });
 
-  const loadData = async () => {
+  const loadData = async (shouldSync = false) => {
     setLoading(true);
     const cid = getActiveCompanyId();
     if (!cid) return;
 
+    // Load actual stock items
     const { data: stockItems } = await supabase
       .from('stock_items')
       .select('*')
       .eq('company_id', cid)
       .eq('is_deleted', false)
-      .order('created_at', { ascending: false });
+      .order('name', { ascending: true });
 
+    // Load all bills for cross-reference (to find missing items)
     const { data: purchaseBills } = await supabase
       .from('bills')
       .select('*')
@@ -54,16 +57,74 @@ const Stock = () => {
     setBills(purchaseBills || []);
     
     if (stockItems && stockItems.length > 0 && !selectedId) {
-      setSelectedId(stockItems[0].id);
+      setSelectedId(String(stockItems[0].id));
     }
+
     setLoading(false);
+
+    // If initial load or forced, run the invisible background sync
+    if (shouldSync && purchaseBills && stockItems) {
+      performBackgroundSync(purchaseBills, stockItems);
+    }
+  };
+
+  const performBackgroundSync = async (billData: any[], masterData: any[]) => {
+    const cid = getActiveCompanyId();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !cid) return;
+
+    const existingNames = new Set(masterData.map(i => i.name.toLowerCase().trim()));
+    const discoveredItems: any[] = [];
+    const localProcessed = new Set<string>();
+
+    billData.forEach(bill => {
+      if (Array.isArray(bill.items)) {
+        bill.items.forEach((it: any) => {
+          const name = it.itemName?.trim();
+          if (name && !existingNames.has(name.toLowerCase()) && !localProcessed.has(name.toLowerCase())) {
+            discoveredItems.push({
+              company_id: cid,
+              user_id: user.id,
+              name: name,
+              sku: `STK-${Math.floor(1000 + Math.random() * 9000)}`,
+              unit: it.unit || 'PCS',
+              rate: Number(it.rate) || 0,
+              hsn: it.hsnCode || '',
+              in_stock: 0,
+              is_deleted: false
+            });
+            localProcessed.add(name.toLowerCase());
+          }
+        });
+      }
+    });
+
+    if (discoveredItems.length > 0) {
+      console.log(`Auto-sync: Discovered ${discoveredItems.length} missing items from bills.`);
+      await supabase.from('stock_items').insert(discoveredItems);
+      // Silently reload to show the newly discovered items
+      const { data: updatedStock } = await supabase
+        .from('stock_items')
+        .select('*')
+        .eq('company_id', cid)
+        .eq('is_deleted', false)
+        .order('name', { ascending: true });
+      if (updatedStock) setItems(updatedStock);
+    }
   };
 
   useEffect(() => {
-    loadData();
-    window.addEventListener('appSettingsChanged', loadData);
-    return () => window.removeEventListener('appSettingsChanged', loadData);
+    loadData(true); // Sync on initial load
+    window.addEventListener('appSettingsChanged', () => loadData(true));
+    return () => window.removeEventListener('appSettingsChanged', () => loadData(true));
   }, []);
+
+  const handleManualSync = async () => {
+    setSyncing(true);
+    await loadData(true);
+    setSyncing(false);
+    alert("Stock list synchronized with all purchase records.");
+  };
 
   const handleSaveItem = async (itemData: any) => {
     const cid = getActiveCompanyId();
@@ -75,7 +136,7 @@ const Stock = () => {
       await supabase.from('stock_items').insert([{ ...itemData, company_id: cid, user_id: user?.id }]);
     }
     
-    loadData();
+    loadData(false);
     setIsModalOpen(false);
     setEditingItem(null);
   };
@@ -91,7 +152,7 @@ const Stock = () => {
     if (error) {
       alert('Error deleting item: ' + error.message);
     } else {
-      loadData();
+      loadData(false);
       if (selectedId === String(deleteDialog.item.id)) setSelectedId(null);
       window.dispatchEvent(new Event('appSettingsChanged'));
     }
@@ -157,7 +218,17 @@ const Stock = () => {
 
       <div className="flex items-center justify-between shrink-0">
         <h1 className="text-2xl font-medium text-slate-900 tracking-tight">Stock Management</h1>
-        <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-slate-800 px-5 py-2 rounded-md font-bold text-[10px] uppercase tracking-widest border border-slate-200 hover:bg-primary-dark transition-all shadow-sm active:scale-95">Add New Item</button>
+        <div className="flex items-center space-x-2">
+            <button 
+                onClick={handleManualSync} 
+                disabled={syncing}
+                className="flex items-center space-x-2 px-4 py-2 border border-slate-200 rounded-md text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+            >
+                {syncing || loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                <span>Refresh & Sync</span>
+            </button>
+            <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-slate-800 px-5 py-2 rounded-md font-bold text-[10px] uppercase tracking-widest border border-slate-200 hover:bg-primary-dark transition-all shadow-sm active:scale-95">Add New Item</button>
+        </div>
       </div>
 
       <div className="relative shrink-0">
@@ -166,12 +237,12 @@ const Stock = () => {
           type="text" 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search items by name, SKU, or category..." 
+          placeholder="Search product master..." 
           className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-md text-sm outline-none focus:border-slate-400 shadow-sm transition-all" 
         />
       </div>
 
-      {loading ? (
+      {loading && items.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -191,14 +262,14 @@ const Stock = () => {
                     <h3 className="font-semibold text-slate-900 uppercase text-[11px] truncate">{item.name}</h3>
                     <span className="text-[9px] bg-slate-200 px-1.5 py-0.5 rounded font-mono text-slate-600">{item.sku}</span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mb-4 font-mono">BASE RATE {formatCurrency(item.rate)} / {item.unit || 'UNIT'}</p>
+                  <p className="text-[10px] text-slate-500 mb-4 font-mono">RATE: {formatCurrency(item.rate)} / {item.unit || 'UNIT'}</p>
                   <div className="grid grid-cols-2 gap-2 text-[9px] font-bold uppercase tracking-tight">
                     <div className="bg-white/50 p-2 rounded border border-slate-100">
-                      <p className="text-slate-400 mb-0.5">Physical Qty</p>
+                      <p className="text-slate-400 mb-0.5">Quantity</p>
                       <p className="text-slate-900 text-sm">{item.in_stock || 0} {item.unit || 'PCS'}</p>
                     </div>
                     <div className="bg-white/50 p-2 rounded border border-slate-100">
-                      <p className="text-slate-400 mb-0.5">Stock Value</p>
+                      <p className="text-slate-400 mb-0.5">Inventory Val</p>
                       <p className="text-primary-dark text-sm">{formatCurrency((item.in_stock || 0) * (item.rate || 0))}</p>
                     </div>
                   </div>
@@ -208,7 +279,11 @@ const Stock = () => {
                   </div>
                 </div>
               ))}
-              {filteredItems.length === 0 && <div className="text-center py-20 text-slate-300 italic text-sm">No items found.</div>}
+              {filteredItems.length === 0 && (
+                <div className="text-center py-20 text-slate-300 italic text-sm">
+                   {searchQuery ? "No matching items." : "No items in stock. Add your first item or create a bill."}
+                </div>
+              )}
             </div>
           )}
 
@@ -219,9 +294,9 @@ const Stock = () => {
                   <div>
                     <h2 className="text-2xl font-semibold text-slate-900 uppercase tracking-tight">{selectedItem.name}</h2>
                     <div className="flex items-center space-x-3 mt-1">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedItem.category || 'Uncategorized'}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedItem.category || 'Standard Item'}</span>
                       <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                      <span className="text-[10px] font-mono text-slate-400">{selectedItem.sku || 'NO SKU'}</span>
+                      <span className="text-[10px] font-mono text-slate-400">{selectedItem.sku || 'N/A'}</span>
                     </div>
                   </div>
                   <div className="flex space-x-2">
@@ -234,11 +309,11 @@ const Stock = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                  <InfoCard label="In Stock" value={`${selectedItem.in_stock || 0} ${selectedItem.unit}`} desc="Available Physical" />
-                  <InfoCard label="Out of Stock" value={`${Math.max(0, itemStats.totalQtyPurchased - (selectedItem.in_stock || 0))} ${selectedItem.unit}`} desc="Estimated Used" />
-                  <InfoCard label="Current Stock" value={`${selectedItem.in_stock || 0} ${selectedItem.unit}`} desc="Net Cloud Balance" />
-                  <InfoCard label="Total Purchase" value={`${itemStats.totalQtyPurchased} ${selectedItem.unit}`} desc="Procured Quantity" />
-                  <InfoCard label="Stock Value" value={formatCurrency((selectedItem.in_stock || 0) * (selectedItem.rate || 0))} desc="At current base rate" />
+                  <InfoCard label="Total Purchased" value={`${itemStats.totalQtyPurchased} ${selectedItem.unit}`} desc="From all vouchers" />
+                  <InfoCard label="In Stock" value={`${selectedItem.in_stock || 0} ${selectedItem.unit}`} desc="Available Balance" />
+                  <InfoCard label="Stock Value" value={formatCurrency((selectedItem.in_stock || 0) * (selectedItem.rate || 0))} desc="Inventory Asset" />
+                  <InfoCard label="Avg Rate" value={formatCurrency(itemStats.totalQtyPurchased > 0 ? itemStats.totalValuePurchased / itemStats.totalQtyPurchased : selectedItem.rate)} desc="Landed Cost" />
+                  <InfoCard label="Vendor Count" value={itemStats.vendorCount} desc="Unique Suppliers" />
                   <InfoCard label="Main Vendor" value={itemStats.mainVendor} desc="Primary Source" />
                 </div>
 
@@ -246,7 +321,7 @@ const Stock = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <History className="w-4 h-4 text-slate-400" />
-                      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Transaction History</h3>
+                      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Linked Purchase Records</h3>
                     </div>
                   </div>
                   
@@ -283,7 +358,7 @@ const Stock = () => {
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-slate-300 italic text-sm py-20">
                 <Package className="w-16 h-16 opacity-10 mb-4" />
-                <p>Select an item to view detailed cloud analytics.</p>
+                <p>Select a product to view its life-cycle and stock analytics.</p>
               </div>
             )}
           </div>
