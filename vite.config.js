@@ -1,4 +1,4 @@
-import { defineConfig } from 'Vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
   build: {
