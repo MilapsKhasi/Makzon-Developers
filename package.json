@@ -1,25 +1,15 @@
+
 {
   "name": "purchase-master",
+  "version": "1.0.0",
   "private": true,
-  "type": "module",
+  "description": "Vercel-optimized purchase management software",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "start": "serve .",
+    "build": "echo 'No build step required for ESM static deployment'"
   },
-  "dependencies": {
-    "react-dom": "^18.2.0",
-    "react": "^18.2.0",
-    "lucide-react": "^0.561.0",
-    "react-router-dom": "^7.10.1",
-    "recharts": "^3.5.1",
-    "xlsx": "0.18.5",
-    "@supabase/supabase-js": "2.48.1"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^4.2.0",
-    "typescript": "~5.8.2",
-    "vite": "^5.0.0"
+    "serve": "^14.0.0"
   }
 }
