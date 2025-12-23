@@ -45,6 +45,10 @@
         }
       }
     </script>
+    
+    <!-- Babel for Browser-side TSX support on Vercel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -83,7 +87,6 @@
       .boxy-shadow {
         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
       }
-      /* Ensure full height layout on mobile */
       html, body, #root {
         height: 100%;
         margin: 0;
@@ -104,7 +107,6 @@
       }
     }
     </script>
-    <!-- Entry point for the application -->
     <script type="module" src="./main.js"></script>
   </head>
   <body>

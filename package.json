@@ -6,7 +6,7 @@
   "description": "Vercel-optimized purchase management software",
   "scripts": {
     "start": "serve .",
-    "build": "echo 'No build step required for ESM static deployment'"
+    "build": "mkdir -p dist && cp -r components pages lib utils types.ts index.html index.tsx main.js vercel.json metadata.json dist/ 2>/dev/null || true"
   },
   "dependencies": {},
   "devDependencies": {

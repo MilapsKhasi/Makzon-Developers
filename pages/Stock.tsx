@@ -38,7 +38,7 @@ const Stock = () => {
     const cid = getActiveCompanyId();
     if (!cid) return;
 
-    // Load actual stock items
+    // 1. Load actual stock items
     const { data: stockItems } = await supabase
       .from('stock_items')
       .select('*')
@@ -46,7 +46,7 @@ const Stock = () => {
       .eq('is_deleted', false)
       .order('name', { ascending: true });
 
-    // Load all bills for cross-reference (to find missing items)
+    // 2. Load all bills for cross-reference (crucial for auto-syncing old items)
     const { data: purchaseBills } = await supabase
       .from('bills')
       .select('*')
@@ -62,9 +62,9 @@ const Stock = () => {
 
     setLoading(false);
 
-    // If initial load or forced, run the invisible background sync
+    // 3. Perform Deep Sync if missing items are found in bills
     if (shouldSync && purchaseBills && stockItems) {
-      performBackgroundSync(purchaseBills, stockItems);
+      await performBackgroundSync(purchaseBills, stockItems);
     }
   };
 
@@ -86,7 +86,7 @@ const Stock = () => {
               company_id: cid,
               user_id: user.id,
               name: name,
-              sku: `STK-${Math.floor(1000 + Math.random() * 9000)}`,
+              sku: `AUTO-${Math.floor(1000 + Math.random() * 9000)}`,
               unit: it.unit || 'PCS',
               rate: Number(it.rate) || 0,
               hsn: it.hsnCode || '',
@@ -100,30 +100,33 @@ const Stock = () => {
     });
 
     if (discoveredItems.length > 0) {
-      console.log(`Auto-sync: Discovered ${discoveredItems.length} missing items from bills.`);
-      await supabase.from('stock_items').insert(discoveredItems);
-      // Silently reload to show the newly discovered items
-      const { data: updatedStock } = await supabase
-        .from('stock_items')
-        .select('*')
-        .eq('company_id', cid)
-        .eq('is_deleted', false)
-        .order('name', { ascending: true });
-      if (updatedStock) setItems(updatedStock);
+      const { error } = await supabase.from('stock_items').insert(discoveredItems);
+      if (!error) {
+        // Reload silently to show the newly discovered historical items
+        const { data: updatedStock } = await supabase
+          .from('stock_items')
+          .select('*')
+          .eq('company_id', cid)
+          .eq('is_deleted', false)
+          .order('name', { ascending: true });
+        if (updatedStock) setItems(updatedStock);
+      }
     }
   };
 
   useEffect(() => {
-    loadData(true); // Sync on initial load
-    window.addEventListener('appSettingsChanged', () => loadData(true));
-    return () => window.removeEventListener('appSettingsChanged', () => loadData(true));
+    loadData(true); // Forced sync on initial load to catch any items from previous bills
+    
+    const handleGlobalUpdate = () => loadData(true);
+    window.addEventListener('appSettingsChanged', handleGlobalUpdate);
+    return () => window.removeEventListener('appSettingsChanged', handleGlobalUpdate);
   }, []);
 
   const handleManualSync = async () => {
     setSyncing(true);
     await loadData(true);
     setSyncing(false);
-    alert("Stock list synchronized with all purchase records.");
+    alert("Discovery Complete: Stock list synchronized with all historical purchase records.");
   };
 
   const handleSaveItem = async (itemData: any) => {
@@ -204,7 +207,7 @@ const Stock = () => {
 
   return (
     <div className="space-y-8 h-full flex flex-col">
-      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} title={editingItem ? "Edit Item" : "New Item"}>
+      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} title={editingItem ? "Edit Stock Item" : "Create New Stock Item"}>
         <StockForm initialData={editingItem} onSubmit={handleSaveItem} onCancel={() => { setIsModalOpen(false); setEditingItem(null); }} />
       </Modal>
 
@@ -225,7 +228,7 @@ const Stock = () => {
                 className="flex items-center space-x-2 px-4 py-2 border border-slate-200 rounded-md text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"
             >
                 {syncing || loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                <span>Refresh & Sync</span>
+                <span>Deep Sync History</span>
             </button>
             <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-slate-800 px-5 py-2 rounded-md font-bold text-[10px] uppercase tracking-widest border border-slate-200 hover:bg-primary-dark transition-all shadow-sm active:scale-95">Add New Item</button>
         </div>
@@ -237,7 +240,7 @@ const Stock = () => {
           type="text" 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search product master..." 
+          placeholder="Search items, SKU, or HSN..." 
           className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-md text-sm outline-none focus:border-slate-400 shadow-sm transition-all" 
         />
       </div>
@@ -265,7 +268,7 @@ const Stock = () => {
                   <p className="text-[10px] text-slate-500 mb-4 font-mono">RATE: {formatCurrency(item.rate)} / {item.unit || 'UNIT'}</p>
                   <div className="grid grid-cols-2 gap-2 text-[9px] font-bold uppercase tracking-tight">
                     <div className="bg-white/50 p-2 rounded border border-slate-100">
-                      <p className="text-slate-400 mb-0.5">Quantity</p>
+                      <p className="text-slate-400 mb-0.5">Physical Qty</p>
                       <p className="text-slate-900 text-sm">{item.in_stock || 0} {item.unit || 'PCS'}</p>
                     </div>
                     <div className="bg-white/50 p-2 rounded border border-slate-100">
@@ -281,7 +284,7 @@ const Stock = () => {
               ))}
               {filteredItems.length === 0 && (
                 <div className="text-center py-20 text-slate-300 italic text-sm">
-                   {searchQuery ? "No matching items." : "No items in stock. Add your first item or create a bill."}
+                   {searchQuery ? "No results found." : "No stock items registered yet."}
                 </div>
               )}
             </div>
@@ -294,7 +297,7 @@ const Stock = () => {
                   <div>
                     <h2 className="text-2xl font-semibold text-slate-900 uppercase tracking-tight">{selectedItem.name}</h2>
                     <div className="flex items-center space-x-3 mt-1">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedItem.category || 'Standard Item'}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedItem.category || 'Product Master'}</span>
                       <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                       <span className="text-[10px] font-mono text-slate-400">{selectedItem.sku || 'N/A'}</span>
                     </div>
@@ -309,19 +312,19 @@ const Stock = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                  <InfoCard label="Total Purchased" value={`${itemStats.totalQtyPurchased} ${selectedItem.unit}`} desc="From all vouchers" />
-                  <InfoCard label="In Stock" value={`${selectedItem.in_stock || 0} ${selectedItem.unit}`} desc="Available Balance" />
-                  <InfoCard label="Stock Value" value={formatCurrency((selectedItem.in_stock || 0) * (selectedItem.rate || 0))} desc="Inventory Asset" />
-                  <InfoCard label="Avg Rate" value={formatCurrency(itemStats.totalQtyPurchased > 0 ? itemStats.totalValuePurchased / itemStats.totalQtyPurchased : selectedItem.rate)} desc="Landed Cost" />
-                  <InfoCard label="Vendor Count" value={itemStats.vendorCount} desc="Unique Suppliers" />
-                  <InfoCard label="Main Vendor" value={itemStats.mainVendor} desc="Primary Source" />
+                  <InfoCard label="Total Procured" value={`${itemStats.totalQtyPurchased} ${selectedItem.unit}`} desc="From all vouchers" />
+                  <InfoCard label="Stock In Hand" value={`${selectedItem.in_stock || 0} ${selectedItem.unit}`} desc="Available Balance" />
+                  <InfoCard label="Asset Value" value={formatCurrency((selectedItem.in_stock || 0) * (selectedItem.rate || 0))} desc="Current Valuation" />
+                  <InfoCard label="Avg Purchase Price" value={formatCurrency(itemStats.totalQtyPurchased > 0 ? itemStats.totalValuePurchased / itemStats.totalQtyPurchased : selectedItem.rate)} desc="Landed Unit Cost" />
+                  <InfoCard label="Unique Vendors" value={itemStats.vendorCount} desc="Supply Chain Sources" />
+                  <InfoCard label="Primary Supplier" value={itemStats.mainVendor} desc="Recent Source" />
                 </div>
 
                 <div className="space-y-4 pt-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <History className="w-4 h-4 text-slate-400" />
-                      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Linked Purchase Records</h3>
+                      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Historical Ledger</h3>
                     </div>
                   </div>
                   
@@ -358,7 +361,7 @@ const Stock = () => {
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-slate-300 italic text-sm py-20">
                 <Package className="w-16 h-16 opacity-10 mb-4" />
-                <p>Select a product to view its life-cycle and stock analytics.</p>
+                <p>Select a product to view detailed cloud-synced analytics.</p>
               </div>
             )}
           </div>
