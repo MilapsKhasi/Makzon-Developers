@@ -1,4 +1,10 @@
 import { defineConfig } from 'Vite'
+
+export default defineConfig({
+  build: {
+    outDir: 'dist'
+  }
+})
 import react from '@vitejs/plugin-react'
 import { fileURLToPath } from 'url'
 import path from 'path'
