@@ -1,7 +1,6 @@
 {
   "name": "purchase-master",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,7 +18,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^4.0.0",
+    "@vitejs/plugin-react": "^4.2.0",
     "typescript": "~5.8.2",
     "vite": "^5.0.0"
   }
