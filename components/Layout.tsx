@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import { Bell, Search, Settings, User, ChevronDown, Building2, LogOut, Plus, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getActiveCompanyId } from '../utils/helpers';
+import Logo from './Logo';
 
 const Layout = () => {
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
@@ -15,7 +16,7 @@ const Layout = () => {
 
   const loadWorkspaces = async () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
-    setUser(authUser);
+    setUser(authWithUser);
     if (!authUser) return;
 
     const { data } = await supabase
@@ -31,6 +32,8 @@ const Layout = () => {
     const current = data?.find(w => w.id === activeId);
     setActiveWorkspace(current || null);
   };
+
+  const authWithUser = user; // Fix for reference below
 
   useEffect(() => {
     loadWorkspaces();
@@ -56,9 +59,7 @@ const Layout = () => {
     <div className="flex flex-col h-screen bg-white overflow-hidden">
       <header className="h-16 border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-[100] bg-white">
         <div className="flex items-center space-x-4">
-          <div className="w-10 h-10 bg-primary rounded border border-slate-200 flex items-center justify-center shadow-sm">
-            <span className="font-bold text-xl italic text-slate-800">P</span>
-          </div>
+          <Logo size={40} />
           
           <div className="flex flex-col">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Workspace</span>

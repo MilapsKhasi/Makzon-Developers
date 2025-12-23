@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Mail, ArrowRight, Lock, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import Logo from '../components/Logo';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -38,8 +39,8 @@ const Auth = () => {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans">
       <div className="max-w-md w-full bg-white border border-slate-200 p-10 boxy-shadow rounded-md">
         <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-primary rounded-md flex items-center justify-center mx-auto mb-6 border border-slate-200">
-            <span className="text-3xl font-semibold italic text-slate-800">P</span>
+          <div className="flex justify-center mb-6">
+            <Logo size={64} />
           </div>
           <h1 className="text-2xl font-semibold text-slate-900 mb-2">
             {isLogin ? 'Welcome Back' : 'Create Account'}
