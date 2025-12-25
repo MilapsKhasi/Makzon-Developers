@@ -108,7 +108,7 @@ const Vendors = () => {
         balance: Number(vendor.balance) || 0
       };
 
-      const basicData = {
+      const legacyData = {
         name: fullData.name,
         email: fullData.email,
         phone: fullData.phone,
@@ -130,15 +130,15 @@ const Vendors = () => {
         }
       };
 
-      // Attempt 1: Full Save with Banking Details
+      // Try full save
       let result = await save(fullData);
 
-      // Attempt 2: Fallback if columns are missing
+      // Fallback if banking/pan columns are missing (PGRST204)
       if (result.error && (result.error.code === 'PGRST204' || result.error.message?.includes('column'))) {
-        console.warn("Banking columns missing in DB. Retrying basic save...");
-        result = await save(basicData);
+        console.warn("Retrying vendor save without banking columns...");
+        result = await save(legacyData);
         if (!result.error) {
-          alert("Vendor saved successfully, but Banking Details/PAN were skipped because your database schema needs updating.");
+          alert("Vendor updated successfully. Note: Banking details and PAN were skipped as your database schema needs updating.");
         }
       }
 
@@ -206,11 +206,11 @@ const Vendors = () => {
         onClose={() => setDeleteDialog({ isOpen: false, vendor: null })}
         onConfirm={confirmDeleteVendor}
         title="Delete Vendor"
-        message={`Are you sure you want to delete "${deleteDialog.vendor?.name}"? All history will be archived.`}
+        message={`Are you sure you want to move "${deleteDialog.vendor?.name}" to trash?`}
       />
 
       <div className="flex justify-between items-center shrink-0">
-        <h1 className="text-2xl font-medium text-slate-900 tracking-tight">Vendors Directory</h1>
+        <h1 className="text-2xl font-medium text-slate-900 tracking-tight">Vendors Register</h1>
         <button onClick={() => { setEditingVendor(null); setIsFormOpen(true); }} className="bg-primary text-slate-800 px-5 py-2 rounded-md font-bold text-[10px] uppercase tracking-widest border border-slate-200 hover:bg-primary-dark transition-all shadow-sm active:scale-95">New Vendor</button>
       </div>
 
@@ -222,7 +222,7 @@ const Vendors = () => {
             <div className="w-80 shrink-0 flex flex-col space-y-4 overflow-hidden">
                <div className="relative shrink-0">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
-                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search vendors..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-md text-sm outline-none focus:border-slate-400 shadow-sm" />
+                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search vendors..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-md text-sm outline-none focus:border-slate-400 shadow-sm transition-all" />
                </div>
                <div className="flex-1 overflow-y-auto space-y-2 pr-1 pb-4">
                    {filteredVendors.map((vendor) => {
@@ -238,7 +238,7 @@ const Vendors = () => {
                               className={`p-4 border rounded-md cursor-pointer transition-all relative group ${String(selectedVendorId) === String(vendor.id) ? 'bg-slate-100 border-slate-400 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}`}
                           >
                               <h3 className="font-semibold text-slate-900 truncate uppercase text-[11px] mb-1">{vendor.name}</h3>
-                              <p className="text-[9px] text-slate-400 font-mono uppercase tracking-widest">{vendor.gstin || 'No GST Record'}</p>
+                              <p className="text-[9px] text-slate-400 font-mono uppercase tracking-widest">{vendor.gstin || 'NO GST'}</p>
                               <div className="mt-3 flex justify-between items-center border-t border-slate-200/50 pt-2 text-[10px] font-bold text-slate-400">
                                   <span>OUTSTANDING</span>
                                   <span className="text-slate-900">{formatCurrency(outstanding)}</span>
@@ -246,9 +246,6 @@ const Vendors = () => {
                           </div>
                         );
                    })}
-                   {filteredVendors.length === 0 && (
-                     <div className="text-center py-20 text-slate-300 italic text-sm">No matching vendors.</div>
-                   )}
                </div>
             </div>
           )}
@@ -261,7 +258,7 @@ const Vendors = () => {
                           <h2 className="text-2xl font-semibold text-slate-900 uppercase tracking-tight leading-none">{selectedVendor.name}</h2>
                           <div className="flex items-center space-x-3 mt-3">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                              <ShieldCheck className="w-3 h-3 mr-1" /> GST: {selectedVendor.gstin || 'NOT REGISTERED'}
+                              <ShieldCheck className="w-3 h-3 mr-1" /> GST: {selectedVendor.gstin || 'N/A'}
                             </span>
                           </div>
                         </div>
@@ -274,7 +271,7 @@ const Vendors = () => {
                         </div>
                       </div>
 
-                      {/* Banking & Business Info Card - Fixed Visibility */}
+                      {/* Financial & Banking Summary Card - FIXED VALUE DISPLAY */}
                       <div className="mb-8 bg-slate-50 border border-slate-200 rounded-lg p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 boxy-shadow border-l-4 border-l-primary shadow-sm">
                           <div className="space-y-1">
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
@@ -284,13 +281,13 @@ const Vendors = () => {
                           </div>
                           <div className="space-y-1">
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                              <CreditCard className="w-3 h-3 mr-1.5" /> Beneficiary Name
+                              <CreditCard className="w-3 h-3 mr-1.5" /> Beneficiary
                             </p>
                             <p className="text-sm font-bold text-slate-900 truncate uppercase">{selectedVendor.account_name || 'N/A'}</p>
                           </div>
                           <div className="space-y-1">
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                              <Landmark className="w-3 h-3 mr-1.5" /> Account No
+                              <Landmark className="w-3 h-3 mr-1.5" /> Account Number
                             </p>
                             <p className="text-sm font-bold text-slate-900 font-mono">{selectedVendor.account_number || 'N/A'}</p>
                           </div>
@@ -303,22 +300,22 @@ const Vendors = () => {
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 mb-8">
-                          <InfoCard label="Outstanding Balance" value={formatCurrency(stats.balance)} desc="Total pending payables" />
-                          <InfoCard label="Contact Email" value={selectedVendor.email || 'N/A'} desc="Official communication" />
-                          <InfoCard label="Support Line" value={selectedVendor.phone || 'N/A'} desc="Business contact number" />
+                          <InfoCard label="Outstanding" value={formatCurrency(stats.balance)} desc="Net payable amount" />
+                          <InfoCard label="Business Email" value={selectedVendor.email || 'N/A'} desc="Official contact" />
+                          <InfoCard label="Support Line" value={selectedVendor.phone || 'N/A'} desc="Primary mobile" />
                       </div>
 
                       <div className="flex-1 flex flex-col min-h-0">
                           <div className="flex items-center justify-between mb-4">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><History className="w-3.5 h-3.5 mr-2" /> Recent Voucher History</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><History className="w-3.5 h-3.5 mr-2" /> Recent Vouchers</p>
                           </div>
                           <div className="flex-1 overflow-auto border border-slate-200 rounded-md shadow-inner bg-white">
                               <table className="w-full text-left text-xs table-auto border-collapse">
                                   <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                                       <tr className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                                           <th className="py-3 px-4 border-r border-slate-200">Date</th>
-                                          <th className="py-3 px-4 border-r border-slate-200">Bill Number</th>
-                                          <th className="py-3 px-4 border-r border-slate-200 text-right">Bill Amount</th>
+                                          <th className="py-3 px-4 border-r border-slate-200">Voucher No</th>
+                                          <th className="py-3 px-4 border-r border-slate-200 text-right">Bill Value</th>
                                           <th className="py-3 px-4 text-center">Status</th>
                                       </tr>
                                   </thead>
@@ -333,7 +330,7 @@ const Vendors = () => {
                                               </td>
                                           </tr>
                                       ))}
-                                      {stats.transactions.length === 0 && <tr><td colSpan={4} className="py-24 text-center text-slate-300 italic text-sm">No transaction records found for this vendor.</td></tr>}
+                                      {stats.transactions.length === 0 && <tr><td colSpan={4} className="py-24 text-center text-slate-300 italic text-sm">No transaction ledger available.</td></tr>}
                                   </tbody>
                               </table>
                           </div>
@@ -342,7 +339,7 @@ const Vendors = () => {
               ) : (
                   <div className="h-full flex flex-col items-center justify-center text-slate-300 italic text-sm py-20">
                     <Landmark className="w-16 h-16 opacity-5 mb-4" />
-                    <p>Select a vendor from the list to view financial ledgers and settlement data.</p>
+                    <p>Select a vendor to manage settlement and historical ledger.</p>
                   </div>
               )}
           </div>
