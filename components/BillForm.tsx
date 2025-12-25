@@ -27,7 +27,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: 1, unit: 'PCS', rate: 0, igstRate: 0, cgstRate: 0, sgstRate: 0, igstAmount: 0, cgstAmount: 0, sgstAmount: 0, taxableAmount: 0, amount: 0 }],
     total_without_gst: 0, 
     total_gst: 0, 
-    commission_charges: 0,
+    commission_percent: 0, // Store percentage in UI state
+    commission_charges: 0, // Store absolute amount for DB
     labor_charges: 0,
     round_off: 0, 
     grand_total: 0, 
@@ -54,6 +55,11 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   useEffect(() => {
     loadDependencies();
     if (initialData) {
+      const subtotal = Number(initialData.total_without_gst || 0);
+      const absCommission = Number(initialData.commission_charges || 0);
+      // Reverse calculate percentage if absolute exists
+      const percent = subtotal > 0 ? (absCommission / subtotal) * 100 : 0;
+
       setFormData({ 
         ...initialData,
         vendor_name: initialData.vendor_name || '',
@@ -64,9 +70,10 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         displayDate: formatDate(initialData.date || today),
         description: initialData.description || '',
         items: Array.isArray(initialData.items) && initialData.items.length > 0 ? initialData.items : getInitialState().items,
-        total_without_gst: Number(initialData.total_without_gst || 0),
+        total_without_gst: subtotal,
         total_gst: Number(initialData.total_gst || 0),
-        commission_charges: Number(initialData.commission_charges || 0),
+        commission_percent: parseFloat(percent.toFixed(2)),
+        commission_charges: absCommission,
         labor_charges: Number(initialData.labor_charges || 0),
         round_off: Number(initialData.round_off || 0),
         grand_total: Number(initialData.grand_total || 0),
@@ -91,7 +98,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     }
   };
 
-  const updateTotals = (items: any[], commission = formData.commission_charges, labor = formData.labor_charges) => {
+  const updateTotals = (items: any[], commissionPercent = formData.commission_percent, labor = formData.labor_charges) => {
     let subtotal = 0, totalTax = 0;
     const updated = items.map(item => {
       const taxable = (Number(item.qty) || 0) * (Number(item.rate) || 0);
@@ -103,9 +110,13 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       return { ...item, taxableAmount: taxable, igstAmount: igst, cgstAmount: cgst, sgstAmount: sgst, amount: taxable + rowTax };
     });
 
-    const commNum = Number(commission) || 0;
+    const commRate = Number(commissionPercent) || 0;
     const labNum = Number(labor) || 0;
-    const rawTotal = subtotal + totalTax + commNum + labNum;
+    
+    // Calculate absolute commission from percentage of subtotal
+    const commAbs = subtotal * (commRate / 100);
+    
+    const rawTotal = subtotal + totalTax + commAbs + labNum;
     const grandTotalInt = Math.round(rawTotal);
     const ro = parseFloat((grandTotalInt - rawTotal).toFixed(2));
     
@@ -114,7 +125,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       items: updated, 
       total_without_gst: subtotal, 
       total_gst: totalTax, 
-      commission_charges: commNum,
+      commission_percent: commRate,
+      commission_charges: commAbs,
       labor_charges: labNum,
       round_off: ro, 
       grand_total: grandTotalInt 
@@ -167,7 +179,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         items: formData.items,
         total_without_gst: Number(formData.total_without_gst) || 0,
         total_gst: Number(formData.total_gst) || 0,
-        commission_charges: Number(formData.commission_charges) || 0,
+        commission_charges: Number(formData.commission_charges) || 0, // Absolute value for DB
         labor_charges: Number(formData.labor_charges) || 0,
         grand_total: Number(formData.grand_total) || 0,
         status: formData.status,
@@ -301,22 +313,29 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                 <span className="text-slate-800 font-mono text-sm">{formatCurrency(formData.total_gst)}</span>
             </div>
             
-            <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
-                <span>Commission</span>
-                <input 
-                  type="number" 
-                  value={formData.commission_charges} 
-                  onChange={(e) => updateTotals(formData.items, parseFloat(e.target.value) || 0, formData.labor_charges)} 
-                  className="text-right bg-transparent border-none hover:ring-1 hover:ring-slate-300 focus:ring-1 focus:ring-slate-400 outline-none rounded p-0.5 font-mono text-sm w-24 text-slate-800 transition-all"
-                  placeholder="0.00"
-                />
+            <div className="flex justify-between items-start text-[10px] font-bold text-slate-400 uppercase">
+                <span className="mt-1">Commission</span>
+                <div className="flex flex-col items-end">
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      value={formData.commission_percent} 
+                      onChange={(e) => updateTotals(formData.items, parseFloat(e.target.value) || 0, formData.labor_charges)} 
+                      className="text-right bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-400 outline-none rounded px-2 py-1 font-mono text-sm w-20 text-slate-800 transition-all pr-6"
+                      placeholder="0.0"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">%</span>
+                  </div>
+                  <span className="text-[9px] text-slate-400 font-medium mt-1">Amt: {formatCurrency(formData.commission_charges)}</span>
+                </div>
             </div>
             <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
                 <span>Labor Charges</span>
                 <input 
                   type="number" 
                   value={formData.labor_charges} 
-                  onChange={(e) => updateTotals(formData.items, formData.commission_charges, parseFloat(e.target.value) || 0)} 
+                  onChange={(e) => updateTotals(formData.items, formData.commission_percent, parseFloat(e.target.value) || 0)} 
                   className="text-right bg-transparent border-none hover:ring-1 hover:ring-slate-300 focus:ring-1 focus:ring-slate-400 outline-none rounded p-0.5 font-mono text-sm w-24 text-slate-800 transition-all"
                   placeholder="0.00"
                 />
@@ -330,7 +349,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       </div>
 
       <div className="flex justify-end space-x-4 pt-6 border-t border-slate-100">
-        <button type="button" onClick={onCancel} className="px-6 py-2 text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-slate-700">Discard</button>
+        <button type="button" onClick={onCancel} className="px-6 py-2.5 text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-slate-700">Discard</button>
         <button type="submit" disabled={loading} className="px-10 py-2.5 bg-primary text-slate-800 font-bold uppercase text-[10px] tracking-widest rounded border border-slate-200 hover:bg-primary-dark transition-all shadow-md active:scale-95 disabled:opacity-50">
           {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
           {initialData?.id ? 'Update Bill' : 'Create Bill'}
