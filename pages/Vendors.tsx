@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Edit, Trash2, History, Filter, ChevronDown, Maximize2, Minimize2, Loader2, Landmark, CreditCard, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark, CreditCard, ShieldCheck } from 'lucide-react';
 import Modal from '../components/Modal';
 import VendorForm from '../components/VendorForm';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -25,8 +25,6 @@ const Vendors = () => {
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -83,19 +81,13 @@ const Vendors = () => {
 
   const handleSaveVendor = async (vendor: any) => {
     const cid = getActiveCompanyId();
-    if (!cid) {
-      alert("No active company/workspace found.");
-      return;
-    }
+    if (!cid) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        alert("Session expired. Please sign in again.");
-        return;
-      }
+      if (!user) return;
       
-      const fullData = {
+      const payload: any = {
         name: String(vendor.name || '').trim(),
         email: String(vendor.email || '').trim(),
         phone: String(vendor.phone || '').trim(),
@@ -108,37 +100,29 @@ const Vendors = () => {
         balance: Number(vendor.balance) || 0
       };
 
-      const legacyData = {
-        name: fullData.name,
-        email: fullData.email,
-        phone: fullData.phone,
-        gstin: fullData.gstin,
-        address: fullData.address,
-        balance: fullData.balance
+      const basicPayload = {
+        name: payload.name,
+        email: payload.email,
+        phone: payload.phone,
+        gstin: payload.gstin,
+        address: payload.address,
+        balance: payload.balance
       };
 
-      if (!fullData.name) {
-        alert("Vendor name is required.");
-        return;
-      }
-
-      const save = async (payload: any) => {
-        if (editingVendor) {
-          return await supabase.from('vendors').update(payload).eq('id', editingVendor.id).select();
-        } else {
-          return await supabase.from('vendors').insert([{ ...payload, company_id: cid, user_id: user.id }]).select();
+      let result;
+      if (editingVendor) {
+        result = await supabase.from('vendors').update(payload).eq('id', editingVendor.id).select();
+        // Fallback if banking columns are missing
+        if (result.error && (result.error.code === 'PGRST204' || result.error.message?.includes('column'))) {
+          result = await supabase.from('vendors').update(basicPayload).eq('id', editingVendor.id).select();
+          if (!result.error) alert("Vendor profile updated. Note: Banking Details and PAN were skipped because your database schema needs updating.");
         }
-      };
-
-      // Try full save
-      let result = await save(fullData);
-
-      // Fallback if banking/pan columns are missing (PGRST204)
-      if (result.error && (result.error.code === 'PGRST204' || result.error.message?.includes('column'))) {
-        console.warn("Retrying vendor save without banking columns...");
-        result = await save(legacyData);
-        if (!result.error) {
-          alert("Vendor updated successfully. Note: Banking details and PAN were skipped as your database schema needs updating.");
+      } else {
+        result = await supabase.from('vendors').insert([{ ...payload, company_id: cid, user_id: user.id }]).select();
+        // Fallback if banking columns are missing
+        if (result.error && (result.error.code === 'PGRST204' || result.error.message?.includes('column'))) {
+          result = await supabase.from('vendors').insert([{ ...basicPayload, company_id: cid, user_id: user.id }]).select();
+          if (!result.error) alert("New vendor created. Note: Banking Details and PAN were skipped because your database schema needs updating.");
         }
       }
 
@@ -149,9 +133,8 @@ const Vendors = () => {
       setIsFormOpen(false);
       setEditingVendor(null);
     } catch (error: any) {
-      console.error("Save Error Details:", error);
-      const errorMessage = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
-      alert(`Submission Process Failure: ${errorMessage}`);
+      console.error("Save Error:", error);
+      alert(`Submission Process Failure: ${error.message || JSON.stringify(error)}`);
     }
   };
 
@@ -180,8 +163,7 @@ const Vendors = () => {
     if (!selectedVendor) return { transactions: [], totalPurchase: 0, balance: 0 };
 
     const transactions = bills.filter(b => 
-      b.vendor_name?.toLowerCase() === selectedVendor.name?.toLowerCase() &&
-      (statusFilter === 'All' ? true : b.status === statusFilter)
+      b.vendor_name?.toLowerCase() === selectedVendor.name?.toLowerCase()
     );
 
     const totalPurchase = bills
@@ -193,11 +175,11 @@ const Vendors = () => {
       totalPurchase,
       balance: (selectedVendor.balance || 0) + totalPurchase
     };
-  }, [selectedVendor, bills, statusFilter]);
+  }, [selectedVendor, bills]);
 
   return (
     <div className="space-y-6 h-full flex flex-col">
-      <Modal isOpen={isFormOpen} onClose={() => { setIsFormOpen(false); setEditingVendor(null); }} title={editingVendor ? "Edit Vendor Profile" : "Create New Vendor"}>
+      <Modal isOpen={isFormOpen} onClose={() => { setIsFormOpen(false); setEditingVendor(null); }} title={editingVendor ? "Edit Vendor Profile" : "Register New Vendor"}>
           <VendorForm initialData={editingVendor} onSubmit={handleSaveVendor} onCancel={() => { setIsFormOpen(false); setEditingVendor(null); }} />
       </Modal>
 
@@ -206,12 +188,12 @@ const Vendors = () => {
         onClose={() => setDeleteDialog({ isOpen: false, vendor: null })}
         onConfirm={confirmDeleteVendor}
         title="Delete Vendor"
-        message={`Are you sure you want to move "${deleteDialog.vendor?.name}" to trash?`}
+        message={`Are you sure you want to delete "${deleteDialog.vendor?.name}"?`}
       />
 
       <div className="flex justify-between items-center shrink-0">
-        <h1 className="text-2xl font-medium text-slate-900 tracking-tight">Vendors Register</h1>
-        <button onClick={() => { setEditingVendor(null); setIsFormOpen(true); }} className="bg-primary text-slate-800 px-5 py-2 rounded-md font-bold text-[10px] uppercase tracking-widest border border-slate-200 hover:bg-primary-dark transition-all shadow-sm active:scale-95">New Vendor</button>
+        <h1 className="text-2xl font-medium text-slate-900 tracking-tight">Vendors Ledger</h1>
+        <button onClick={() => { setEditingVendor(null); setIsFormOpen(true); }} className="bg-primary text-slate-800 px-5 py-2 rounded-md font-bold text-[10px] uppercase tracking-widest border border-slate-200 hover:bg-primary-dark shadow-sm">New Vendor</button>
       </div>
 
       {loading && vendors.length === 0 ? (
@@ -222,7 +204,7 @@ const Vendors = () => {
             <div className="w-80 shrink-0 flex flex-col space-y-4 overflow-hidden">
                <div className="relative shrink-0">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
-                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search vendors..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-md text-sm outline-none focus:border-slate-400 shadow-sm transition-all" />
+                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search parties..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-md text-sm outline-none focus:border-slate-400 shadow-sm" />
                </div>
                <div className="flex-1 overflow-y-auto space-y-2 pr-1 pb-4">
                    {filteredVendors.map((vendor) => {
@@ -240,7 +222,7 @@ const Vendors = () => {
                               <h3 className="font-semibold text-slate-900 truncate uppercase text-[11px] mb-1">{vendor.name}</h3>
                               <p className="text-[9px] text-slate-400 font-mono uppercase tracking-widest">{vendor.gstin || 'NO GST'}</p>
                               <div className="mt-3 flex justify-between items-center border-t border-slate-200/50 pt-2 text-[10px] font-bold text-slate-400">
-                                  <span>OUTSTANDING</span>
+                                  <span>PAYABLE</span>
                                   <span className="text-slate-900">{formatCurrency(outstanding)}</span>
                               </div>
                           </div>
@@ -271,7 +253,7 @@ const Vendors = () => {
                         </div>
                       </div>
 
-                      {/* Financial & Banking Summary Card - FIXED VALUE DISPLAY */}
+                      {/* Financial & Banking Summary Card */}
                       <div className="mb-8 bg-slate-50 border border-slate-200 rounded-lg p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 boxy-shadow border-l-4 border-l-primary shadow-sm">
                           <div className="space-y-1">
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
@@ -300,22 +282,22 @@ const Vendors = () => {
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 mb-8">
-                          <InfoCard label="Outstanding" value={formatCurrency(stats.balance)} desc="Net payable amount" />
-                          <InfoCard label="Business Email" value={selectedVendor.email || 'N/A'} desc="Official contact" />
-                          <InfoCard label="Support Line" value={selectedVendor.phone || 'N/A'} desc="Primary mobile" />
+                          <InfoCard label="Total Outstanding" value={formatCurrency(stats.balance)} desc="Current Payables" />
+                          <InfoCard label="Contact Email" value={selectedVendor.email || 'None'} desc="Transactional Contact" />
+                          <InfoCard label="Support Line" value={selectedVendor.phone || 'None'} desc="Primary Contact" />
                       </div>
 
                       <div className="flex-1 flex flex-col min-h-0">
                           <div className="flex items-center justify-between mb-4">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><History className="w-3.5 h-3.5 mr-2" /> Recent Vouchers</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><History className="w-3.5 h-3.5 mr-2" /> Recent Transaction history</p>
                           </div>
                           <div className="flex-1 overflow-auto border border-slate-200 rounded-md shadow-inner bg-white">
                               <table className="w-full text-left text-xs table-auto border-collapse">
                                   <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                                       <tr className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                                           <th className="py-3 px-4 border-r border-slate-200">Date</th>
-                                          <th className="py-3 px-4 border-r border-slate-200">Voucher No</th>
-                                          <th className="py-3 px-4 border-r border-slate-200 text-right">Bill Value</th>
+                                          <th className="py-3 px-4 border-r border-slate-200">Bill No</th>
+                                          <th className="py-3 px-4 border-r border-slate-200 text-right">Amount</th>
                                           <th className="py-3 px-4 text-center">Status</th>
                                       </tr>
                                   </thead>
@@ -330,7 +312,7 @@ const Vendors = () => {
                                               </td>
                                           </tr>
                                       ))}
-                                      {stats.transactions.length === 0 && <tr><td colSpan={4} className="py-24 text-center text-slate-300 italic text-sm">No transaction ledger available.</td></tr>}
+                                      {stats.transactions.length === 0 && <tr><td colSpan={4} className="py-24 text-center text-slate-300 italic text-sm">No transaction records found.</td></tr>}
                                   </tbody>
                               </table>
                           </div>
