@@ -124,7 +124,7 @@ const Vendors = () => {
 
       const save = async (payload: any) => {
         if (editingVendor) {
-          return await supabase.from('vendors').update(payload).eq('id', editingVendor.id);
+          return await supabase.from('vendors').update(payload).eq('id', editingVendor.id).select();
         } else {
           return await supabase.from('vendors').insert([{ ...payload, company_id: cid, user_id: user.id }]).select();
         }
@@ -138,7 +138,7 @@ const Vendors = () => {
         console.warn("Banking columns missing in DB. Retrying basic save...");
         result = await save(basicData);
         if (!result.error) {
-          alert("Vendor saved successfully, but Banking Details were skipped because your database schema needs updating.");
+          alert("Vendor saved successfully, but Banking Details/PAN were skipped because your database schema needs updating.");
         }
       }
 
@@ -197,7 +197,7 @@ const Vendors = () => {
 
   return (
     <div className="space-y-6 h-full flex flex-col">
-      <Modal isOpen={isFormOpen} onClose={() => { setIsFormOpen(false); setEditingVendor(null); }} title={editingVendor ? "Edit Vendor" : "New Vendor"}>
+      <Modal isOpen={isFormOpen} onClose={() => { setIsFormOpen(false); setEditingVendor(null); }} title={editingVendor ? "Edit Vendor Profile" : "Create New Vendor"}>
           <VendorForm initialData={editingVendor} onSubmit={handleSaveVendor} onCancel={() => { setIsFormOpen(false); setEditingVendor(null); }} />
       </Modal>
 
@@ -206,11 +206,11 @@ const Vendors = () => {
         onClose={() => setDeleteDialog({ isOpen: false, vendor: null })}
         onConfirm={confirmDeleteVendor}
         title="Delete Vendor"
-        message={`Are you sure you want to delete "${deleteDialog.vendor?.name}"?`}
+        message={`Are you sure you want to delete "${deleteDialog.vendor?.name}"? All history will be archived.`}
       />
 
       <div className="flex justify-between items-center shrink-0">
-        <h1 className="text-2xl font-medium text-slate-900 tracking-tight">Vendors Management</h1>
+        <h1 className="text-2xl font-medium text-slate-900 tracking-tight">Vendors Directory</h1>
         <button onClick={() => { setEditingVendor(null); setIsFormOpen(true); }} className="bg-primary text-slate-800 px-5 py-2 rounded-md font-bold text-[10px] uppercase tracking-widest border border-slate-200 hover:bg-primary-dark transition-all shadow-sm active:scale-95">New Vendor</button>
       </div>
 
@@ -222,7 +222,7 @@ const Vendors = () => {
             <div className="w-80 shrink-0 flex flex-col space-y-4 overflow-hidden">
                <div className="relative shrink-0">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
-                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search Vendors..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-md text-sm outline-none focus:border-slate-400 shadow-sm" />
+                  <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search vendors..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-md text-sm outline-none focus:border-slate-400 shadow-sm" />
                </div>
                <div className="flex-1 overflow-y-auto space-y-2 pr-1 pb-4">
                    {filteredVendors.map((vendor) => {
@@ -238,14 +238,17 @@ const Vendors = () => {
                               className={`p-4 border rounded-md cursor-pointer transition-all relative group ${String(selectedVendorId) === String(vendor.id) ? 'bg-slate-100 border-slate-400 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}`}
                           >
                               <h3 className="font-semibold text-slate-900 truncate uppercase text-[11px] mb-1">{vendor.name}</h3>
-                              <p className="text-[9px] text-slate-400 font-mono uppercase tracking-widest">{vendor.gstin || 'NO GST'}</p>
+                              <p className="text-[9px] text-slate-400 font-mono uppercase tracking-widest">{vendor.gstin || 'No GST Record'}</p>
                               <div className="mt-3 flex justify-between items-center border-t border-slate-200/50 pt-2 text-[10px] font-bold text-slate-400">
-                                  <span>PAYABLE</span>
+                                  <span>OUTSTANDING</span>
                                   <span className="text-slate-900">{formatCurrency(outstanding)}</span>
                               </div>
                           </div>
                         );
                    })}
+                   {filteredVendors.length === 0 && (
+                     <div className="text-center py-20 text-slate-300 italic text-sm">No matching vendors.</div>
+                   )}
                </div>
             </div>
           )}
@@ -258,7 +261,7 @@ const Vendors = () => {
                           <h2 className="text-2xl font-semibold text-slate-900 uppercase tracking-tight leading-none">{selectedVendor.name}</h2>
                           <div className="flex items-center space-x-3 mt-3">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                              <ShieldCheck className="w-3 h-3 mr-1" /> GST: {selectedVendor.gstin || 'N/A'}
+                              <ShieldCheck className="w-3 h-3 mr-1" /> GST: {selectedVendor.gstin || 'NOT REGISTERED'}
                             </span>
                           </div>
                         </div>
@@ -271,23 +274,23 @@ const Vendors = () => {
                         </div>
                       </div>
 
-                      {/* Banking & Business Info Card */}
+                      {/* Banking & Business Info Card - Fixed Visibility */}
                       <div className="mb-8 bg-slate-50 border border-slate-200 rounded-lg p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 boxy-shadow border-l-4 border-l-primary shadow-sm">
                           <div className="space-y-1">
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
                               <ShieldCheck className="w-3 h-3 mr-1.5" /> PAN Number
                             </p>
-                            <p className="text-sm font-bold text-slate-900 font-mono">{selectedVendor.pan || 'N/A'}</p>
+                            <p className="text-sm font-bold text-slate-900 font-mono uppercase">{selectedVendor.pan || 'N/A'}</p>
                           </div>
                           <div className="space-y-1">
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                              <CreditCard className="w-3 h-3 mr-1.5" /> Account Name
+                              <CreditCard className="w-3 h-3 mr-1.5" /> Beneficiary Name
                             </p>
-                            <p className="text-sm font-bold text-slate-900 truncate">{selectedVendor.account_name || 'N/A'}</p>
+                            <p className="text-sm font-bold text-slate-900 truncate uppercase">{selectedVendor.account_name || 'N/A'}</p>
                           </div>
                           <div className="space-y-1">
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                              <Landmark className="w-3 h-3 mr-1.5" /> Account Number
+                              <Landmark className="w-3 h-3 mr-1.5" /> Account No
                             </p>
                             <p className="text-sm font-bold text-slate-900 font-mono">{selectedVendor.account_number || 'N/A'}</p>
                           </div>
@@ -295,27 +298,27 @@ const Vendors = () => {
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
                               <Landmark className="w-3 h-3 mr-1.5" /> IFSC Code
                             </p>
-                            <p className="text-sm font-bold text-slate-900 font-mono">{selectedVendor.ifsc_code || 'N/A'}</p>
+                            <p className="text-sm font-bold text-slate-900 font-mono uppercase">{selectedVendor.ifsc_code || 'N/A'}</p>
                           </div>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 mb-8">
-                          <InfoCard label="Total Outstanding" value={formatCurrency(stats.balance)} desc="Combined Payables" />
-                          <InfoCard label="Business Email" value={selectedVendor.email || 'None'} desc="Transactional Contact" />
-                          <InfoCard label="Phone Support" value={selectedVendor.phone || 'None'} desc="Primary Contact" />
+                          <InfoCard label="Outstanding Balance" value={formatCurrency(stats.balance)} desc="Total pending payables" />
+                          <InfoCard label="Contact Email" value={selectedVendor.email || 'N/A'} desc="Official communication" />
+                          <InfoCard label="Support Line" value={selectedVendor.phone || 'N/A'} desc="Business contact number" />
                       </div>
 
                       <div className="flex-1 flex flex-col min-h-0">
                           <div className="flex items-center justify-between mb-4">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><History className="w-3.5 h-3.5 mr-2" /> Recent Vouchers</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><History className="w-3.5 h-3.5 mr-2" /> Recent Voucher History</p>
                           </div>
                           <div className="flex-1 overflow-auto border border-slate-200 rounded-md shadow-inner bg-white">
                               <table className="w-full text-left text-xs table-auto border-collapse">
                                   <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                                       <tr className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                          <th className="py-3 px-4 border-r border-slate-200">Voucher Date</th>
+                                          <th className="py-3 px-4 border-r border-slate-200">Date</th>
                                           <th className="py-3 px-4 border-r border-slate-200">Bill Number</th>
-                                          <th className="py-3 px-4 border-r border-slate-200 text-right">Net Value</th>
+                                          <th className="py-3 px-4 border-r border-slate-200 text-right">Bill Amount</th>
                                           <th className="py-3 px-4 text-center">Status</th>
                                       </tr>
                                   </thead>
@@ -330,7 +333,7 @@ const Vendors = () => {
                                               </td>
                                           </tr>
                                       ))}
-                                      {stats.transactions.length === 0 && <tr><td colSpan={4} className="py-24 text-center text-slate-300 italic text-sm">No transaction history found for this party.</td></tr>}
+                                      {stats.transactions.length === 0 && <tr><td colSpan={4} className="py-24 text-center text-slate-300 italic text-sm">No transaction records found for this vendor.</td></tr>}
                                   </tbody>
                               </table>
                           </div>
@@ -339,7 +342,7 @@ const Vendors = () => {
               ) : (
                   <div className="h-full flex flex-col items-center justify-center text-slate-300 italic text-sm py-20">
                     <Landmark className="w-16 h-16 opacity-5 mb-4" />
-                    <p>Select a vendor to view detailed financial history and account settings.</p>
+                    <p>Select a vendor from the list to view financial ledgers and settlement data.</p>
                   </div>
               )}
           </div>
