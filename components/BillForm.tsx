@@ -77,7 +77,6 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     }
   }, [initialData, cid]);
 
-  // Auto-populate GSTIN and Address when vendor is selected
   const handleVendorSelect = (name: string) => {
     const selected = vendors.find(v => v.name.toLowerCase() === name.toLowerCase());
     if (selected) {
@@ -148,14 +147,14 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.date || !formData.bill_number || !formData.vendor_name) {
-      alert("Please fill mandatory fields: Date, Bill No, and Vendor Name.");
+      alert("Missing mandatory fields.");
       return;
     }
     
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Authentication failed. Please sign in again.");
+      if (!user) throw new Error("Auth session expired.");
 
       const fullPayload: any = {
         company_id: cid,
@@ -175,7 +174,6 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         is_deleted: false
       };
 
-      // Fallback payload for older schemas
       const fallbackPayload = { ...fullPayload };
       delete fallbackPayload.commission_charges;
       delete fallbackPayload.labor_charges;
@@ -185,13 +183,13 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         res = await supabase.from('bills').update(fullPayload).eq('id', initialData.id);
         if (res.error?.code === 'PGRST204') {
           res = await supabase.from('bills').update(fallbackPayload).eq('id', initialData.id);
-          if (!res.error) alert("Saved successfully. Note: Commission/Labor columns are missing in your DB and were skipped.");
+          if (!res.error) alert("Voucher updated. Note: Database schema update needed for charges columns.");
         }
       } else {
         res = await supabase.from('bills').insert([fullPayload]);
         if (res.error?.code === 'PGRST204') {
           res = await supabase.from('bills').insert([fallbackPayload]);
-          if (!res.error) alert("Created successfully. Note: Commission/Labor columns are missing in your DB and were skipped.");
+          if (!res.error) alert("Voucher created. Note: Database schema update needed for charges columns.");
         }
       }
 
@@ -200,8 +198,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       onSubmit(fullPayload);
     } catch (err: any) {
       console.error("Submission Error:", err);
-      const message = err.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
-      alert(`Submission Process Failure: ${message}`);
+      const msg = err.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+      alert(`Submission Failure: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -212,11 +210,11 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Date</label>
-          <input required value={formData.displayDate || ''} onChange={(e) => setFormData({...formData, displayDate: e.target.value})} onBlur={handleDateBlur} placeholder={getDatePlaceholder()} className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 bg-white" />
+          <input required value={formData.displayDate || ''} onChange={(e) => setFormData({...formData, displayDate: e.target.value})} onBlur={handleDateBlur} placeholder={getDatePlaceholder()} className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 bg-white shadow-sm" />
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Bill No</label>
-          <input required value={formData.bill_number || ''} onChange={(e) => setFormData({...formData, bill_number: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono outline-none focus:border-slate-400 bg-white" placeholder="INV-001" />
+          <input required value={formData.bill_number || ''} onChange={(e) => setFormData({...formData, bill_number: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono outline-none focus:border-slate-400 bg-white shadow-sm" placeholder="INV-001" />
         </div>
         <div className="space-y-1 md:col-span-2">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Vendor</label>
@@ -225,8 +223,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
             value={formData.vendor_name || ''} 
             onChange={(e) => handleVendorSelect(e.target.value)} 
             list="vl" 
-            className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 bg-white font-medium" 
-            placeholder="Select or type vendor..." 
+            className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 bg-white font-medium shadow-sm" 
+            placeholder="Search vendor..." 
           />
           <datalist id="vl">{vendors.map(v => <option key={v.id} value={v.name} />)}</datalist>
         </div>
@@ -238,8 +236,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
           <input 
             value={formData.gstin || ''} 
             onChange={(e) => setFormData({...formData, gstin: e.target.value.toUpperCase()})} 
-            className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono outline-none focus:border-slate-400 bg-white" 
-            placeholder="Auto-populated from vendor" 
+            className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono outline-none focus:border-slate-400 bg-white shadow-sm" 
+            placeholder="Auto-populated" 
           />
         </div>
         <div className="space-y-1">
@@ -247,20 +245,20 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
           <input 
             value={formData.address || ''} 
             onChange={(e) => setFormData({...formData, address: e.target.value})} 
-            className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 bg-white" 
-            placeholder="Auto-populated from vendor" 
+            className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 bg-white shadow-sm" 
+            placeholder="Auto-populated" 
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Line Items</label>
+        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Items</label>
         <div className="overflow-x-auto border border-slate-200 rounded shadow-sm">
           <table className="w-full text-xs">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr className="text-[10px] font-bold text-slate-500 uppercase">
                 <th className="p-2 border-r text-left">Item Name</th>
-                <th className="p-2 border-r w-16">Qty</th>
+                <th className="p-2 border-r w-16 text-center">Qty</th>
                 <th className="p-2 border-r w-24 text-right">Rate</th>
                 <th className="p-2 border-r w-20 text-center">GST %</th>
                 <th className="p-2 text-right w-32">Total</th>
@@ -270,7 +268,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
             <tbody>
               {formData.items.map((it: any, idx: number) => (
                 <tr key={idx} className="border-b border-slate-100">
-                  <td className="p-0 border-r"><input value={it.itemName || ''} onChange={(e) => handleFieldChange(idx, 'itemName', e.target.value)} list="sil" className="w-full p-2 outline-none border-none bg-transparent" placeholder="Select product..." /></td>
+                  <td className="p-0 border-r"><input value={it.itemName || ''} onChange={(e) => handleFieldChange(idx, 'itemName', e.target.value)} list="sil" className="w-full p-2 outline-none border-none bg-transparent" placeholder="Select item..." /></td>
                   <td className="p-0 border-r"><input type="number" value={it.qty || 0} onChange={(e) => handleFieldChange(idx, 'qty', e.target.value)} className="w-full p-2 text-center outline-none border-none bg-transparent" /></td>
                   <td className="p-0 border-r"><input type="number" value={it.rate || 0} onChange={(e) => handleFieldChange(idx, 'rate', e.target.value)} className="w-full p-2 text-right outline-none border-none bg-transparent" /></td>
                   <td className="p-0 border-r">
@@ -284,14 +282,14 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
               ))}
             </tbody>
           </table>
-          <button type="button" onClick={() => setFormData({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', qty: 1, rate: 0, amount: 0 }]})} className="w-full py-2 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase hover:bg-slate-100 transition-colors border-t border-slate-200">+ Add New Line</button>
+          <button type="button" onClick={() => setFormData({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', qty: 1, rate: 0, amount: 0 }]})} className="w-full py-2 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase hover:bg-slate-100 transition-colors border-t border-slate-200">+ Add Line Item</button>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-start gap-8 pt-6">
         <div className="w-full md:flex-1">
           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Remarks</label>
-          <textarea value={formData.description || ''} onChange={(e) => setFormData({...formData, description: e.target.value})} rows={3} className="w-full border border-slate-200 rounded p-4 text-sm outline-none focus:border-slate-400 resize-none bg-white shadow-inner" placeholder="Notes for this purchase..." />
+          <textarea value={formData.description || ''} onChange={(e) => setFormData({...formData, description: e.target.value})} rows={3} className="w-full border border-slate-200 rounded p-4 text-sm outline-none focus:border-slate-400 resize-none bg-white shadow-inner" placeholder="Enter notes..." />
         </div>
         <div className="w-full md:w-80 bg-slate-50 p-6 border border-slate-200 rounded space-y-4 shadow-sm">
             <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
@@ -302,6 +300,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                 <span>GST Total</span>
                 <span className="text-slate-800 font-mono text-sm">{formatCurrency(formData.total_gst)}</span>
             </div>
+            
             <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
                 <span>Commission</span>
                 <input 
@@ -322,8 +321,9 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                   placeholder="0.00"
                 />
             </div>
+
             <div className="flex justify-between items-center pt-4 border-t border-slate-300">
-                <span className="text-sm font-bold text-slate-900 uppercase">Grand Total</span>
+                <span className="text-sm font-bold text-slate-900 uppercase">Net Payable</span>
                 <span className="text-2xl font-semibold text-slate-900">{formatCurrency(formData.grand_total)}</span>
             </div>
         </div>
@@ -331,7 +331,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
       <div className="flex justify-end space-x-4 pt-6 border-t border-slate-100">
         <button type="button" onClick={onCancel} className="px-6 py-2 text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-slate-700">Discard</button>
-        <button type="submit" disabled={loading} className="px-10 py-2.5 bg-primary text-slate-800 font-bold uppercase text-[10px] tracking-widest rounded border border-slate-200 flex items-center shadow-md active:scale-95 disabled:opacity-50">
+        <button type="submit" disabled={loading} className="px-10 py-2.5 bg-primary text-slate-800 font-bold uppercase text-[10px] tracking-widest rounded border border-slate-200 hover:bg-primary-dark transition-all shadow-md active:scale-95 disabled:opacity-50">
           {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
           {initialData?.id ? 'Update Bill' : 'Create Bill'}
         </button>

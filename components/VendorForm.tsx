@@ -53,7 +53,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
     const gstin = val.toUpperCase().trim();
     const updates: any = { gstin };
     
-    // Auto-extract PAN from GSTIN (Characters 3 to 12)
+    // Auto-extract PAN from GSTIN (Characters 3 to 12 - index 2 to 12)
     if (gstin.length >= 12) {
       updates.pan = gstin.substring(2, 12);
     }
@@ -77,19 +77,19 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="md:col-span-2">
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Vendor / Entity Name</label>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Vendor Name</label>
           <input 
             ref={firstInputRef} 
             type="text" 
             value={formData.name} 
             onChange={(e) => handleChange('name', e.target.value)} 
             className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none shadow-sm" 
-            placeholder="Enter legal business name" 
+            placeholder="Legal Business Name" 
           />
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">GSTIN Number</label>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">GSTIN</label>
           <input 
             type="text" 
             value={formData.gstin} 
@@ -105,7 +105,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
             value={formData.pan} 
             onChange={(e) => handleChange('pan', e.target.value.toUpperCase())} 
             className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none font-mono uppercase bg-slate-50" 
-            placeholder="Auto-detected" 
+            placeholder="Auto-detected from GSTIN" 
           />
         </div>
 
@@ -132,7 +132,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
                 value={formData.account_name} 
                 onChange={(e) => handleChange('account_name', e.target.value)} 
                 className="w-full border border-slate-300 rounded px-3 py-2 text-xs focus:border-slate-500 outline-none bg-white" 
-                placeholder="Name on Bank Records"
+                placeholder="Name on Bank Account"
               />
             </div>
             <div>
@@ -149,7 +149,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email Address</label>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email</label>
           <input 
             type="email" 
             value={formData.email} 
@@ -159,7 +159,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Phone Number</label>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Phone</label>
           <input 
             type="text" 
             value={formData.phone} 
@@ -176,7 +176,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
             onChange={(e) => handleChange('address', e.target.value)} 
             rows={2} 
             className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none resize-none shadow-sm" 
-            placeholder="Billing address details" 
+            placeholder="Complete billing address" 
           />
         </div>
 

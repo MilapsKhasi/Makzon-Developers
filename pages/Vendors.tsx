@@ -112,14 +112,12 @@ const Vendors = () => {
       let result;
       if (editingVendor) {
         result = await supabase.from('vendors').update(payload).eq('id', editingVendor.id).select();
-        // Fallback if banking columns are missing
         if (result.error && (result.error.code === 'PGRST204' || result.error.message?.includes('column'))) {
           result = await supabase.from('vendors').update(basicPayload).eq('id', editingVendor.id).select();
           if (!result.error) alert("Vendor profile updated. Note: Banking Details and PAN were skipped because your database schema needs updating.");
         }
       } else {
         result = await supabase.from('vendors').insert([{ ...payload, company_id: cid, user_id: user.id }]).select();
-        // Fallback if banking columns are missing
         if (result.error && (result.error.code === 'PGRST204' || result.error.message?.includes('column'))) {
           result = await supabase.from('vendors').insert([{ ...basicPayload, company_id: cid, user_id: user.id }]).select();
           if (!result.error) alert("New vendor created. Note: Banking Details and PAN were skipped because your database schema needs updating.");
@@ -134,7 +132,8 @@ const Vendors = () => {
       setEditingVendor(null);
     } catch (error: any) {
       console.error("Save Error:", error);
-      alert(`Submission Process Failure: ${error.message || JSON.stringify(error)}`);
+      const msg = error.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      alert(`Submission Process Failure: ${msg}`);
     }
   };
 
@@ -253,7 +252,6 @@ const Vendors = () => {
                         </div>
                       </div>
 
-                      {/* Financial & Banking Summary Card */}
                       <div className="mb-8 bg-slate-50 border border-slate-200 rounded-lg p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 boxy-shadow border-l-4 border-l-primary shadow-sm">
                           <div className="space-y-1">
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
