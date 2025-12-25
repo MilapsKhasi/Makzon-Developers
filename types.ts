@@ -5,6 +5,10 @@ export interface Vendor {
   email: string;
   phone: string;
   gstin: string;
+  pan?: string;
+  account_number?: string;
+  account_name?: string;
+  ifsc_code?: string;
   address: string;
   balance: number;
 }

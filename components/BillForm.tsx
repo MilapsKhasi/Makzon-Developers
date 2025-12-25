@@ -27,6 +27,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: 1, unit: 'PCS', rate: 0, igstRate: 0, cgstRate: 0, sgstRate: 0, igstAmount: 0, cgstAmount: 0, sgstAmount: 0, taxableAmount: 0, amount: 0 }],
     total_without_gst: 0, 
     total_gst: 0, 
+    commission_charges: 0,
+    labor_charges: 0,
     round_off: 0, 
     grand_total: 0, 
     status: 'Pending'
@@ -53,6 +55,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     loadDependencies();
     if (initialData) {
       setFormData({ 
+        ...initialData,
         vendor_name: initialData.vendor_name || '',
         gstin: initialData.gstin || '',
         address: initialData.address || '',
@@ -63,6 +66,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         items: Array.isArray(initialData.items) && initialData.items.length > 0 ? initialData.items : getInitialState().items,
         total_without_gst: Number(initialData.total_without_gst || 0),
         total_gst: Number(initialData.total_gst || 0),
+        commission_charges: Number(initialData.commission_charges || 0),
+        labor_charges: Number(initialData.labor_charges || 0),
         round_off: Number(initialData.round_off || 0),
         grand_total: Number(initialData.grand_total || 0),
         status: initialData.status || 'Pending'
@@ -72,7 +77,37 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     }
   }, [initialData, cid]);
 
-  const updateTotals = (items: any[]) => {
+  useEffect(() => {
+    const fetchLastVendorCharges = async () => {
+      const vendorName = formData.vendor_name?.trim();
+      if (!vendorName || !cid || initialData) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('bills')
+          .select('commission_charges, labor_charges')
+          .eq('company_id', cid)
+          .eq('vendor_name', vendorName)
+          .order('date', { ascending: false })
+          .limit(1);
+
+        if (data && data.length > 0) {
+          const lastBill = data[0];
+          setFormData(prev => ({
+            ...prev,
+            commission_charges: Number(lastBill.commission_charges) || 0,
+            labor_charges: Number(lastBill.labor_charges) || 0
+          }));
+        }
+      } catch (err) {
+        // Silently fail if columns don't exist yet
+      }
+    };
+    
+    fetchLastVendorCharges();
+  }, [formData.vendor_name, cid, initialData]);
+
+  const updateTotals = (items: any[], commission = formData.commission_charges, labor = formData.labor_charges) => {
     let subtotal = 0, totalTax = 0;
     const updated = items.map(item => {
       const taxable = (Number(item.qty) || 0) * (Number(item.rate) || 0);
@@ -83,10 +118,23 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       subtotal += taxable; totalTax += rowTax;
       return { ...item, taxableAmount: taxable, igstAmount: igst, cgstAmount: cgst, sgstAmount: sgst, amount: taxable + rowTax };
     });
-    const rawTotal = subtotal + totalTax;
+
+    const commNum = Number(commission) || 0;
+    const labNum = Number(labor) || 0;
+    const rawTotal = subtotal + totalTax + commNum + labNum;
     const grandTotalInt = Math.round(rawTotal);
     const ro = parseFloat((grandTotalInt - rawTotal).toFixed(2));
-    setFormData(prev => ({ ...prev, items: updated, total_without_gst: subtotal, total_gst: totalTax, round_off: ro, grand_total: grandTotalInt }));
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      items: updated, 
+      total_without_gst: subtotal, 
+      total_gst: totalTax, 
+      commission_charges: commNum,
+      labor_charges: labNum,
+      round_off: ro, 
+      grand_total: grandTotalInt 
+    }));
   };
 
   const handleFieldChange = (index: number, field: string, value: any) => {
@@ -114,99 +162,61 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    let submissionDate = formData.date;
-    if (!submissionDate) {
-        const parsed = parseDateFromInput(formData.displayDate);
-        if (parsed) submissionDate = parsed;
-    }
-
-    if (!submissionDate || !formData.bill_number || !formData.vendor_name) {
-      alert("Missing Information: Date, Bill Number, and Vendor Name are required.");
+    if (!formData.date || !formData.bill_number || !formData.vendor_name) {
+      alert("Missing mandatory fields.");
       return;
     }
     
-    const validItems = formData.items.filter((it: any) => it.itemName && it.itemName.trim() !== '');
-    if (validItems.length === 0) {
-      alert("Validation Error: Please add at least one item to the bill.");
-      return;
-    }
-
-    if (!cid) {
-      alert("Session Error: Company context lost.");
-      return;
-    }
-
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Authentication session expired.");
+      if (!user) throw new Error("Auth required.");
 
-      // 1. Auto-create Vendor
-      const vendorExists = vendors.some(v => v.name.toLowerCase().trim() === formData.vendor_name.toLowerCase().trim());
-      if (!vendorExists) {
-        await supabase.from('vendors').insert([{
-          company_id: cid,
-          user_id: user.id,
-          name: formData.vendor_name.trim(),
-          gstin: formData.gstin || '',
-          address: formData.address || '',
-          balance: 0,
-          is_deleted: false
-        }]);
-      }
-
-      // 2. Auto-create Items (CRITICAL: Syncs Item Form Data with Stock Master)
-      for (const item of validItems) {
-        const itemExists = stockItems.some(si => si.name.toLowerCase().trim() === item.itemName.toLowerCase().trim());
-        if (!itemExists) {
-          await supabase.from('stock_items').insert([{
-            company_id: cid,
-            user_id: user.id,
-            name: item.itemName.trim(),
-            sku: `STK-${Math.floor(1000 + Math.random() * 9000)}`,
-            unit: item.unit || 'PCS',
-            rate: Number(item.rate) || 0,
-            hsn: item.hsnCode || '',
-            in_stock: 0,
-            is_deleted: false
-          }]);
-        }
-      }
-
-      // 3. Prepare Clean Payload (Storing description in items JSON as per table constraints)
       const payload: any = {
         company_id: cid,
         user_id: user.id,
         vendor_name: formData.vendor_name.trim(),
         bill_number: formData.bill_number.trim(),
-        date: submissionDate,
-        items: validItems.map(it => ({
-            ...it,
-            bill_note: formData.description
-        })),
+        date: formData.date,
+        gstin: formData.gstin || '',
+        address: formData.address || '',
+        items: formData.items,
         total_without_gst: Number(formData.total_without_gst) || 0,
         total_gst: Number(formData.total_gst) || 0,
+        commission_charges: Number(formData.commission_charges) || 0,
+        labor_charges: Number(formData.labor_charges) || 0,
         grand_total: Number(formData.grand_total) || 0,
         status: formData.status,
         is_deleted: false
       };
 
-      let opResult;
+      const basicPayload = { ...payload };
+      delete basicPayload.commission_charges;
+      delete basicPayload.labor_charges;
+
+      let res;
       if (initialData?.id) {
-        opResult = await supabase.from('bills').update(payload).eq('id', initialData.id);
+        res = await supabase.from('bills').update(payload).eq('id', initialData.id);
+        // Fallback for missing columns
+        if (res.error?.code === 'PGRST204') {
+          res = await supabase.from('bills').update(basicPayload).eq('id', initialData.id);
+          if (!res.error) alert("Voucher updated without extra charges. Please update your database schema to support Commission/Labor charges.");
+        }
       } else {
-        opResult = await supabase.from('bills').insert([payload]);
+        res = await supabase.from('bills').insert([payload]);
+        // Fallback for missing columns
+        if (res.error?.code === 'PGRST204') {
+          res = await supabase.from('bills').insert([basicPayload]);
+          if (!res.error) alert("Voucher created without extra charges. Please update your database schema to support Commission/Labor charges.");
+        }
       }
 
-      if (opResult.error) throw opResult.error;
-      
-      // Notify all components to reload (very important for Stock screen)
+      if (res.error) throw res.error;
       window.dispatchEvent(new Event('appSettingsChanged'));
       onSubmit(payload);
     } catch (err: any) {
-      console.error("Submission Process Failure:", err);
-      alert("Database Error: " + (err.message || "Failed to save record."));
+      console.error("Submission Error:", err);
+      alert(`Submission Process Failure: ${err.message || JSON.stringify(err)}`);
     } finally {
       setLoading(false);
     }
@@ -217,132 +227,116 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Date</label>
-          <input 
-            required 
-            value={formData.displayDate || ''} 
-            onChange={(e) => setFormData({...formData, displayDate: e.target.value})} 
-            onBlur={handleDateBlur} 
-            placeholder={getDatePlaceholder()} 
-            className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 bg-white" 
-          />
+          <input required value={formData.displayDate || ''} onChange={(e) => setFormData({...formData, displayDate: e.target.value})} onBlur={handleDateBlur} placeholder={getDatePlaceholder()} className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 bg-white" />
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Bill No</label>
-          <input 
-            required 
-            value={formData.bill_number || ''} 
-            onChange={(e) => setFormData({...formData, bill_number: e.target.value})} 
-            className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono outline-none focus:border-slate-400 bg-white" 
-            placeholder="Inv-001" 
-          />
+          <input required value={formData.bill_number || ''} onChange={(e) => setFormData({...formData, bill_number: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono outline-none focus:border-slate-400 bg-white" placeholder="INV-001" />
         </div>
         <div className="space-y-1 md:col-span-2">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Vendor</label>
-          <input 
-            required 
-            value={formData.vendor_name || ''} 
-            onChange={(e) => setFormData({...formData, vendor_name: e.target.value})} 
-            list="vl" 
-            className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 bg-white" 
-            placeholder="Type name..." 
-          />
+          <input required value={formData.vendor_name || ''} onChange={(e) => setFormData({...formData, vendor_name: e.target.value})} list="vl" className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 bg-white" placeholder="Select or type vendor..." />
           <datalist id="vl">{vendors.map(v => <option key={v.id} value={v.name} />)}</datalist>
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">GSTIN (Notes Only)</label>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Vendor GSTIN (Voucher Specific)</label>
           <input value={formData.gstin || ''} onChange={(e) => setFormData({...formData, gstin: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono outline-none focus:border-slate-400 bg-white" placeholder="Optional" />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Address (Notes Only)</label>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Vendor Address (Voucher Specific)</label>
           <input value={formData.address || ''} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 bg-white" placeholder="City, State" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</label>
-          <select value={formData.status || 'Pending'} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm bg-white outline-none focus:border-slate-400">
-            <option value="Pending">Unpaid (Pending)</option>
-            <option value="Paid">Paid</option>
-          </select>
         </div>
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Line Items (Autosync with Stock Master)</label>
-        </div>
-        <div className="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
+        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Items</label>
+        <div className="overflow-x-auto border border-slate-200 rounded shadow-sm">
           <table className="w-full text-xs">
             <thead className="bg-slate-50 border-b border-slate-200">
-              <tr className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                <th className="p-3 border-r border-slate-200 text-left">Item Name</th>
-                <th className="p-3 border-r border-slate-200 w-16 text-center">Qty</th>
-                <th className="p-3 border-r border-slate-200 w-24 text-right">Rate</th>
-                <th className="p-3 border-r border-slate-200 w-24 text-center">GST %</th>
-                <th className="p-3 text-right w-32">Total</th>
+              <tr className="text-[10px] font-bold text-slate-500 uppercase">
+                <th className="p-2 border-r text-left">Item Name</th>
+                <th className="p-2 border-r w-16">Qty</th>
+                <th className="p-2 border-r w-24 text-right">Rate</th>
+                <th className="p-2 border-r w-20 text-center">GST %</th>
+                <th className="p-2 text-right w-32">Total</th>
                 <th className="w-10"></th>
               </tr>
             </thead>
             <tbody>
-              {(formData.items || []).map((it: any, idx: number) => (
-                <tr key={it.id || idx} className="border-b border-slate-100 hover:bg-slate-50/50">
-                  <td className="p-0 border-r border-slate-200">
-                    <input 
-                      value={it.itemName || ''} 
-                      onChange={(e) => handleFieldChange(idx, 'itemName', e.target.value)} 
-                      list="sil" 
-                      className="w-full p-3 outline-none border-none bg-transparent" 
-                      placeholder="Enter new or existing item..." 
-                    />
-                  </td>
-                  <td className="p-0 border-r border-slate-200"><input type="number" value={it.qty || 0} onChange={(e) => handleFieldChange(idx, 'qty', e.target.value)} className="w-full p-3 text-center outline-none border-none bg-transparent" /></td>
-                  <td className="p-0 border-r border-slate-200"><input type="number" value={it.rate || 0} onChange={(e) => handleFieldChange(idx, 'rate', e.target.value)} className="w-full p-3 text-right outline-none border-none bg-transparent font-medium" /></td>
-                  <td className="p-0 border-r border-slate-200">
-                    <select value={it.igstRate || it.cgstRate || 0} onChange={(e) => handleFieldChange(idx, 'igstRate', e.target.value)} className="w-full p-3 outline-none border-none bg-transparent cursor-pointer text-center">
+              {formData.items.map((it: any, idx: number) => (
+                <tr key={idx} className="border-b border-slate-100">
+                  <td className="p-0 border-r"><input value={it.itemName || ''} onChange={(e) => handleFieldChange(idx, 'itemName', e.target.value)} list="sil" className="w-full p-2 outline-none border-none bg-transparent" /></td>
+                  <td className="p-0 border-r"><input type="number" value={it.qty || 0} onChange={(e) => handleFieldChange(idx, 'qty', e.target.value)} className="w-full p-2 text-center outline-none border-none bg-transparent" /></td>
+                  <td className="p-0 border-r"><input type="number" value={it.rate || 0} onChange={(e) => handleFieldChange(idx, 'rate', e.target.value)} className="w-full p-2 text-right outline-none border-none bg-transparent" /></td>
+                  <td className="p-0 border-r">
+                    <select value={it.igstRate || it.cgstRate || 0} onChange={(e) => handleFieldChange(idx, 'igstRate', e.target.value)} className="w-full p-2 outline-none border-none bg-transparent text-center">
                       {TAX_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
                     </select>
                   </td>
-                  <td className="p-3 text-right font-bold text-slate-900">{formatCurrency(it.amount)}</td>
-                  <td className="text-center"><button type="button" onClick={() => { const i = [...(formData.items || [])]; i.splice(idx, 1); updateTotals(i); }} className="p-2 text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button></td>
+                  <td className="p-2 text-right font-bold text-slate-900">{formatCurrency(it.amount)}</td>
+                  <td className="text-center"><button type="button" onClick={() => { const i = [...formData.items]; i.splice(idx, 1); updateTotals(i); }} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button></td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <button type="button" onClick={() => setFormData({...formData, items: [...(formData.items || []), { id: Date.now().toString(), itemName: '', qty: 1, rate: 0, igstRate: 0, cgstRate: 0, sgstRate: 0, amount: 0 }]})} className="w-full py-3 bg-slate-50 text-[10px] font-bold text-slate-500 hover:bg-slate-100 uppercase tracking-widest border-t border-slate-200 transition-colors">+ Add New Row</button>
+          <button type="button" onClick={() => setFormData({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', qty: 1, rate: 0, amount: 0 }]})} className="w-full py-2 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase hover:bg-slate-100 transition-colors border-t border-slate-200">+ Add Line</button>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row justify-between items-start gap-8 pt-6">
         <div className="w-full md:flex-1">
-          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Narrations / Remarks</label>
-          <textarea value={formData.description || ''} onChange={(e) => setFormData({...formData, description: e.target.value})} rows={4} className="w-full border border-slate-200 rounded-lg p-4 text-sm outline-none focus:border-slate-400 resize-none bg-white shadow-inner" placeholder="Enter transaction remarks..." />
+          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Remarks</label>
+          <textarea value={formData.description || ''} onChange={(e) => setFormData({...formData, description: e.target.value})} rows={3} className="w-full border border-slate-200 rounded p-4 text-sm outline-none focus:border-slate-400 resize-none bg-white" />
         </div>
-        <div className="w-full md:w-96 bg-slate-50 p-6 border border-slate-200 rounded-lg space-y-4 shadow-sm">
-            <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+        <div className="w-full md:w-80 bg-slate-50 p-6 border border-slate-200 rounded space-y-4 shadow-sm">
+            <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
                 <span>Taxable Amount</span>
                 <span className="text-slate-800 font-mono text-sm">{formatCurrency(formData.total_without_gst)}</span>
             </div>
-            <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
                 <span>GST Total</span>
                 <span className="text-slate-800 font-mono text-sm">{formatCurrency(formData.total_gst)}</span>
             </div>
-            <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase italic">
-                <span>Round Off</span>
-                <span className="text-slate-500 font-mono text-sm">{formData.round_off >= 0 ? '+' : ''}{(formData.round_off || 0).toFixed(2)}</span>
+            
+            {/* Commission Charges */}
+            <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase group relative">
+                <span>Commission Charges</span>
+                <input 
+                  type="number" 
+                  value={formData.commission_charges} 
+                  onChange={(e) => updateTotals(formData.items, parseFloat(e.target.value) || 0, formData.labor_charges)} 
+                  className="text-right bg-transparent border-none hover:ring-1 hover:ring-slate-300 focus:ring-1 focus:ring-slate-400 outline-none rounded p-0.5 font-mono text-sm w-24 text-slate-800 transition-all placeholder:text-slate-300"
+                  placeholder="0.00"
+                />
             </div>
+
+            {/* Labor Charges */}
+            <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase group relative">
+                <span>Labor Charges</span>
+                <input 
+                  type="number" 
+                  value={formData.labor_charges} 
+                  onChange={(e) => updateTotals(formData.items, formData.commission_charges, parseFloat(e.target.value) || 0)} 
+                  className="text-right bg-transparent border-none hover:ring-1 hover:ring-slate-300 focus:ring-1 focus:ring-slate-400 outline-none rounded p-0.5 font-mono text-sm w-24 text-slate-800 transition-all placeholder:text-slate-300"
+                  placeholder="0.00"
+                />
+            </div>
+
             <div className="flex justify-between items-center pt-4 border-t border-slate-300">
-                <span className="text-sm font-bold text-slate-900 uppercase tracking-widest">Net Payable</span>
-                <span className="text-3xl font-semibold text-slate-900">{formatCurrency(formData.grand_total)}</span>
+                <span className="text-sm font-bold text-slate-900 uppercase">Grand Total</span>
+                <span className="text-2xl font-semibold text-slate-900">{formatCurrency(formData.grand_total)}</span>
             </div>
         </div>
       </div>
 
-      <div className="flex justify-end space-x-4 pt-8 border-t border-slate-100">
-        <button type="button" onClick={onCancel} className="px-8 py-3 text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-slate-700 transition-colors">Discard</button>
-        <button type="submit" disabled={loading} className="px-12 py-3 bg-primary text-slate-900 font-bold uppercase text-[10px] tracking-widest rounded-lg border border-slate-200 hover:bg-primary-dark transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center disabled:opacity-50">
+      <div className="flex justify-end space-x-4 pt-6 border-t border-slate-100">
+        <button type="button" onClick={onCancel} className="px-6 py-2 text-slate-400 font-bold uppercase text-[10px] tracking-widest">Discard</button>
+        <button type="submit" disabled={loading} className="px-10 py-2.5 bg-primary text-slate-800 font-bold uppercase text-[10px] tracking-widest rounded border border-slate-200 flex items-center shadow-sm">
           {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-          {initialData?.id ? 'Update Voucher' : 'Create Voucher'}
+          {initialData?.id ? 'Update' : 'Create'}
         </button>
       </div>
       <datalist id="sil">{stockItems.map(si => <option key={si.id} value={si.name} />)}</datalist>

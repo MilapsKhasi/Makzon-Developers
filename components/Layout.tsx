@@ -15,25 +15,29 @@ const Layout = () => {
   const navigate = useNavigate();
 
   const loadWorkspaces = async () => {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    setUser(authWithUser);
-    if (!authUser) return;
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      setUser(authUser);
+      if (!authUser) return;
 
-    const { data } = await supabase
-      .from('companies')
-      .select('*')
-      .eq('user_id', authUser.id)
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false });
-    
-    setWorkspaces(data || []);
-    
-    const activeId = getActiveCompanyId();
-    const current = data?.find(w => w.id === activeId);
-    setActiveWorkspace(current || null);
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      setWorkspaces(data || []);
+      
+      const activeId = getActiveCompanyId();
+      const current = data?.find(w => String(w.id) === String(activeId));
+      setActiveWorkspace(current || null);
+    } catch (err: any) {
+      console.error("Layout load error:", err);
+    }
   };
-
-  const authWithUser = user; // Fix for reference below
 
   useEffect(() => {
     loadWorkspaces();
@@ -105,13 +109,13 @@ const Layout = () => {
                       <button 
                         key={ws.id}
                         onClick={() => switchWorkspace(ws)}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-medium flex items-center justify-between hover:bg-slate-50 ${activeWorkspace?.id === ws.id ? 'bg-slate-50 text-slate-900' : 'text-slate-600'}`}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-medium flex items-center justify-between hover:bg-slate-50 ${String(activeWorkspace?.id) === String(ws.id) ? 'bg-slate-50 text-slate-900' : 'text-slate-600'}`}
                       >
                         <div className="flex items-center">
-                          <Building2 className={`w-3.5 h-3.5 mr-3 ${activeWorkspace?.id === ws.id ? 'text-primary-dark' : 'text-slate-400'}`} />
-                          <span className={activeWorkspace?.id === ws.id ? 'font-bold' : ''}>{ws.name}</span>
+                          <Building2 className={`w-3.5 h-3.5 mr-3 ${String(activeWorkspace?.id) === String(ws.id) ? 'text-primary-dark' : 'text-slate-400'}`} />
+                          <span className={String(activeWorkspace?.id) === String(ws.id) ? 'font-bold' : ''}>{ws.name}</span>
                         </div>
-                        {activeWorkspace?.id === ws.id && <Check className="w-3.5 h-3.5 text-primary-dark" />}
+                        {String(activeWorkspace?.id) === String(ws.id) && <Check className="w-3.5 h-3.5 text-primary-dark" />}
                       </button>
                     ))}
                   </div>
