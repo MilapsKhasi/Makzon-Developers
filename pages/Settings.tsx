@@ -43,12 +43,14 @@ const Settings = () => {
     const { data: b } = await supabase.from('bills').select('id, bill_number, created_at').eq('is_deleted', true).eq('company_id', cid);
     const { data: s } = await supabase.from('stock_items').select('id, name, created_at').eq('is_deleted', true).eq('company_id', cid);
     const { data: v } = await supabase.from('vendors').select('id, name, created_at').eq('is_deleted', true).eq('company_id', cid);
+    const { data: dt } = await supabase.from('duties_taxes').select('id, name, created_at').eq('is_deleted', true).eq('company_id', cid);
     const { data: c } = await supabase.from('companies').select('id, name, created_at').eq('is_deleted', true);
     
     const combined = [
         ...(b || []).map(x => ({ ...x, type: 'Bill', label: x.bill_number })),
         ...(s || []).map(x => ({ ...x, type: 'Stock', label: x.name })),
         ...(v || []).map(x => ({ ...x, type: 'Vendor', label: x.name })),
+        ...(dt || []).map(x => ({ ...x, type: 'Tax Master', label: x.name })),
         ...(c || []).map(x => ({ ...x, type: 'Workspace', label: x.name }))
     ];
     setTrashItems(combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
@@ -85,21 +87,36 @@ const Settings = () => {
   };
 
   const handleRestore = async (item: any) => {
-    const tableMap: any = { 'Bill': 'bills', 'Stock': 'stock_items', 'Vendor': 'vendors', 'Workspace': 'companies' };
+    const tableMap: any = { 
+      'Bill': 'bills', 
+      'Stock': 'stock_items', 
+      'Vendor': 'vendors', 
+      'Workspace': 'companies',
+      'Tax Master': 'duties_taxes'
+    };
     const table = tableMap[item.type];
     const { error } = await supabase.from(table).update({ is_deleted: false }).eq('id', item.id);
     if (!error) {
       loadTrash();
       window.dispatchEvent(new Event('appSettingsChanged'));
+    } else {
+      alert(error.message);
     }
   };
 
   const handlePermDelete = async (item: any) => {
     if (!confirm(`Permanently delete this ${item.type}? This cannot be undone.`)) return;
-    const tableMap: any = { 'Bill': 'bills', 'Stock': 'stock_items', 'Vendor': 'vendors', 'Workspace': 'companies' };
+    const tableMap: any = { 
+      'Bill': 'bills', 
+      'Stock': 'stock_items', 
+      'Vendor': 'vendors', 
+      'Workspace': 'companies',
+      'Tax Master': 'duties_taxes'
+    };
     const table = tableMap[item.type];
     const { error } = await supabase.from(table).delete().eq('id', item.id);
     if (!error) loadTrash();
+    else alert(error.message);
   };
 
   const SectionHeader = ({ title, desc }: any) => (

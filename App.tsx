@@ -10,6 +10,7 @@ import Masters from './pages/Masters';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Purchases from './pages/Purchases';
+import DutiesTaxes from './pages/DutiesTaxes';
 import Auth from './pages/Auth';
 import Companies from './pages/Companies';
 import ModeSelection from './pages/ModeSelection';
@@ -23,13 +24,11 @@ const App = () => {
   const [activeCompanyId, setActiveCompanyId] = useState(getActiveCompanyId());
 
   useEffect(() => {
-    // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
@@ -55,45 +54,20 @@ const App = () => {
   return (
     <Router>
       <Routes>
-        {/* Auth / Login */}
-        <Route 
-          path="/setup" 
-          element={session ? <Navigate to="/mode-selection" replace /> : <Auth />} 
-        />
-
-        {/* Mode Selection */}
-        <Route 
-          path="/mode-selection" 
-          element={session ? (hasSelectedMode ? <Navigate to="/companies" replace /> : <ModeSelection />) : <Navigate to="/setup" replace />} 
-        />
-        
-        {/* Company Selection */}
-        <Route 
-          path="/companies" 
-          element={session ? (hasSelectedMode ? <Companies /> : <Navigate to="/mode-selection" replace />) : <Navigate to="/setup" replace />} 
-        />
-
-        {/* Core App Routes */}
-        <Route 
-          path="/" 
-          element={
-            session && hasSelectedMode ? (
-              activeCompanyId ? <Layout /> : <Navigate to="/companies" replace />
-            ) : (
-              <Navigate to="/setup" replace />
-            )
-          }
-        >
+        <Route path="/setup" element={session ? <Navigate to="/mode-selection" replace /> : <Auth />} />
+        <Route path="/mode-selection" element={session ? (hasSelectedMode ? <Navigate to="/companies" replace /> : <ModeSelection />) : <Navigate to="/setup" replace />} />
+        <Route path="/companies" element={session ? (hasSelectedMode ? <Companies /> : <Navigate to="/mode-selection" replace />) : <Navigate to="/setup" replace />} />
+        <Route path="/" element={session && hasSelectedMode ? (activeCompanyId ? <Layout /> : <Navigate to="/companies" replace />) : (<Navigate to="/setup" replace />)}>
           <Route index element={<Dashboard />} />
           <Route path="masters" element={<Masters />} />
           <Route path="purchases" element={<Purchases />} />
           <Route path="bills" element={<Bills />} />
           <Route path="vendors" element={<Vendors />} />
+          <Route path="duties-taxes" element={<DutiesTaxes />} />
           <Route path="stock" element={<Stock />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
         </Route>
-
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

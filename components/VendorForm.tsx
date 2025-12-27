@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Landmark } from 'lucide-react';
+import { Save, Landmark, Globe } from 'lucide-react';
 import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES } from '../utils/helpers';
 
 interface VendorFormProps {
@@ -11,16 +11,8 @@ interface VendorFormProps {
 
 const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState<any>({
-    name: '', 
-    email: '', 
-    phone: '', 
-    gstin: '', 
-    pan: '',
-    account_number: '',
-    account_name: '',
-    ifsc_code: '',
-    address: '', 
-    balance: 0
+    name: '', email: '', phone: '', gstin: '', pan: '', state: '',
+    account_number: '', account_name: '', ifsc_code: '', address: '', balance: 0
   });
 
   const currencySymbol = CURRENCIES[getAppSettings().currency as keyof typeof CURRENCIES]?.symbol || '$';
@@ -30,16 +22,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
     if (initialData) {
       setFormData({ 
         ...initialData, 
-        name: initialData.name || '',
-        email: initialData.email || '',
-        phone: initialData.phone || '',
-        gstin: initialData.gstin || '',
-        pan: initialData.pan || '',
-        address: initialData.address || '',
-        balance: toDisplayValue(initialData.balance),
-        account_number: initialData.account_number || '',
-        account_name: initialData.account_name || '',
-        ifsc_code: initialData.ifsc_code || ''
+        balance: toDisplayValue(initialData.balance)
       });
     }
     setTimeout(() => firstInputRef.current?.focus(), 100);
@@ -52,25 +35,13 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
   const handleGstinChange = (val: string) => {
     const gstin = val.toUpperCase().trim();
     const updates: any = { gstin };
-    
-    // Auto-extract PAN from GSTIN (Characters 3 to 12 - index 2 to 12)
-    if (gstin.length >= 12) {
-      updates.pan = gstin.substring(2, 12);
-    }
-    
+    if (gstin.length >= 12) updates.pan = gstin.substring(2, 12);
     setFormData((prev: any) => ({ ...prev, ...updates }));
   };
 
   const handleSubmit = () => {
-      if (!formData.name.trim()) {
-        alert("Vendor Name is required.");
-        return;
-      }
-      const storageData = { 
-        ...formData, 
-        balance: toStorageValue(formData.balance) 
-      };
-      onSubmit(storageData);
+      if (!formData.name.trim()) return alert("Vendor Name is required.");
+      onSubmit({ ...formData, balance: toStorageValue(formData.balance) });
   }
 
   return (
@@ -78,35 +49,19 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="md:col-span-2">
           <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Vendor Name</label>
-          <input 
-            ref={firstInputRef} 
-            type="text" 
-            value={formData.name} 
-            onChange={(e) => handleChange('name', e.target.value)} 
-            className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none shadow-sm" 
-            placeholder="Legal Business Name" 
-          />
+          <input ref={firstInputRef} type="text" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none shadow-sm" placeholder="Legal Business Name" />
         </div>
 
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase mb-1">GSTIN</label>
-          <input 
-            type="text" 
-            value={formData.gstin} 
-            onChange={(e) => handleGstinChange(e.target.value)} 
-            className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none font-mono uppercase" 
-            placeholder="e.g. 22AAAAA0000A1Z5" 
-          />
+          <input type="text" value={formData.gstin} onChange={(e) => handleGstinChange(e.target.value)} className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none font-mono uppercase" placeholder="e.g. 22AAAAA0000A1Z5" />
         </div>
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">PAN Number</label>
-          <input 
-            type="text" 
-            value={formData.pan} 
-            onChange={(e) => handleChange('pan', e.target.value.toUpperCase())} 
-            className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none font-mono uppercase bg-slate-50" 
-            placeholder="Auto-detected from GSTIN" 
-          />
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">State / Location</label>
+          <div className="relative">
+            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+            <input type="text" value={formData.state} onChange={(e) => handleChange('state', e.target.value)} className="w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded text-sm focus:border-slate-500 outline-none uppercase" placeholder="e.g. Maharashtra" />
+          </div>
         </div>
 
         <div className="md:col-span-2 bg-slate-50 p-5 rounded-md border border-slate-200">
@@ -115,83 +70,24 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
             <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Settlement Banking Details</h4>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Account Number</label>
-              <input 
-                type="text" 
-                value={formData.account_number} 
-                onChange={(e) => handleChange('account_number', e.target.value)} 
-                className="w-full border border-slate-300 rounded px-3 py-2 text-xs focus:border-slate-500 outline-none bg-white font-mono" 
-                placeholder="Bank Account No"
-              />
-            </div>
-            <div>
-              <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Beneficiary Name</label>
-              <input 
-                type="text" 
-                value={formData.account_name} 
-                onChange={(e) => handleChange('account_name', e.target.value)} 
-                className="w-full border border-slate-300 rounded px-3 py-2 text-xs focus:border-slate-500 outline-none bg-white" 
-                placeholder="Name on Bank Account"
-              />
-            </div>
-            <div>
-              <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">IFSC Code</label>
-              <input 
-                type="text" 
-                value={formData.ifsc_code} 
-                onChange={(e) => handleChange('ifsc_code', e.target.value.toUpperCase())} 
-                className="w-full border border-slate-300 rounded px-3 py-2 text-xs focus:border-slate-500 outline-none font-mono bg-white uppercase" 
-                placeholder="e.g. SBIN0001234"
-              />
-            </div>
+            <div><label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Account Number</label><input type="text" value={formData.account_number} onChange={(e) => handleChange('account_number', e.target.value)} className="w-full border border-slate-300 rounded px-3 py-2 text-xs focus:border-slate-500 outline-none font-mono" /></div>
+            <div><label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Beneficiary Name</label><input type="text" value={formData.account_name} onChange={(e) => handleChange('account_name', e.target.value)} className="w-full border border-slate-300 rounded px-3 py-2 text-xs focus:border-slate-500 outline-none" /></div>
+            <div><label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">IFSC Code</label><input type="text" value={formData.ifsc_code} onChange={(e) => handleChange('ifsc_code', e.target.value.toUpperCase())} className="w-full border border-slate-300 rounded px-3 py-2 text-xs focus:border-slate-500 outline-none font-mono uppercase" /></div>
           </div>
         </div>
 
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Email</label>
-          <input 
-            type="email" 
-            value={formData.email} 
-            onChange={(e) => handleChange('email', e.target.value)} 
-            className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none" 
-            placeholder="vendor@business.com" 
-          />
+          <input type="email" value={formData.email} onChange={(e) => handleChange('email', e.target.value)} className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none" placeholder="vendor@business.com" />
         </div>
         <div>
           <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Phone</label>
-          <input 
-            type="text" 
-            value={formData.phone} 
-            onChange={(e) => handleChange('phone', e.target.value)} 
-            className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none" 
-            placeholder="+91 00000 00000" 
-          />
+          <input type="text" value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none" placeholder="+91 00000 00000" />
         </div>
 
         <div className="md:col-span-2">
           <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Registered Address</label>
-          <textarea 
-            value={formData.address} 
-            onChange={(e) => handleChange('address', e.target.value)} 
-            rows={2} 
-            className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none resize-none shadow-sm" 
-            placeholder="Complete billing address" 
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Opening Balance</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 font-bold">{currencySymbol}</span>
-            <input 
-              type="number" 
-              value={formData.balance} 
-              onChange={(e) => handleChange('balance', parseFloat(e.target.value) || 0)} 
-              className="w-full pl-8 border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none font-medium shadow-sm" 
-              placeholder="0.00" 
-            />
-          </div>
+          <textarea value={formData.address} onChange={(e) => handleChange('address', e.target.value)} rows={2} className="w-full border border-slate-300 rounded px-3 py-2.5 text-sm focus:border-slate-500 outline-none resize-none shadow-sm" placeholder="Complete billing address" />
         </div>
       </div>
       <div className="pt-6 border-t border-slate-200 flex justify-end space-x-3">
