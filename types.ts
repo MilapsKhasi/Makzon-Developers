@@ -12,6 +12,7 @@ export interface Vendor {
   address: string;
   balance: number;
   state?: string;
+  default_duties?: any[]; // For sticky charges feature
 }
 
 export interface StockItem {

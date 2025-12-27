@@ -1,18 +1,24 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Landmark, Globe } from 'lucide-react';
+/* Added Loader2 to imports to fix "Cannot find name 'Loader2'" error */
+import { Save, Landmark, Globe, Loader2 } from 'lucide-react';
 import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES } from '../utils/helpers';
+import { supabase } from '../lib/supabase';
+import { getActiveCompanyId } from '../utils/helpers';
 
 interface VendorFormProps {
   initialData?: any | null;
+  prefilledName?: string;
   onSubmit: (vendor: any) => void;
   onCancel: () => void;
 }
 
-const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel }) => {
+const VendorForm: React.FC<VendorFormProps> = ({ initialData, prefilledName, onSubmit, onCancel }) => {
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<any>({
-    name: '', email: '', phone: '', gstin: '', pan: '', state: '',
-    account_number: '', account_name: '', ifsc_code: '', address: '', balance: 0
+    name: prefilledName || '', email: '', phone: '', gstin: '', pan: '', state: '',
+    account_number: '', account_name: '', ifsc_code: '', address: '', balance: 0,
+    default_duties: []
   });
 
   const currencySymbol = CURRENCIES[getAppSettings().currency as keyof typeof CURRENCIES]?.symbol || '$';
@@ -24,9 +30,11 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
         ...initialData, 
         balance: toDisplayValue(initialData.balance)
       });
+    } else if (prefilledName) {
+      setFormData((prev: any) => ({ ...prev, name: prefilledName }));
     }
     setTimeout(() => firstInputRef.current?.focus(), 100);
-  }, [initialData]);
+  }, [initialData, prefilledName]);
 
   const handleChange = (field: string, value: any) => { 
     setFormData((prev: any) => ({ ...prev, [field]: value })); 
@@ -39,9 +47,36 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
     setFormData((prev: any) => ({ ...prev, ...updates }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
       if (!formData.name.trim()) return alert("Vendor Name is required.");
-      onSubmit({ ...formData, balance: toStorageValue(formData.balance) });
+      setLoading(true);
+      try {
+        const cid = getActiveCompanyId();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const payload = { 
+            ...formData, 
+            balance: toStorageValue(formData.balance),
+            company_id: cid,
+            user_id: user.id,
+            is_deleted: false
+        };
+
+        let result;
+        if (initialData?.id) {
+          result = await supabase.from('vendors').update(payload).eq('id', initialData.id).select();
+        } else {
+          result = await supabase.from('vendors').insert([payload]).select();
+        }
+
+        if (result.error) throw result.error;
+        onSubmit(result.data[0]);
+      } catch (err: any) {
+        alert("Error saving vendor: " + err.message);
+      } finally {
+        setLoading(false);
+      }
   }
 
   return (
@@ -92,8 +127,9 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, onSubmit, onCancel
       </div>
       <div className="pt-6 border-t border-slate-200 flex justify-end space-x-3">
         <button onClick={onCancel} className="px-8 py-2.5 border border-slate-300 rounded text-slate-600 font-bold text-xs uppercase tracking-widest hover:bg-slate-50">Cancel</button>
-        <button onClick={handleSubmit} className="px-10 py-2.5 bg-primary text-slate-900 font-bold rounded-md hover:bg-yellow-400 transition-all flex items-center text-xs uppercase tracking-widest shadow-sm">
-          <Save className="w-4 h-4 mr-2" />Save Vendor
+        <button onClick={handleSubmit} disabled={loading} className="px-10 py-2.5 bg-primary text-slate-900 font-bold rounded-md hover:bg-yellow-400 transition-all flex items-center text-xs uppercase tracking-widest shadow-sm disabled:opacity-50">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+          Save Vendor
         </button>
       </div>
     </div>
