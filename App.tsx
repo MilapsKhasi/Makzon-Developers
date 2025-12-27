@@ -13,14 +13,12 @@ import Purchases from './pages/Purchases';
 import DutiesTaxes from './pages/DutiesTaxes';
 import Auth from './pages/Auth';
 import Companies from './pages/Companies';
-import ModeSelection from './pages/ModeSelection';
 import { getActiveCompanyId } from './utils/helpers';
 import { supabase } from './lib/supabase';
 
 const App = () => {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [hasSelectedMode, setHasSelectedMode] = useState<boolean>(!!localStorage.getItem('selectedMode'));
   const [activeCompanyId, setActiveCompanyId] = useState(getActiveCompanyId());
 
   useEffect(() => {
@@ -35,7 +33,6 @@ const App = () => {
 
     const handleSettingsChange = () => {
       setActiveCompanyId(getActiveCompanyId());
-      setHasSelectedMode(!!localStorage.getItem('selectedMode'));
     };
 
     window.addEventListener('appSettingsChanged', handleSettingsChange);
@@ -54,10 +51,9 @@ const App = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/setup" element={session ? <Navigate to="/mode-selection" replace /> : <Auth />} />
-        <Route path="/mode-selection" element={session ? (hasSelectedMode ? <Navigate to="/companies" replace /> : <ModeSelection />) : <Navigate to="/setup" replace />} />
-        <Route path="/companies" element={session ? (hasSelectedMode ? <Companies /> : <Navigate to="/mode-selection" replace />) : <Navigate to="/setup" replace />} />
-        <Route path="/" element={session && hasSelectedMode ? (activeCompanyId ? <Layout /> : <Navigate to="/companies" replace />) : (<Navigate to="/setup" replace />)}>
+        <Route path="/setup" element={session ? <Navigate to="/companies" replace /> : <Auth />} />
+        <Route path="/companies" element={session ? <Companies /> : <Navigate to="/setup" replace />} />
+        <Route path="/" element={session ? (activeCompanyId ? <Layout /> : <Navigate to="/companies" replace />) : (<Navigate to="/setup" replace />)}>
           <Route index element={<Dashboard />} />
           <Route path="masters" element={<Masters />} />
           <Route path="purchases" element={<Purchases />} />

@@ -62,7 +62,6 @@ const Reports = () => {
       const rows: any[] = [];
       bills.forEach(bill => {
         const validItems = Array.isArray(bill.items) ? bill.items : [];
-        // Safely extract narration from JSON metadata if column missing
         const narration = bill.description || (validItems[0] as any)?.description || '';
         
         const commonData = {
@@ -301,45 +300,48 @@ const Reports = () => {
   };
 
   return (
-    <div className="space-y-8 h-full flex flex-col">
+    <div className="space-y-10 h-full flex flex-col animate-in fade-in duration-500">
       <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} onExport={handleExport} reportName={activeTab} />
 
-      <div className="flex items-center justify-between shrink-0">
-        <h1 className="text-2xl font-medium text-slate-900 tracking-tight">Reports Center</h1>
-        <div className="flex items-center space-x-2">
-          <button onClick={() => setIsExportModalOpen(true)} className="px-5 py-2.5 bg-primary text-slate-900 border border-slate-200 rounded-md text-[11px] font-bold uppercase tracking-widest hover:bg-primary-dark transition-all flex items-center shadow-md active:scale-95"><Download className="w-4 h-4 mr-2" /> Export to Excel</button>
+      <div className="flex justify-between items-center mb-10">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-none mb-2">Reporting Center</h1>
+          <p className="text-slate-500 font-medium text-sm">Deep-dive into financial records and compliance summaries.</p>
+        </div>
+        <div className="flex items-center space-x-4">
+          <button onClick={() => setIsExportModalOpen(true)} className="px-8 py-3 bg-primary text-slate-900 border border-primary rounded-lg text-sm font-bold hover:bg-primary-dark transition-all flex items-center shadow-md active:scale-95"><Download className="w-4.5 h-4.5 mr-2" /> Export To Excel</button>
           <DateFilter onFilterChange={setDateRange} />
         </div>
       </div>
 
-      <div className="flex items-center space-x-4 shrink-0">
+      <div className="flex items-center space-x-6 shrink-0 mb-6">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
           <input 
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search report..." 
-            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-md text-sm outline-none focus:border-slate-400 shadow-sm" 
+            placeholder="Search report records..." 
+            className="w-full pl-12 pr-6 py-3.5 bg-white border border-slate-200 rounded-xl text-base outline-none focus:border-slate-400 shadow-sm transition-all font-medium" 
           />
         </div>
-        <div className="flex items-center space-x-2 bg-slate-50 px-4 py-2 rounded-md border border-slate-200">
-           <Filter className="w-3.5 h-3.5 text-slate-400" />
-           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="text-[10px] font-bold uppercase border-none bg-transparent outline-none cursor-pointer text-slate-600">
-             <option value="All">All Transactions</option>
-             <option value="Paid">Cleared</option>
-             <option value="Pending">Outstanding</option>
+        <div className="flex items-center space-x-3 bg-slate-50 px-5 py-3 rounded-xl border border-slate-200 shadow-inner">
+           <Filter className="w-4 h-4 text-slate-400" />
+           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="text-xs font-bold uppercase border-none bg-transparent outline-none cursor-pointer text-slate-600">
+             <option value="All">All Vouchers</option>
+             <option value="Paid">Cleared Records</option>
+             <option value="Pending">Unpaid Vouchers</option>
            </select>
         </div>
       </div>
 
-      <div className="flex-1 flex gap-8 overflow-hidden min-h-0">
-        <div className="w-64 space-y-1 shrink-0 overflow-y-auto">
+      <div className="flex-1 flex gap-10 overflow-hidden min-h-0">
+        <div className="w-72 space-y-2 shrink-0 overflow-y-auto custom-scrollbar">
           {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`w-full text-left px-5 py-4 text-[10px] font-bold uppercase tracking-widest transition-all border-l-4 ${
+              className={`w-full text-left px-6 py-5 text-[11px] font-bold uppercase tracking-widest transition-all rounded-xl border-2 ${
                 activeTab === tab ? 'bg-slate-100 text-slate-900 border-slate-800 shadow-sm' : 'text-slate-400 hover:bg-slate-50 border-transparent'
               }`}
             >
@@ -348,36 +350,36 @@ const Reports = () => {
           ))}
         </div>
 
-        <div className="flex-1 bg-white border border-slate-200 rounded-lg p-6 overflow-hidden flex flex-col boxy-shadow">
-          <div className="flex justify-between items-center mb-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">
-            <span>Viewing: {activeTab}</span>
-            <span>Record Count: {reportTableData.length}</span>
+        <div className="flex-1 bg-white border border-slate-200 rounded-2xl p-8 overflow-hidden flex flex-col boxy-shadow">
+          <div className="flex justify-between items-center mb-8 text-[11px] font-bold text-slate-400 uppercase tracking-widest px-2">
+            <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span> Viewing: {activeTab}</span>
+            <span>Record Volume: {reportTableData.length}</span>
           </div>
           
-          <div className="flex-1 overflow-auto border border-slate-200 rounded-md">
+          <div className="flex-1 overflow-auto border border-slate-100 rounded-xl bg-slate-50/20 custom-scrollbar">
             {reportTableData.length === 0 ? (
-                <div className="py-32 text-center text-slate-300 italic text-xs">No records found.</div>
+                <div className="py-40 text-center text-slate-300 italic text-base">No data records found for the selected period.</div>
             ) : (
-                <table className="w-full text-left text-[11px] border-collapse">
-                  <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
-                    <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      {['Purchases', 'Starred', 'Favorites'].includes(activeTab) && <th className="py-3 px-4">Flags</th>}
+                <table className="w-full text-left text-[12px] border-collapse">
+                  <thead className="bg-slate-50/80 border-b border-slate-200 sticky top-0 z-10">
+                    <tr className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                      {['Purchases', 'Starred', 'Favorites'].includes(activeTab) && <th className="py-4 px-6">Flags</th>}
                       {Object.keys(reportTableData[0] || {}).filter(k => !['id', 'isStarred', 'isFavorite', 'originalBillId', 'status'].includes(k)).map(h => (
-                          <th key={h} className="py-3 px-4 border-r border-slate-200 whitespace-nowrap">{h}</th>
+                          <th key={h} className="py-4 px-6 border-r border-slate-200 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 bg-white">
                     {reportTableData.map((row: any) => (
                       <tr key={row.id} className="hover:bg-slate-50 transition-colors">
                         {['Purchases', 'Starred', 'Favorites'].includes(activeTab) && (
-                          <td className="py-3 px-4 flex space-x-2">
-                            <button onClick={() => toggleFlag(row.originalBillId, 'is_starred')} className={`${row.isStarred ? 'text-amber-400' : 'text-slate-200 hover:text-slate-400'}`}><Star className={`w-3.5 h-3.5 ${row.isStarred ? 'fill-amber-400' : ''}`} /></button>
-                            <button onClick={() => toggleFlag(row.originalBillId, 'is_favorite')} className={`${row.isFavorite ? 'text-rose-400' : 'text-slate-200 hover:text-slate-400'}`}><Heart className={`w-3.5 h-3.5 ${row.isFavorite ? 'fill-rose-400' : ''}`} /></button>
+                          <td className="py-4 px-6 flex space-x-3">
+                            <button onClick={() => toggleFlag(row.originalBillId, 'is_starred')} className={`${row.isStarred ? 'text-amber-400' : 'text-slate-200 hover:text-slate-400'} transition-colors`}><Star className={`w-4 h-4 ${row.isStarred ? 'fill-amber-400' : ''}`} /></button>
+                            <button onClick={() => toggleFlag(row.originalBillId, 'is_favorite')} className={`${row.isFavorite ? 'text-rose-400' : 'text-slate-200 hover:text-slate-400'} transition-colors`}><Heart className={`w-4 h-4 ${row.isFavorite ? 'fill-rose-400' : ''}`} /></button>
                           </td>
                         )}
                         {Object.keys(row).filter(k => !['id', 'isStarred', 'isFavorite', 'originalBillId', 'status'].includes(k)).map(k => (
-                          <td key={k} className="py-3 px-4 border-r border-slate-100 whitespace-nowrap">{row[k]}</td>
+                          <td key={k} className="py-4 px-6 border-r border-slate-100 whitespace-nowrap font-medium text-slate-700">{row[k]}</td>
                         ))}
                       </tr>
                     ))}

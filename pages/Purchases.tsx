@@ -67,7 +67,7 @@ const Purchases = () => {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10 animate-in fade-in duration-500">
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Purchase Voucher">
         <BillForm initialData={editingBill} onSubmit={() => { setIsModalOpen(false); loadData(); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>
@@ -80,24 +80,27 @@ const Purchases = () => {
         message={`Move purchase entry ${deleteDialog.bill?.bill_number} to trash?`}
       />
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-medium text-slate-900 tracking-tight">Purchases</h1>
-        <div className="flex items-center space-x-2">
+      <div className="flex justify-between items-center mb-10">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-none mb-2">Purchase Transactions</h1>
+          <p className="text-slate-500 font-medium text-sm">Detailed ledger of all verified purchase entries and acquisitions.</p>
+        </div>
+        <div className="flex items-center space-x-4">
           <div className="relative">
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="flex items-center space-x-2 px-3 py-2 bg-white border border-slate-200 rounded-md shadow-sm text-[10px] font-bold uppercase tracking-wider text-slate-600 hover:bg-slate-50 transition-colors"
+              className="flex items-center space-x-2 px-6 py-3 bg-white border border-slate-200 rounded-lg shadow-sm text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
             >
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <Filter className="w-4 h-4 text-slate-400" />
               <span>{statusFilter}</span>
-              <ChevronDown className="w-3 h-3" />
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
             </button>
             {isMenuOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)}></div>
-                <div className="absolute top-full left-0 right-0 mt-[1px] bg-white border border-slate-200 rounded-md shadow-lg z-50 py-1 overflow-hidden min-w-full ring-1 ring-slate-200">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-2 overflow-hidden min-w-[150px] ring-1 ring-black/5">
                   {['All', 'Paid', 'Pending'].map(opt => (
-                    <button key={opt} onClick={() => { setStatusFilter(opt); setIsMenuOpen(false); }} className="w-full text-left px-3 py-2 text-[10px] font-bold uppercase hover:bg-slate-50 transition-colors">{opt}</button>
+                    <button key={opt} onClick={() => { setStatusFilter(opt); setIsMenuOpen(false); }} className={`w-full text-left px-5 py-3 text-sm font-bold transition-colors ${statusFilter === opt ? 'bg-primary text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}>{opt}</button>
                   ))}
                 </div>
               </>
@@ -106,68 +109,78 @@ const Purchases = () => {
         </div>
       </div>
 
-      <div className="flex items-center gap-6">
-        <div className="bg-white p-6 border border-slate-200 rounded-md w-fit min-w-[200px] boxy-shadow">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-tight mb-2">Total {statusFilter === 'All' ? '' : statusFilter} Purchase</p>
-          <h2 className="text-3xl font-semibold text-slate-900">{formatCurrency(filtered.reduce((acc, b) => acc + Number(b.grand_total || 0), 0))}</h2>
+      <div className="flex items-stretch gap-6">
+        <div className="bg-white p-8 border border-slate-200 rounded-2xl w-fit min-w-[250px] boxy-shadow flex flex-col justify-center">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Net Volume ({statusFilter})</p>
+          <h2 className="text-3xl font-bold text-slate-900 tracking-tight leading-none">{formatCurrency(filtered.reduce((acc, b) => acc + Number(b.grand_total || 0), 0))}</h2>
         </div>
         
-        <div className="flex-1 bg-slate-50 border border-slate-200 rounded-md p-4 flex items-start gap-3">
-          <Info className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
-          <p className="text-xs text-slate-500 leading-relaxed font-medium">
-            This register automatically syncs with your <span className="text-slate-900 font-bold">Purchase Bills</span>. To add a new purchase record, please create a detailed Bill with items in the Bills section.
-          </p>
+        <div className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl p-6 flex items-start gap-4 shadow-inner">
+          <div className="p-2.5 bg-blue-50 text-blue-500 rounded-lg shrink-0">
+             <Info className="w-6 h-6" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-900 uppercase tracking-tight mb-1">Synchronization Notice</h4>
+            <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                This register is an automated view of your <span className="text-slate-900 font-bold">Purchase Bills</span>. Entries here are derived from the detailed invoices processed in the Bills module.
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
           <input 
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search entries..." 
-            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-md outline-none text-sm focus:border-slate-400 bg-white shadow-sm transition-all" 
+            placeholder="Search entries by bill number or party..." 
+            className="w-full pl-14 pr-6 py-4 border border-slate-200 rounded-xl outline-none text-base focus:border-slate-400 bg-white shadow-sm transition-all font-medium" 
           />
         </div>
         
-        <div className="border border-slate-200 rounded-md overflow-hidden boxy-shadow">
+        <div className="border border-slate-200 rounded-2xl overflow-hidden boxy-shadow bg-white">
           {loading ? (
-            <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+            <div className="py-40 flex flex-col items-center justify-center">
+              <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+              <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Filtering Entries...</p>
+            </div>
           ) : (
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4 border-r border-slate-200">Date</th>
-                  <th className="py-3 px-4 border-r border-slate-200 font-mono">Bill No</th>
-                  <th className="py-3 px-4 border-r border-slate-200">Vendor</th>
-                  <th className="py-3 px-4 border-r border-slate-200 text-right">Taxable</th>
-                  <th className="py-3 px-4 border-r border-slate-200 text-right font-bold">Total</th>
-                  <th className="py-3 px-4 border-r border-slate-200 text-center">Status</th>
-                  <th className="py-3 px-4 text-center">Actions</th>
+            <table className="w-full text-left text-base border-collapse">
+              <thead className="bg-slate-50/80 border-b border-slate-200">
+                <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                  <th className="py-5 px-8 border-r border-slate-200">Voucher Date</th>
+                  <th className="py-5 px-8 border-r border-slate-200 font-mono">Invoice No</th>
+                  <th className="py-5 px-8 border-r border-slate-200">Vendor / Party</th>
+                  <th className="py-5 px-8 border-r border-slate-200 text-right">Taxable</th>
+                  <th className="py-5 px-8 border-r border-slate-200 text-right font-bold">Total Payable</th>
+                  <th className="py-5 px-8 border-r border-slate-200 text-center">Status</th>
+                  <th className="py-5 px-8 text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {filtered.map(b => (
-                  <tr key={b.id} className="border-b border-slate-100 hover:bg-slate-50 group transition-colors">
-                    <td className="py-3 px-4 border-r border-slate-200">{formatDate(b.date)}</td>
-                    <td className="py-3 px-4 border-r border-slate-200 font-mono text-[11px]">{b.bill_number}</td>
-                    <td className="py-3 px-4 border-r border-slate-200 font-medium uppercase truncate max-w-[150px]">{b.vendor_name}</td>
-                    <td className="py-3 px-4 border-r border-slate-200 text-right">{formatCurrency(b.total_without_gst)}</td>
-                    <td className="py-3 px-4 border-r border-slate-200 text-right font-bold text-slate-900">{formatCurrency(b.grand_total)}</td>
-                    <td className="py-3 px-4 border-r border-slate-200 text-center"><span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${b.status === 'Paid' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>{b.status}</span></td>
-                    <td className="py-3 px-4 text-center">
-                      <div className="flex justify-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="p-1 text-slate-400 hover:text-slate-900 transition-colors"><Edit className="w-4 h-4" /></button>
-                        <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="p-1 text-slate-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                  <tr key={b.id} className="hover:bg-slate-50 group transition-all duration-200">
+                    <td className="py-5 px-8 border-r border-slate-200 font-bold text-slate-600">{formatDate(b.date)}</td>
+                    <td className="py-5 px-8 border-r border-slate-200 font-mono text-[13px] font-bold text-slate-900">{b.bill_number}</td>
+                    <td className="py-5 px-8 border-r border-slate-200 font-bold text-slate-900 uppercase truncate max-w-[200px]">{b.vendor_name}</td>
+                    <td className="py-5 px-8 border-r border-slate-200 text-right text-slate-600 font-medium">{formatCurrency(b.total_without_gst)}</td>
+                    <td className="py-5 px-8 border-r border-slate-200 text-right font-bold text-slate-900">{formatCurrency(b.grand_total)}</td>
+                    <td className="py-5 px-8 border-r border-slate-200 text-center">
+                        <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border ${b.status === 'Paid' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>{b.status}</span>
+                    </td>
+                    <td className="py-5 px-8 text-center">
+                      <div className="flex justify-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white rounded-lg transition-all shadow-sm border border-transparent hover:border-slate-200"><Edit className="w-5 h-5" /></button>
+                        <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg transition-all shadow-sm border border-transparent hover:border-slate-200"><Trash2 className="w-5 h-5" /></button>
                       </div>
                     </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-20 text-center text-slate-400 italic">No matching purchase entries.</td>
+                    <td colSpan={7} className="py-40 text-center text-slate-300 italic font-medium">No purchase records found matching your current filters.</td>
                   </tr>
                 )}
               </tbody>

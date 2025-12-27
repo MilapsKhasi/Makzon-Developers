@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Save, Plus, Trash2, Loader2, Calculator, Percent, Banknote, ShieldCheck, Info, MapPin, Hash, UserPlus, UserRoundPen } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Save, Plus, Trash2, Loader2, Calculator, Percent, Banknote, ShieldCheck, UserPlus, UserRoundPen, Check } from 'lucide-react';
 import { getActiveCompanyId, formatCurrency, getDatePlaceholder, parseDateFromInput, formatDate } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
@@ -28,7 +28,6 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     date: today, 
     displayDate: formatDate(today), 
     gst_type: 'Intra-State',
-    description: '',
     items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: 1, unit: 'PCS', rate: 0, tax_rate: 0, amount: 0 }],
     total_without_gst: 0, 
     total_cgst: 0,
@@ -47,7 +46,6 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [taxMasters, setTaxMasters] = useState<any[]>([]);
   
-  // Vendor Sub-Modal State
   const [vendorModal, setVendorModal] = useState<{ isOpen: boolean, initialData: any | null, prefilledName: string }>({
     isOpen: false,
     initialData: null,
@@ -93,6 +91,15 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     });
   }, [taxMasters]);
 
+  const getStickyChargesKey = (vendorId: string) => `sticky_charges_${cid}_${vendorId}`;
+  const saveStickyCharges = (vendorId: string, duties: any[]) => {
+    localStorage.setItem(getStickyChargesKey(vendorId), JSON.stringify(duties));
+  };
+  const getStickyCharges = (vendorId: string) => {
+    const saved = localStorage.getItem(getStickyChargesKey(vendorId));
+    return saved ? JSON.parse(saved) : null;
+  };
+
   const recalculate = (items: any[], gstType = formData.gst_type, duties = formData.duties_and_taxes) => {
     let totalTaxable = 0;
     let totalTax = 0;
@@ -101,10 +108,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       const taxable = (Number(item.qty) || 0) * (Number(item.rate) || 0);
       const taxRate = Number(item.tax_rate) || 0;
       const taxAmount = taxable * (taxRate / 100);
-      
       totalTaxable += taxable;
       totalTax += taxAmount;
-
       return { ...item, taxableAmount: taxable, amount: taxable + taxAmount };
     });
 
@@ -112,10 +117,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     if (gstType === 'Intra-State') {
       cgst = totalTax / 2;
       sgst = totalTax / 2;
-      igst = 0;
     } else {
-      cgst = 0;
-      sgst = 0;
       igst = totalTax;
     }
 
@@ -135,9 +137,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       return { ...d, amount: finalAmt };
     });
 
-    const rawGrandTotal = runningTotal;
-    const roundedTotal = Math.round(rawGrandTotal);
-    const ro = parseFloat((roundedTotal - rawGrandTotal).toFixed(2));
+    const roundedTotal = Math.round(runningTotal);
+    const ro = parseFloat((roundedTotal - runningTotal).toFixed(2));
 
     setFormData(prev => ({
       ...prev,
@@ -156,10 +157,13 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
   const handleVendorChange = (name: string) => {
     const selectedVendor = vendors.find(v => v.name.toLowerCase() === name.toLowerCase());
-    
-    // Auto-populate default charges (Sticky Charges) if vendor is selected
-    const appliedDuties = selectedVendor?.default_duties || formData.duties_and_taxes;
-
+    let appliedDuties = [];
+    if (selectedVendor) {
+        const localSticky = getStickyCharges(selectedVendor.id);
+        appliedDuties = localSticky || uniqueTaxMasters.map(m => ({ ...m, amount: 0 }));
+    } else {
+        appliedDuties = uniqueTaxMasters.map(m => ({ ...m, amount: 0 }));
+    }
     setFormData(prev => ({
       ...prev,
       vendor_name: name,
@@ -167,31 +171,13 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       address: selectedVendor?.address || prev.address,
       duties_and_taxes: appliedDuties
     }));
-    
-    if (selectedVendor) {
-        recalculate(formData.items, formData.gst_type, appliedDuties);
-    }
+    recalculate(formData.items, formData.gst_type, appliedDuties);
   };
 
-  const matchedVendor = useMemo(() => {
-    return vendors.find(v => v.name.toLowerCase() === formData.vendor_name.toLowerCase());
-  }, [formData.vendor_name, vendors]);
-
-  const handleVendorAction = () => {
-    if (matchedVendor) {
-      // Edit Mode
-      setVendorModal({ isOpen: true, initialData: matchedVendor, prefilledName: '' });
-    } else {
-      // Create Mode
-      setVendorModal({ isOpen: true, initialData: null, prefilledName: formData.vendor_name });
-    }
-  };
-
+  const matchedVendor = useMemo(() => vendors.find(v => v.name.toLowerCase() === formData.vendor_name.toLowerCase()), [formData.vendor_name, vendors]);
   const onVendorSaved = (savedVendor: any) => {
     setVendorModal({ isOpen: false, initialData: null, prefilledName: '' });
-    loadDependencies().then(() => {
-      handleVendorChange(savedVendor.name);
-    });
+    loadDependencies().then(() => handleVendorChange(savedVendor.name));
   };
 
   const handleItemSelect = (index: number, name: string) => {
@@ -231,16 +217,6 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     recalculate(formData.items, formData.gst_type, [...formData.duties_and_taxes, tax]);
   };
 
-  const removeDuty = (idx: number) => {
-    const newDuties = formData.duties_and_taxes.filter((_: any, i: number) => i !== idx);
-    recalculate(formData.items, formData.gst_type, newDuties);
-  };
-
-  const addRow = () => {
-    const newItems = [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: 1, unit: 'PCS', rate: 0, tax_rate: 0, amount: 0 }];
-    setFormData({ ...formData, items: newItems });
-  };
-
   const removeRow = (idx: number) => {
     const newItems = formData.items.filter((_: any, i: number) => i !== idx);
     recalculate(newItems.length ? newItems : getInitialState().items);
@@ -257,6 +233,35 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     return Object.values(groups).filter(g => g.taxable > 0).sort((a, b) => a.rate - b.rate);
   }, [formData.items]);
 
+  const saveBillToSupabase = async (payload: any): Promise<any> => {
+    const operation = initialData?.id 
+        ? supabase.from('bills').update(payload).eq('id', initialData.id)
+        : supabase.from('bills').insert([payload]);
+
+    const res = await operation;
+
+    if (res.error) {
+      const msg = res.error.message;
+      const missingColumnMatch = msg.match(/'(.+?)' column/) || msg.match(/column '(.+?)' of/);
+      if (missingColumnMatch) {
+        const offendingColumn = missingColumnMatch[1];
+        if (offendingColumn && payload.hasOwnProperty(offendingColumn)) {
+          const nextPayload = { ...payload };
+          delete nextPayload[offendingColumn];
+          return saveBillToSupabase(nextPayload);
+        }
+      }
+      const commonMismatches = ['round_off', 'gst_type', 'is_starred', 'is_favorite', 'duties_and_taxes', 'items'];
+      for (const col of commonMismatches) {
+        if (msg.includes(`'${col}'`) && payload.hasOwnProperty(col)) {
+           const nextPayload = { ...payload }; delete nextPayload[col]; return saveBillToSupabase(nextPayload);
+        }
+      }
+      throw res.error;
+    }
+    return res;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.vendor_name || !formData.bill_number) return alert("Required: Vendor and Bill Number");
@@ -265,287 +270,210 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       const { data: { user } } = await supabase.auth.getUser();
       const payload = { ...formData, company_id: cid, user_id: user?.id, is_deleted: false };
       delete payload.displayDate; delete payload.company_state; delete payload.vendor_state;
-      
-      const res = initialData?.id 
-        ? await supabase.from('bills').update(payload).eq('id', initialData.id)
-        : await supabase.from('bills').insert([payload]);
-
-      if (res.error) throw res.error;
-
-      // Update Vendor's Sticky Charges (default_duties)
+      await saveBillToSupabase(payload);
       if (matchedVendor) {
-        await supabase.from('vendors').update({
-            default_duties: formData.duties_and_taxes
-        }).eq('id', matchedVendor.id);
+        saveStickyCharges(matchedVendor.id, formData.duties_and_taxes);
+        try { await supabase.from('vendors').update({ default_duties: formData.duties_and_taxes }).eq('id', matchedVendor.id); } catch {}
       }
-
       window.dispatchEvent(new Event('appSettingsChanged'));
       onSubmit(payload);
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err: any) { alert("Submission Error: " + err.message); } finally { setLoading(false); }
   };
 
   return (
-    <div className="space-y-6">
-      <Modal isOpen={vendorModal.isOpen} onClose={() => setVendorModal({ ...vendorModal, isOpen: false })} title={vendorModal.initialData ? "Edit Vendor" : "Add New Vendor"}>
-        <VendorForm 
-            initialData={vendorModal.initialData} 
-            prefilledName={vendorModal.prefilledName}
-            onSubmit={onVendorSaved} 
-            onCancel={() => setVendorModal({ ...vendorModal, isOpen: false })} 
-        />
+    <div className="space-y-10">
+      <Modal isOpen={vendorModal.isOpen} onClose={() => setVendorModal({ ...vendorModal, isOpen: false })} title={vendorModal.initialData ? "Edit Vendor Profile" : "Register New Vendor"}>
+        <VendorForm initialData={vendorModal.initialData} prefilledName={vendorModal.prefilledName} onSubmit={onVendorSaved} onCancel={() => setVendorModal({ ...vendorModal, isOpen: false })} />
       </Modal>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-slate-50 p-6 border border-slate-200 rounded-lg grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Transaction Type</label>
-            <div className="flex p-1 bg-slate-200 rounded-md">
+      <form onSubmit={handleSubmit} className="space-y-10">
+        <div className="bg-slate-50 p-8 border border-slate-200 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-500 capitalize">Transaction Category</label>
+            <div className="flex p-1.5 bg-slate-200 rounded-lg">
                {['Intra-State', 'Inter-State'].map(mode => (
-                 <button 
-                   key={mode}
-                   type="button"
-                   onClick={() => recalculate(formData.items, mode)}
-                   className={`flex-1 py-1.5 text-[10px] font-bold uppercase rounded transition-all ${formData.gst_type === mode ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                 >
+                 <button key={mode} type="button" onClick={() => recalculate(formData.items, mode)} className={`flex-1 py-2.5 text-sm font-bold rounded-md transition-all ${formData.gst_type === mode ? 'bg-white text-slate-900 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
                    {mode}
                  </button>
                ))}
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Voucher Date</label>
-            <input required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-3 py-2 border border-slate-200 rounded text-sm focus:border-slate-400 outline-none" placeholder={getDatePlaceholder()} />
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-500 capitalize">Voucher Date</label>
+            <input required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full h-12 px-5 border border-slate-200 rounded-lg text-base focus:border-slate-400 outline-none shadow-sm transition-all" placeholder={getDatePlaceholder()} />
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Bill / Invoice No</label>
-            <input required value={formData.bill_number} onChange={e => setFormData({...formData, bill_number: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono font-bold focus:border-slate-400 outline-none" placeholder="INV-001" />
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-500 capitalize">Invoice Reference No</label>
+            <input required value={formData.bill_number} onChange={e => setFormData({...formData, bill_number: e.target.value})} className="w-full h-12 px-5 border border-slate-200 rounded-lg text-base font-mono font-bold focus:border-slate-400 outline-none shadow-sm" placeholder="INV-100" />
           </div>
-          <div className="space-y-1 relative">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vendor / Party Name</label>
-            <div className="flex items-center gap-1">
-                <input required list="vlist" value={formData.vendor_name} onChange={e => handleVendorChange(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-medium focus:border-slate-400 outline-none shadow-inner bg-white" placeholder="Search party..." />
-                <button type="button" onClick={handleVendorAction} className={`p-2 rounded border border-slate-200 transition-all ${matchedVendor ? 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100' : 'bg-primary/20 text-slate-700 hover:bg-primary border-primary/30'}`}>
-                    {matchedVendor ? <UserRoundPen className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+          <div className="space-y-2 relative">
+            <label className="text-sm font-bold text-slate-500 capitalize">Vendor Business Name</label>
+            <div className="flex items-center gap-3">
+                <input required list="vlist" value={formData.vendor_name} onChange={e => handleVendorChange(e.target.value)} className="w-full h-12 px-5 border border-slate-200 rounded-lg text-base font-bold focus:border-slate-400 outline-none shadow-inner bg-white" placeholder="Search registered parties..." />
+                <button type="button" onClick={() => setVendorModal({ isOpen: true, initialData: matchedVendor || null, prefilledName: matchedVendor ? '' : formData.vendor_name })} className={`h-12 w-12 flex items-center justify-center rounded-lg border border-slate-200 transition-all ${matchedVendor ? 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100' : 'bg-primary/20 text-slate-700 hover:bg-primary border-primary/30'}`}>
+                    {matchedVendor ? <UserRoundPen className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
                 </button>
             </div>
             <datalist id="vlist">{vendors.map(v => <option key={v.id} value={v.name}>{v.gstin}</option>)}</datalist>
           </div>
         </div>
 
-        <div className="border border-slate-200 rounded-lg overflow-hidden boxy-shadow">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-slate-900 text-white font-bold uppercase text-[10px] tracking-widest">
+        <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-slate-100 text-slate-600 font-bold capitalize border-b border-slate-200">
               <tr>
-                <th className="p-4 border-r border-slate-800">Particulars (Item Name)</th>
-                <th className="p-4 border-r border-slate-800 w-24 text-center">HSN</th>
-                <th className="p-4 border-r border-slate-800 w-20 text-center">Qty</th>
-                <th className="p-4 border-r border-slate-800 w-24 text-right">Rate</th>
-                <th className="p-4 border-r border-slate-800 w-24 text-center">GST %</th>
-                <th className="p-4 text-right w-32">Amount</th>
-                <th className="w-10"></th>
+                <th className="p-6 border-r border-slate-200">Item Description</th>
+                <th className="p-6 border-r border-slate-200 w-32 text-center">HSN Code</th>
+                <th className="p-6 border-r border-slate-200 w-28 text-center">Quantity</th>
+                <th className="p-6 border-r border-slate-200 w-32 text-right">Unit Rate</th>
+                <th className="p-6 border-r border-slate-200 w-32 text-center">GST Rate</th>
+                <th className="p-6 text-right w-44">Taxable Amount</th>
+                <th className="w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {formData.items.map((it: any, idx: number) => (
-                <tr key={it.id} className="hover:bg-slate-50 transition-colors group">
-                  <td className="p-0 border-r border-slate-100">
-                    <input list="slist" value={it.itemName} onChange={e => handleItemSelect(idx, e.target.value)} className="w-full p-4 border-none outline-none font-medium bg-transparent" placeholder="Select stock item..." />
-                  </td>
-                  <td className="p-0 border-r border-slate-100">
-                    <input value={it.hsnCode} onChange={e => updateItemField(idx, 'hsnCode', e.target.value)} className="w-full p-4 border-none outline-none text-center text-slate-400 font-mono" />
-                  </td>
-                  <td className="p-0 border-r border-slate-100">
-                    <input type="number" value={it.qty} onChange={e => updateItemField(idx, 'qty', Number(e.target.value))} className="w-full p-4 border-none outline-none text-center font-bold" />
-                  </td>
-                  <td className="p-0 border-r border-slate-100">
-                    <input type="number" value={it.rate} onChange={e => updateItemField(idx, 'rate', Number(e.target.value))} className="w-full p-4 border-none outline-none text-right font-mono" />
-                  </td>
-                  <td className="p-0 border-r border-slate-100">
-                    <select value={it.tax_rate} onChange={e => updateItemField(idx, 'tax_rate', Number(e.target.value))} className="w-full h-full p-4 border-none outline-none text-center bg-transparent font-black">
-                      {TAX_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
-                    </select>
-                  </td>
-                  <td className="p-4 text-right font-black text-slate-900 font-mono bg-slate-50/50">
-                    {formatCurrency(it.taxableAmount)}
-                  </td>
-                  <td className="text-center">
-                    <button type="button" onClick={() => removeRow(idx)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
-                  </td>
+                <tr key={it.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="p-0 border-r border-slate-100"><input list="slist" value={it.itemName} onChange={e => handleItemSelect(idx, e.target.value)} className="w-full p-6 border-none outline-none font-semibold bg-transparent text-slate-900" placeholder="Select item from stock..." /></td>
+                  <td className="p-0 border-r border-slate-100"><input value={it.hsnCode} onChange={e => updateItemField(idx, 'hsnCode', e.target.value)} className="w-full p-6 border-none outline-none text-center text-slate-400 font-mono" /></td>
+                  <td className="p-0 border-r border-slate-100"><input type="number" value={it.qty} onChange={e => updateItemField(idx, 'qty', Number(e.target.value))} className="w-full p-6 border-none outline-none text-center font-bold text-slate-800" /></td>
+                  <td className="p-0 border-r border-slate-100"><input type="number" value={it.rate} onChange={e => updateItemField(idx, 'rate', Number(e.target.value))} className="w-full p-6 border-none outline-none text-right font-mono font-bold" /></td>
+                  <td className="p-0 border-r border-slate-100"><select value={it.tax_rate} onChange={e => updateItemField(idx, 'tax_rate', Number(e.target.value))} className="w-full h-full p-6 border-none outline-none text-center bg-transparent font-bold text-slate-900">{TAX_RATES.map(r => <option key={r} value={r}>{r}%</option>)}</select></td>
+                  <td className="p-6 text-right font-bold text-slate-900 font-mono bg-slate-50/30">{formatCurrency(it.taxableAmount)}</td>
+                  <td className="text-center"><button type="button" onClick={() => removeRow(idx)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-5 h-5" /></button></td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <button type="button" onClick={addRow} className="w-full py-3 bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-100 hover:bg-slate-100 transition-colors">
+          <button type="button" onClick={() => setFormData({ ...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: 1, unit: 'PCS', rate: 0, tax_rate: 0, amount: 0 }] })} className="w-full py-5 bg-slate-50 text-sm font-bold text-slate-400 capitalize border-t border-slate-200 hover:bg-slate-100 transition-all">
             + Add New Line Particular
           </button>
         </div>
 
-        <div className="bg-slate-50 p-6 border border-slate-200 rounded-lg space-y-4">
+        <div className="bg-slate-50 p-10 border border-slate-200 rounded-xl space-y-8">
             <div className="flex justify-between items-center">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center">
-                  <Calculator className="w-4 h-4 mr-2" /> Additional Ledgers & Charges
+                <h4 className="text-sm font-bold text-slate-600 capitalize flex items-center">
+                  <Calculator className="w-5 h-5 mr-3 text-slate-400" /> Additional Ledgers & Surcharges
                 </h4>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-3">
                    {uniqueTaxMasters.map(tax => (
-                     <button key={tax.id} type="button" onClick={() => addDuty(tax)} className="px-3 py-1 bg-white border border-slate-200 rounded text-[9px] font-bold uppercase hover:bg-slate-100 transition-colors flex items-center">
-                       <Plus className="w-3 h-3 mr-1" /> {tax.name}
+                     <button key={tax.id} type="button" onClick={() => addDuty(tax)} className="px-5 py-2.5 bg-white border border-slate-200 rounded-lg text-xs font-bold capitalize hover:bg-slate-100 transition-all flex items-center shadow-sm">
+                       <Plus className="w-4 h-4 mr-2 text-slate-400" /> {tax.name}
                      </button>
                    ))}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-4">
               {formData.duties_and_taxes.map((d: any, idx: number) => (
-                 <div key={d.id || idx} className="bg-white border border-slate-200 rounded p-3 flex items-center justify-between group">
+                 <div key={d.id || idx} className="bg-white border border-slate-200 rounded-xl p-6 flex items-center justify-between group shadow-sm">
                     <div className="w-1/3">
-                      <p className="text-[10px] font-black text-slate-900 uppercase">{d.name}</p>
-                      <p className="text-[8px] text-slate-400 font-bold uppercase">{d.type} - {d.calc_method}</p>
+                      <p className="text-sm font-bold text-slate-900">{d.name}</p>
+                      <p className="text-xs text-slate-400 font-semibold capitalize">{d.type} - {d.calc_method}</p>
                     </div>
-                    
-                    <div className="flex items-center space-x-4 w-2/3 justify-end">
+                    <div className="flex items-center space-x-8 w-2/3 justify-end">
                       {(d.calc_method === 'Percentage' || d.calc_method === 'Both') && (
-                        <div className="flex items-center bg-slate-50 rounded px-2 border border-slate-100">
-                          <Percent className="w-3 h-3 text-slate-300 mr-2" />
-                          <input type="number" step="0.01" value={d.rate} onChange={(e) => handleDutyFieldChange(d.id, 'rate', e.target.value)} className="w-16 bg-transparent border-none text-[11px] font-mono py-1.5 outline-none font-bold" />
+                        <div className="flex items-center bg-slate-50 rounded-lg px-4 border border-slate-100 h-12">
+                          <Percent className="w-4 h-4 text-slate-300 mr-3" /><input type="number" step="0.01" value={d.rate} onChange={(e) => handleDutyFieldChange(d.id, 'rate', e.target.value)} className="w-24 bg-transparent border-none text-sm font-mono py-3 outline-none font-bold" />
                         </div>
                       )}
                       {(d.calc_method === 'Fixed' || d.calc_method === 'Both') && (
-                        <div className="flex items-center bg-slate-50 rounded px-2 border border-slate-100">
-                          <Banknote className="w-3 h-3 text-slate-300 mr-2" />
-                          <input type="number" step="0.01" value={d.fixed_amount} onChange={(e) => handleDutyFieldChange(d.id, 'fixed_amount', e.target.value)} className="w-20 bg-transparent border-none text-[11px] font-mono py-1.5 outline-none font-bold" />
+                        <div className="flex items-center bg-slate-50 rounded-lg px-4 border border-slate-100 h-12">
+                          <Banknote className="w-4 h-4 text-slate-300 mr-3" /><input type="number" step="0.01" value={d.fixed_amount} onChange={(e) => handleDutyFieldChange(d.id, 'fixed_amount', e.target.value)} className="w-28 bg-transparent border-none text-sm font-mono py-3 outline-none font-bold" />
                         </div>
                       )}
-                      <div className="w-32 text-right">
-                         <span className={`text-sm font-black font-mono ${d.type === 'Deduction' ? 'text-red-500' : 'text-slate-900'}`}>
-                           {d.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(d.amount))}
-                         </span>
-                      </div>
-                      <button type="button" onClick={() => removeDuty(idx)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      <div className="w-48 text-right"><span className={`text-xl font-bold font-mono ${d.type === 'Deduction' ? 'text-red-500' : 'text-slate-900'}`}>{d.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(d.amount))}</span></div>
+                      <button type="button" onClick={() => { const next = formData.duties_and_taxes.filter((_, i) => i !== idx); recalculate(formData.items, formData.gst_type, next); }} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-5 h-5" /></button>
                     </div>
                  </div>
               ))}
-              {formData.duties_and_taxes.length === 0 && (
-                <div className="py-4 text-center border-2 border-dashed border-slate-200 rounded bg-white/50">
-                  <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest italic">No additional charges applied to this voucher.</p>
-                </div>
-              )}
             </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <div className="lg:col-span-7 space-y-6">
-              <div className="bg-white border border-slate-200 rounded-lg p-5 boxy-shadow">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center">
-                      <ShieldCheck className="w-4 h-4 mr-2" /> GST Analysis Breakdown
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+          <div className="lg:col-span-7 space-y-8">
+              <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm">
+                  <h4 className="text-sm font-bold text-slate-500 capitalize mb-8 flex items-center">
+                      <ShieldCheck className="w-5 h-5 mr-3 text-slate-400" /> Summary Of Tax Distributions
                   </h4>
-                  <table className="w-full text-[10px] font-medium border-collapse">
-                      <thead className="text-slate-500 border-b border-slate-100">
+                  <table className="w-full text-sm font-medium border-collapse">
+                      <thead className="text-slate-400 border-b border-slate-100">
                           <tr>
-                              <th className="py-2 text-left">GST Rate</th>
-                              <th className="py-2 text-right">Taxable Value</th>
-                              {formData.gst_type === 'Intra-State' ? (
-                                  <>
-                                      <th className="py-2 text-right">Central Tax (CGST)</th>
-                                      <th className="py-2 text-right">State Tax (SGST)</th>
-                                  </>
-                              ) : (
-                                  <th className="py-2 text-right">Integrated Tax (IGST)</th>
-                              )}
-                              <th className="py-2 text-right">Total Tax</th>
+                              <th className="py-4 text-left font-bold uppercase text-[10px] tracking-widest">Rate</th>
+                              <th className="py-4 text-right font-bold uppercase text-[10px] tracking-widest">Taxable Val</th>
+                              {formData.gst_type === 'Intra-State' ? (<><th className="py-4 text-right font-bold uppercase text-[10px] tracking-widest">CGST</th><th className="py-4 text-right font-bold uppercase text-[10px] tracking-widest">SGST</th></>) : (<th className="py-4 text-right font-bold uppercase text-[10px] tracking-widest">IGST</th>)}
+                              <th className="py-4 text-right font-bold uppercase text-[10px] tracking-widest">Line Total</th>
                           </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
                           {gstAnalysis.map(g => (
                               <tr key={g.rate} className="text-slate-700">
-                                  <td className="py-2 font-bold">{g.rate}%</td>
-                                  <td className="py-2 text-right">{formatCurrency(g.taxable)}</td>
-                                  {formData.gst_type === 'Intra-State' ? (
-                                      <>
-                                          <td className="py-2 text-right">{formatCurrency(g.tax / 2)}</td>
-                                          <td className="py-2 text-right">{formatCurrency(g.tax / 2)}</td>
-                                      </>
-                                  ) : (
-                                      <td className="py-2 text-right">{formatCurrency(g.tax)}</td>
-                                  )}
-                                  <td className="py-2 text-right font-bold">{formatCurrency(g.tax)}</td>
+                                  <td className="py-4 font-bold">{g.rate}%</td>
+                                  <td className="py-4 text-right">{formatCurrency(g.taxable)}</td>
+                                  {formData.gst_type === 'Intra-State' ? (<><td className="py-4 text-right">{formatCurrency(g.tax / 2)}</td><td className="py-4 text-right">{formatCurrency(g.tax / 2)}</td></>) : (<td className="py-4 text-right">{formatCurrency(g.tax)}</td>)}
+                                  <td className="py-4 text-right font-bold">{formatCurrency(g.tax)}</td>
                               </tr>
                           ))}
-                          <tr className="border-t-2 border-slate-100 bg-slate-50 font-black text-slate-900">
-                              <td className="py-2">TOTAL</td>
-                              <td className="py-2 text-right">{formatCurrency(formData.total_without_gst)}</td>
-                              {formData.gst_type === 'Intra-State' ? (
-                                  <>
-                                      <td className="py-2 text-right">{formatCurrency(formData.total_cgst)}</td>
-                                      <td className="py-2 text-right">{formatCurrency(formData.total_sgst)}</td>
-                                  </>
-                              ) : (
-                                  <td className="py-2 text-right">{formatCurrency(formData.total_igst)}</td>
-                              )}
-                              <td className="py-2 text-right">{formatCurrency(formData.total_gst)}</td>
+                          <tr className="border-t-2 border-slate-100 bg-slate-50 font-bold text-slate-900">
+                              <td className="py-4">Grand Totals</td>
+                              <td className="py-4 text-right">{formatCurrency(formData.total_without_gst)}</td>
+                              {formData.gst_type === 'Intra-State' ? (<><td className="py-4 text-right">{formatCurrency(formData.total_cgst)}</td><td className="py-4 text-right">{formatCurrency(formData.total_sgst)}</td></>) : (<td className="py-4 text-right">{formatCurrency(formData.total_igst)}</td>)}
+                              <td className="py-4 text-right">{formatCurrency(formData.total_gst)}</td>
                           </tr>
                       </tbody>
                   </table>
               </div>
-              <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-4 border border-slate-200 rounded-lg text-xs font-medium outline-none focus:border-slate-400 resize-none h-20" placeholder="Narration (Optional)..." />
           </div>
 
-          <div className="lg:col-span-5 bg-slate-900 text-white p-8 rounded-lg space-y-4 shadow-xl">
-              <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-800 pb-4 mb-4">
-                  <span>Total Taxable Value</span>
-                  <span className="text-sm font-mono">{formatCurrency(formData.total_without_gst)}</span>
+          <div className="lg:col-span-5 bg-slate-50 text-slate-900 p-10 rounded-xl space-y-6 border border-slate-200 shadow-md">
+              <div className="flex justify-between items-center text-sm font-bold text-slate-500 border-b border-slate-200 pb-6 mb-6 capitalize">
+                  <span>Gross Taxable Amount</span>
+                  <span className="text-lg font-mono font-bold text-slate-900">{formatCurrency(formData.total_without_gst)}</span>
               </div>
               
-              <div className="space-y-3 pb-4 border-b border-slate-800">
+              <div className="space-y-4 pb-6 border-b border-slate-200 font-semibold">
                   {formData.gst_type === 'Intra-State' ? (
                       <>
                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase">CGST @ Central Tax</span>
-                              <span className="text-sm font-mono text-primary-light">{formatCurrency(formData.total_cgst)}</span>
+                              <span className="text-sm text-slate-500 capitalize">Central Goods Tax (CGST)</span>
+                              <span className="text-lg font-mono font-bold">{formatCurrency(formData.total_cgst)}</span>
                           </div>
                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase">SGST @ State Tax</span>
-                              <span className="text-sm font-mono text-primary-light">{formatCurrency(formData.total_sgst)}</span>
+                              <span className="text-sm text-slate-500 capitalize">State Goods Tax (SGST)</span>
+                              <span className="text-lg font-mono font-bold">{formatCurrency(formData.total_sgst)}</span>
                           </div>
                       </>
                   ) : (
                       <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">IGST @ Integrated Tax</span>
-                          <span className="text-sm font-mono text-primary-light">{formatCurrency(formData.total_igst)}</span>
+                          <span className="text-sm text-slate-500 capitalize">Integrated Goods Tax (IGST)</span>
+                          <span className="text-lg font-mono font-bold">{formatCurrency(formData.total_igst)}</span>
                       </div>
                   )}
               </div>
 
               {formData.duties_and_taxes.length > 0 && (
-                  <div className="space-y-3 pb-4 border-b border-slate-800">
+                  <div className="space-y-4 pb-6 border-b border-slate-200 font-semibold">
                       {formData.duties_and_taxes.map((d: any, idx: number) => (
-                          <div key={d.id || idx} className={`flex justify-between items-center text-[10px] font-bold uppercase ${d.type === 'Deduction' ? 'text-red-400' : 'text-slate-400'}`}>
-                              <span>{d.name}</span>
-                              <span className="text-sm font-mono">{d.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(d.amount))}</span>
+                          <div key={d.id || idx} className={`flex justify-between items-center text-sm ${d.type === 'Deduction' ? 'text-red-500' : 'text-slate-500'}`}>
+                              <span className="capitalize">{d.name}</span>
+                              <span className="text-lg font-mono font-bold">{d.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(d.amount))}</span>
                           </div>
                       ))}
                   </div>
               )}
 
-              <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase italic">
-                  <span>Round Off</span>
+              <div className="flex justify-between items-center text-sm font-bold text-slate-400 italic">
+                  <span>Currency Rounding Difference</span>
                   <span className="font-mono">{formData.round_off >= 0 ? '+' : ''}{formData.round_off.toFixed(2)}</span>
               </div>
 
-              <div className="flex justify-between items-end pt-6">
+              <div className="flex justify-between items-end pt-10">
                   <div>
-                      <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">Total Payable</p>
-                      <h2 className="text-4xl font-black font-mono tracking-tighter">{formatCurrency(formData.grand_total)}</h2>
+                      <p className="text-xs font-bold text-slate-400 capitalize mb-2">Final Payable Net Total</p>
+                      <h2 className="text-4xl font-bold font-mono tracking-tighter text-slate-900 leading-none">{formatCurrency(formData.grand_total)}</h2>
                   </div>
-                  <button 
-                    type="submit" 
-                    disabled={loading}
-                    className="bg-primary text-slate-900 px-10 py-4 rounded-md font-black uppercase text-xs tracking-widest hover:bg-white transition-all shadow-lg active:scale-95 disabled:opacity-50"
-                  >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Voucher'}
+                  <button type="submit" disabled={loading} className="bg-primary text-slate-900 px-12 py-5 rounded-lg font-bold capitalize text-base hover:bg-white border-2 border-primary transition-all shadow-xl active:scale-95 disabled:opacity-50 flex items-center">
+                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Confirm Bill Voucher'}
                   </button>
               </div>
           </div>

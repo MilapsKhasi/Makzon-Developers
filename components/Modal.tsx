@@ -16,8 +16,8 @@ const Modal: React.FC<ModalProps> = ({
   onClose, 
   title, 
   children, 
-  maxWidth = 'max-w-4xl',
-  preventBackdropClose = true // Defaulting to true to prevent accidental clicks
+  maxWidth = 'max-w-7xl',
+  preventBackdropClose = true
 }) => {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -35,27 +35,31 @@ const Modal: React.FC<ModalProps> = ({
 
   if (!isOpen) return null;
 
+  const isFull = maxWidth.includes('max-w-full');
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 md:p-6 lg:p-12">
       <div 
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px]" 
+        className="absolute inset-0 bg-slate-900/40" 
         onClick={() => !preventBackdropClose && onClose()} 
       />
-      <div className={`relative bg-white rounded-lg shadow-xl w-full ${maxWidth} max-h-[90vh] flex flex-col overflow-hidden`}>
+      <div className={`relative bg-white shadow-2xl w-full ${maxWidth} ${isFull ? 'h-full' : 'max-h-full'} flex flex-col overflow-hidden md:rounded-2xl animate-in fade-in slide-in-from-bottom-8 duration-300`}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
-          <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+        <div className="flex items-center justify-between px-10 py-7 border-b border-slate-100 bg-white shrink-0">
+          <h3 className="text-2xl font-bold text-slate-900 tracking-tight">{title}</h3>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full"
+            className="p-2.5 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
           >
-            <X className="w-5 h-5" />
+            <X className="w-7 h-7" />
           </button>
         </div>
         
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {children}
+        <div className="flex-1 overflow-y-auto p-12 bg-slate-50/30">
+          <div className="bg-white rounded-2xl border border-slate-200 p-12 shadow-sm min-h-full">
+            {children}
+          </div>
         </div>
       </div>
     </div>

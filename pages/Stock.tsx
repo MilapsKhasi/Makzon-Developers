@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, History, Trash2, Edit, Package, Maximize2, Minimize2, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Search, History, Trash2, Edit, Package, Maximize2, Minimize2, Loader2, RefreshCw, AlertCircle, Plus } from 'lucide-react';
 import { getActiveCompanyId, formatCurrency, formatDate } from '../utils/helpers';
 import Modal from '../components/Modal';
 import StockForm from '../components/StockForm';
@@ -8,12 +8,12 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { supabase } from '../lib/supabase';
 
 const InfoCard = ({ label, value, desc }: { label: string, value: string | number, desc?: string }) => (
-  <div className="bg-white p-6 border border-slate-200 rounded-md boxy-shadow hover:border-slate-300 transition-all flex flex-col justify-between">
+  <div className="bg-white p-8 border border-slate-200 rounded-2xl boxy-shadow hover:border-slate-300 transition-all flex flex-col justify-between h-full">
     <div>
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-      <p className="text-xl font-semibold text-slate-900 truncate">{value}</p>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{label}</p>
+      <p className="text-2xl font-bold text-slate-900 truncate tracking-tight">{value}</p>
     </div>
-    {desc && <p className="text-[9px] text-slate-400 font-medium mt-2 truncate">{desc}</p>}
+    {desc && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-4 truncate">{desc}</p>}
   </div>
 );
 
@@ -38,7 +38,6 @@ const Stock = () => {
     const cid = getActiveCompanyId();
     if (!cid) return;
 
-    // 1. Load actual stock items
     const { data: stockItems } = await supabase
       .from('stock_items')
       .select('*')
@@ -46,7 +45,6 @@ const Stock = () => {
       .eq('is_deleted', false)
       .order('name', { ascending: true });
 
-    // 2. Load all bills for cross-reference (crucial for auto-syncing old items)
     const { data: purchaseBills } = await supabase
       .from('bills')
       .select('*')
@@ -62,7 +60,6 @@ const Stock = () => {
 
     setLoading(false);
 
-    // 3. Perform Deep Sync if missing items are found in bills
     if (shouldSync && purchaseBills && stockItems) {
       await performBackgroundSync(purchaseBills, stockItems);
     }
@@ -102,7 +99,6 @@ const Stock = () => {
     if (discoveredItems.length > 0) {
       const { error } = await supabase.from('stock_items').insert(discoveredItems);
       if (!error) {
-        // Reload silently to show the newly discovered historical items
         const { data: updatedStock } = await supabase
           .from('stock_items')
           .select('*')
@@ -115,8 +111,7 @@ const Stock = () => {
   };
 
   useEffect(() => {
-    loadData(true); // Forced sync on initial load to catch any items from previous bills
-    
+    loadData(true); 
     const handleGlobalUpdate = () => loadData(true);
     window.addEventListener('appSettingsChanged', handleGlobalUpdate);
     return () => window.removeEventListener('appSettingsChanged', handleGlobalUpdate);
@@ -206,7 +201,7 @@ const Stock = () => {
   );
 
   return (
-    <div className="space-y-8 h-full flex flex-col">
+    <div className="space-y-10 h-full flex flex-col animate-in fade-in duration-500">
       <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} title={editingItem ? "Edit Stock Item" : "Create New Stock Item"}>
         <StockForm initialData={editingItem} onSubmit={handleSaveItem} onCancel={() => { setIsModalOpen(false); setEditingItem(null); }} />
       </Modal>
@@ -219,139 +214,141 @@ const Stock = () => {
         message={`Delete item "${deleteDialog.item?.name}"? You can restore it from settings.`}
       />
 
-      <div className="flex items-center justify-between shrink-0">
-        <h1 className="text-2xl font-medium text-slate-900 tracking-tight">Stock Management</h1>
-        <div className="flex items-center space-x-2">
+      <div className="flex justify-between items-center mb-10">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-none mb-2">Stock Management</h1>
+          <p className="text-slate-500 font-medium text-sm">Inventory master ledger and cloud-synced stock movement analytics.</p>
+        </div>
+        <div className="flex items-center space-x-4">
             <button 
                 onClick={handleManualSync} 
                 disabled={syncing}
-                className="flex items-center space-x-2 px-4 py-2 border border-slate-200 rounded-md text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                className="flex items-center space-x-2 px-6 py-3 border border-slate-200 rounded-lg text-xs font-bold uppercase tracking-widest text-slate-500 bg-white hover:bg-slate-50 disabled:opacity-50 transition-all shadow-sm"
             >
-                {syncing || loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                {syncing || loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                 <span>Deep Sync History</span>
             </button>
-            <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-slate-800 px-5 py-2 rounded-md font-bold text-[10px] uppercase tracking-widest border border-slate-200 hover:bg-primary-dark transition-all shadow-sm active:scale-95">Add New Item</button>
+            <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-slate-900 px-8 py-3 rounded-lg font-bold text-sm border border-primary hover:bg-primary-dark shadow-md transition-all active:scale-95 flex items-center">
+                <Plus className="w-4.5 h-4.5 mr-2" /> Create New Item
+            </button>
         </div>
       </div>
 
-      <div className="relative shrink-0">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+      <div className="relative shrink-0 mb-6">
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
         <input 
           type="text" 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search items, SKU, or HSN..." 
-          className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-md text-sm outline-none focus:border-slate-400 shadow-sm transition-all" 
+          placeholder="Search items by name, SKU, or HSN Code..." 
+          className="w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-xl text-base outline-none focus:border-slate-400 shadow-sm transition-all font-medium" 
         />
       </div>
 
       {loading && items.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
         </div>
       ) : (
         <div className="flex-1 flex gap-8 overflow-hidden min-h-0 relative">
           {!isFullScreen && (
-            <div className="w-80 space-y-4 overflow-y-auto shrink-0 pr-2 pb-4">
+            <div className="w-80 space-y-4 overflow-y-auto shrink-0 pr-2 pb-4 custom-scrollbar">
               {filteredItems.map((item) => (
                 <div 
                   key={item.id}
                   onClick={() => setSelectedId(String(item.id))}
-                  className={`p-4 border rounded-md cursor-pointer transition-all relative group ${
-                    String(selectedId) === String(item.id) ? 'bg-slate-100 border-slate-400 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'
+                  className={`p-5 border rounded-xl cursor-pointer transition-all relative group shadow-sm ${
+                    String(selectedId) === String(item.id) ? 'bg-slate-100 border-slate-400' : 'bg-white border-slate-100 hover:border-slate-200'
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-1 pr-6">
-                    <h3 className="font-semibold text-slate-900 uppercase text-[11px] truncate">{item.name}</h3>
-                    <span className="text-[9px] bg-slate-200 px-1.5 py-0.5 rounded font-mono text-slate-600">{item.sku}</span>
+                  <div className="flex justify-between items-start mb-2 pr-8">
+                    <h3 className="font-bold text-slate-900 uppercase text-[12px] truncate leading-tight">{item.name}</h3>
+                    <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded font-mono font-bold text-slate-600">{item.sku}</span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mb-4 font-mono">RATE: {formatCurrency(item.rate)} / {item.unit || 'UNIT'}</p>
-                  <div className="grid grid-cols-2 gap-2 text-[9px] font-bold uppercase tracking-tight">
-                    <div className="bg-white/50 p-2 rounded border border-slate-100">
-                      <p className="text-slate-400 mb-0.5">Physical Qty</p>
-                      <p className="text-slate-900 text-sm">{item.in_stock || 0} {item.unit || 'PCS'}</p>
+                  <p className="text-[11px] font-bold text-slate-400 mb-5 font-mono uppercase tracking-tighter">RATE: {formatCurrency(item.rate)} / {item.unit || 'UNIT'}</p>
+                  <div className="grid grid-cols-2 gap-3 text-[10px] font-bold uppercase tracking-widest">
+                    <div className="bg-white/50 p-3 rounded-lg border border-slate-100 shadow-inner">
+                      <p className="text-slate-400 mb-1 leading-none">In Stock</p>
+                      <p className="text-slate-900 text-base font-mono">{item.in_stock || 0}</p>
                     </div>
-                    <div className="bg-white/50 p-2 rounded border border-slate-100">
-                      <p className="text-slate-400 mb-0.5">Inventory Val</p>
-                      <p className="text-primary-dark text-sm">{formatCurrency((item.in_stock || 0) * (item.rate || 0))}</p>
+                    <div className="bg-white/50 p-3 rounded-lg border border-slate-100 shadow-inner">
+                      <p className="text-slate-400 mb-1 leading-none">Valuation</p>
+                      <p className="text-primary-dark text-sm font-mono">{formatCurrency((item.in_stock || 0) * (item.rate || 0))}</p>
                     </div>
                   </div>
-                  <div className="absolute top-2 right-2 flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => { e.stopPropagation(); setEditingItem(item); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 rounded shadow-sm"><Edit className="w-3 h-3" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, item }); }} className="p-1.5 text-slate-400 hover:text-red-500 bg-white border border-slate-200 rounded shadow-sm"><Trash2 className="w-3 h-3" /></button>
+                  <div className="absolute top-4 right-4 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => { e.stopPropagation(); setEditingItem(item); setIsModalOpen(true); }} className="p-2 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 rounded-lg shadow-sm"><Edit className="w-4 h-4" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, item }); }} className="p-2 text-slate-400 hover:text-red-500 bg-white border border-slate-200 rounded-lg shadow-sm"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
               ))}
               {filteredItems.length === 0 && (
-                <div className="text-center py-20 text-slate-300 italic text-sm">
-                   {searchQuery ? "No results found." : "No stock items registered yet."}
+                <div className="text-center py-20 text-slate-300 italic text-base">
+                   {searchQuery ? "No matching products found." : "No stock items registered in master."}
                 </div>
               )}
             </div>
           )}
 
-          <div className={`flex-1 bg-white border border-slate-200 rounded-lg p-8 flex flex-col boxy-shadow overflow-y-auto min-w-0 transition-all duration-300`}>
+          <div className={`flex-1 bg-white border border-slate-200 rounded-2xl p-10 flex flex-col boxy-shadow overflow-y-auto min-w-0 transition-all duration-300`}>
             {selectedItem && itemStats ? (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="flex justify-between items-center border-b border-slate-100 pb-6">
+              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                <div className="flex justify-between items-start border-b border-slate-100 pb-8">
                   <div>
-                    <h2 className="text-2xl font-semibold text-slate-900 uppercase tracking-tight">{selectedItem.name}</h2>
-                    <div className="flex items-center space-x-3 mt-1">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedItem.category || 'Product Master'}</span>
-                      <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                      <span className="text-[10px] font-mono text-slate-400">{selectedItem.sku || 'N/A'}</span>
+                    <h2 className="text-3xl font-bold text-slate-900 uppercase tracking-tight mb-4 leading-none">{selectedItem.name}</h2>
+                    <div className="flex items-center space-x-4">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full border border-slate-100">{selectedItem.category || 'Product Master'}</span>
+                      <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">{selectedItem.sku || 'N/A'}</span>
                     </div>
                   </div>
-                  <div className="flex space-x-2">
-                    <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2.5 border border-slate-200 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-sm" title={isFullScreen ? "Minimize" : "Full Screen"}>
-                      {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                  <div className="flex space-x-3">
+                    <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-3 text-slate-400 border border-slate-200 rounded-xl hover:text-slate-900 transition-all shadow-sm bg-white hover:bg-slate-50">
+                      {isFullScreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
                     </button>
-                    <button onClick={() => { setEditingItem(selectedItem); setIsModalOpen(true); }} className="p-2.5 border border-slate-200 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-sm"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => setDeleteDialog({ isOpen: true, item: selectedItem })} className="p-2.5 border border-slate-200 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all shadow-sm"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => { setEditingItem(selectedItem); setIsModalOpen(true); }} className="p-3 text-slate-400 border border-slate-200 rounded-xl hover:text-slate-900 transition-all shadow-sm bg-white hover:bg-slate-50"><Edit className="w-5 h-5" /></button>
+                    <button onClick={() => setDeleteDialog({ isOpen: true, item: selectedItem })} className="p-3 text-slate-400 border border-slate-200 rounded-xl hover:text-red-500 transition-all shadow-sm bg-white hover:bg-slate-50"><Trash2 className="w-5 h-5" /></button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                  <InfoCard label="Total Procured" value={`${itemStats.totalQtyPurchased} ${selectedItem.unit}`} desc="From all vouchers" />
-                  <InfoCard label="Stock In Hand" value={`${selectedItem.in_stock || 0} ${selectedItem.unit}`} desc="Available Balance" />
-                  <InfoCard label="Asset Value" value={formatCurrency((selectedItem.in_stock || 0) * (selectedItem.rate || 0))} desc="Current Valuation" />
-                  <InfoCard label="Avg Purchase Price" value={formatCurrency(itemStats.totalQtyPurchased > 0 ? itemStats.totalValuePurchased / itemStats.totalQtyPurchased : selectedItem.rate)} desc="Landed Unit Cost" />
-                  <InfoCard label="Unique Vendors" value={itemStats.vendorCount} desc="Supply Chain Sources" />
-                  <InfoCard label="Primary Supplier" value={itemStats.mainVendor} desc="Recent Source" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+                  <InfoCard label="Total Procured" value={`${itemStats.totalQtyPurchased} ${selectedItem.unit}`} desc="From Vouchers" />
+                  <InfoCard label="Current Stock" value={`${selectedItem.in_stock || 0} ${selectedItem.unit}`} desc="In Hand" />
+                  <InfoCard label="Asset Value" value={formatCurrency((selectedItem.in_stock || 0) * (selectedItem.rate || 0))} desc="Valuation" />
+                  <InfoCard label="Avg Unit Price" value={formatCurrency(itemStats.totalQtyPurchased > 0 ? itemStats.totalValuePurchased / itemStats.totalQtyPurchased : selectedItem.rate)} desc="Landed Cost" />
+                  <InfoCard label="Vendors" value={itemStats.vendorCount} desc="Sources" />
+                  <InfoCard label="Top Supplier" value={itemStats.mainVendor} desc="Primary" />
                 </div>
 
-                <div className="space-y-4 pt-4">
+                <div className="space-y-6 pt-6">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <History className="w-4 h-4 text-slate-400" />
-                      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Historical Ledger</h3>
-                    </div>
+                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><History className="w-4 h-4 mr-2.5 text-slate-300" /> Stock Movement History</h3>
                   </div>
                   
-                  <div className="border border-slate-200 rounded-lg overflow-hidden boxy-shadow bg-white">
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden boxy-shadow bg-white custom-scrollbar">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-[11px] table-auto border-collapse">
+                      <table className="w-full text-left text-sm table-auto border-collapse">
                         <thead className="bg-slate-50 border-b border-slate-200">
-                          <tr className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                            <th className="py-3 px-4 border-r border-slate-200">Date</th>
-                            <th className="py-3 px-4 border-r border-slate-200">Bill No</th>
-                            <th className="py-3 px-4 border-r border-slate-200">Vendor / Party</th>
-                            <th className="py-3 px-4 text-right border-r border-slate-200">Qty</th>
-                            <th className="py-3 px-4 text-right border-r border-slate-200">Rate</th>
-                            <th className="py-3 px-4 text-right font-bold">Line Total</th>
+                          <tr className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">
+                            <th className="py-4 px-8 border-r border-slate-200">Date</th>
+                            <th className="py-4 px-8 border-r border-slate-200">Voucher No</th>
+                            <th className="py-4 px-8 border-r border-slate-200">Supplier / Vendor</th>
+                            <th className="py-4 px-8 text-right border-r border-slate-200">Quantity</th>
+                            <th className="py-4 px-8 text-right border-r border-slate-200">Unit Rate</th>
+                            <th className="py-4 px-8 text-right font-bold">Line Total</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {itemStats.transactions.map((t, idx) => (
                             <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                              <td className="py-3 px-4 text-slate-600 border-r border-slate-100">{formatDate(t.date)}</td>
-                              <td className="py-3 px-4 font-mono font-medium border-r border-slate-100">{t.billNo}</td>
-                              <td className="py-3 px-4 uppercase font-semibold text-slate-700 border-r border-slate-100">{t.vendor}</td>
-                              <td className="py-3 px-4 text-right border-r border-slate-100">{t.qty}</td>
-                              <td className="py-3 px-4 text-right border-r border-slate-100">{formatCurrency(t.rate)}</td>
-                              <td className="py-3 px-4 text-right font-bold text-slate-900">{formatCurrency(t.total)}</td>
+                              <td className="py-4 px-8 text-slate-600 border-r border-slate-100 font-bold">{formatDate(t.date)}</td>
+                              <td className="py-4 px-8 font-mono font-bold text-slate-900 border-r border-slate-100">{t.billNo}</td>
+                              <td className="py-4 px-8 uppercase font-bold text-slate-700 border-r border-slate-100 truncate max-w-[200px]">{t.vendor}</td>
+                              <td className="py-4 px-8 text-right border-r border-slate-100 font-mono">{t.qty}</td>
+                              <td className="py-4 px-8 text-right border-r border-slate-100 font-mono">{formatCurrency(t.rate)}</td>
+                              <td className="py-4 px-8 text-right font-bold text-slate-900 font-mono">{formatCurrency(t.total)}</td>
                             </tr>
                           ))}
+                          {itemStats.transactions.length === 0 && <tr><td colSpan={6} className="py-32 text-center text-slate-300 italic text-base">No movement history records found.</td></tr>}
                         </tbody>
                       </table>
                     </div>
@@ -359,9 +356,9 @@ const Stock = () => {
                 </div>
               </div>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-300 italic text-sm py-20">
-                <Package className="w-16 h-16 opacity-10 mb-4" />
-                <p>Select a product to view detailed cloud-synced analytics.</p>
+              <div className="h-full flex flex-col items-center justify-center text-slate-300 italic text-base py-24">
+                <Package className="w-20 h-20 opacity-5 mb-6" />
+                <p className="font-medium">Select a product from the stock list to visualize historical procurement analytics.</p>
               </div>
             )}
           </div>

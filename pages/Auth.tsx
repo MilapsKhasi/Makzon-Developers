@@ -27,7 +27,7 @@ const Auth = () => {
         if (error) throw error;
         alert('Check your email for the confirmation link!');
       }
-      navigate('/mode-selection');
+      navigate('/companies');
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
     } finally {
@@ -58,7 +58,7 @@ const Auth = () => {
           )}
 
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Email Address</label>
+            <label className="text-sm font-medium text-slate-500 capitalize">Email Address</label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
               <input
@@ -73,7 +73,7 @@ const Auth = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Password</label>
+            <label className="text-sm font-medium text-slate-500 capitalize">Password</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
               <input

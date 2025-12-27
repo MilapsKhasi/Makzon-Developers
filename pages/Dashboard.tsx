@@ -1,16 +1,23 @@
 
 import React, { useEffect, useState } from 'react';
-import { Search, Loader2 } from 'lucide-react';
+import { Search, Loader2, ReceiptText, TrendingUp, DollarSign, PieChart, Check, Plus, LayoutDashboard } from 'lucide-react';
 import { formatCurrency, getActiveCompanyId, formatDate } from '../utils/helpers';
 import DateFilter from '../components/DateFilter';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
 import { supabase } from '../lib/supabase';
 
-const StatCard = ({ label, value }: { label: string, value: string }) => (
-  <div className="bg-white p-6 border border-slate-200 rounded-lg min-w-[160px] boxy-shadow transition-all hover:border-primary">
-    <p className="text-xs font-medium text-slate-500 uppercase tracking-tight mb-2">{label}</p>
-    <h2 className="text-2xl font-semibold text-slate-900">{value}</h2>
+const StatCard = ({ label, value, icon: Icon, color }: { label: string, value: string, icon: any, color: string }) => (
+  <div className="bg-white p-8 border border-slate-200 rounded-2xl boxy-shadow hover:border-primary transition-all duration-300 flex flex-col justify-between h-full group">
+    <div className="flex justify-between items-start mb-6">
+      <div className={`p-3 rounded-xl ${color} shadow-inner transition-transform group-hover:scale-110 duration-300`}>
+        <Icon className="w-6 h-6" />
+      </div>
+    </div>
+    <div>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{label}</p>
+      <h2 className="text-3xl font-bold text-slate-900 tracking-tight truncate">{value}</h2>
+    </div>
   </div>
 );
 
@@ -66,67 +73,81 @@ const Dashboard = () => {
   }, [dateRange]);
 
   return (
-    <div className="space-y-8">
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New Purchase Voucher">
+    <div className="space-y-12 animate-in fade-in duration-500">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Register Purchase Bill">
         <BillForm onSubmit={() => { setIsModalOpen(false); loadData(); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-medium text-slate-900 tracking-tight">Dashboard Overview</h1>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 bg-white border border-slate-200 rounded-xl flex items-center justify-center shadow-sm">
+            <LayoutDashboard className="w-6 h-6 text-slate-400" />
+          </div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-none">Executive Dashboard</h1>
+        </div>
+        <div className="flex items-center space-x-4">
           <DateFilter onFilterChange={setDateRange} />
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="bg-primary text-slate-800 px-5 py-2 rounded-md font-bold text-[10px] uppercase tracking-widest hover:bg-primary-dark transition-all border border-slate-200 shadow-sm"
+            className="bg-primary text-slate-900 px-8 py-3 rounded-lg font-bold text-sm border border-primary hover:bg-primary-dark shadow-md transition-all active:scale-95 flex items-center"
           >
-            Quick Voucher
+            <Plus className="w-4.5 h-4.5 mr-2" /> Quick Entry
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <StatCard label="Total Purchases" value={formatCurrency(stats.totalPurchases)} />
-        <StatCard label="Without GST" value={formatCurrency(stats.withoutGst)} />
-        <StatCard label="GST" value={formatCurrency(stats.gst)} />
-        <StatCard label="With GST" value={formatCurrency(stats.withGst)} />
-        <StatCard label="GST Paid" value={formatCurrency(stats.gstPaid)} />
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+        <StatCard label="Net Total Volume" value={formatCurrency(stats.totalPurchases)} icon={TrendingUp} color="bg-blue-50 text-blue-600" />
+        <StatCard label="Basic Taxable Val" value={formatCurrency(stats.withoutGst)} icon={DollarSign} color="bg-slate-50 text-slate-600" />
+        <StatCard label="Total Tax Accrual" value={formatCurrency(stats.gst)} icon={PieChart} color="bg-amber-50 text-amber-600" />
+        <StatCard label="Grand Total (Net)" value={formatCurrency(stats.withGst)} icon={ReceiptText} color="bg-green-50 text-green-600" />
+        <StatCard label="Cleared Tax Credit" value={formatCurrency(stats.gstPaid)} icon={Check} color="bg-primary/20 text-slate-900" />
       </div>
 
-      <div className="space-y-4 pt-4">
-        <h2 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recent Activity</h2>
-        <div className="border border-slate-200 rounded-md overflow-hidden boxy-shadow">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Historical Voucher Activity</h2>
+          <span className="text-[10px] text-slate-400 font-medium">Last 10 Records</span>
+        </div>
+        <div className="border border-slate-200 rounded-2xl overflow-hidden boxy-shadow bg-white">
           {loading ? (
-            <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+            <div className="py-32 flex flex-col items-center justify-center">
+              <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+              <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Updating Dashboard analytics...</p>
+            </div>
           ) : (
-            <table className="w-full text-left text-sm">
+            <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200">
-                <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4 border-r border-slate-200 w-12 text-center">#</th>
-                  <th className="py-3 px-4 border-r border-slate-200">Date</th>
-                  <th className="py-3 px-4 border-r border-slate-200">Bill No</th>
-                  <th className="py-3 px-4 border-r border-slate-200">Vendor</th>
-                  <th className="py-3 px-4 border-r border-slate-200 text-right">Taxable</th>
-                  <th className="py-3 px-4 border-r border-slate-200 text-right font-bold">Total</th>
-                  <th className="py-3 px-4 text-center">Status</th>
+                <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                  <th className="py-5 px-8 border-r border-slate-200 w-12 text-center">No</th>
+                  <th className="py-5 px-8 border-r border-slate-200">Voucher Date</th>
+                  <th className="py-5 px-8 border-r border-slate-200">Invoice No</th>
+                  <th className="py-5 px-8 border-r border-slate-200">Vendor / Party</th>
+                  <th className="py-5 px-8 border-r border-slate-200 text-right">Taxable</th>
+                  <th className="py-5 px-8 border-r border-slate-200 text-right font-bold">Grand Total</th>
+                  <th className="py-5 px-8 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {recentBills.map((bill, i) => (
-                  <tr key={bill.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-4 border-r border-slate-200 text-slate-400 text-center font-mono text-[10px]">{i + 1}</td>
-                    <td className="py-3 px-4 border-r border-slate-200 text-xs">{formatDate(bill.date)}</td>
-                    <td className="py-3 px-4 border-r border-slate-200 font-mono text-[11px]">{bill.bill_number}</td>
-                    <td className="py-3 px-4 border-r border-slate-200 text-xs font-medium uppercase truncate max-w-[200px]">{bill.vendor_name}</td>
-                    <td className="py-3 px-4 border-r border-slate-200 text-right text-xs">{formatCurrency(bill.total_without_gst)}</td>
-                    <td className="py-3 px-4 border-r border-slate-200 text-right text-xs font-bold text-slate-900">{formatCurrency(bill.grand_total)}</td>
-                    <td className="py-3 px-4 text-center">
-                      <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${bill.status === 'Paid' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>{bill.status}</span>
+                  <tr key={bill.id} className="hover:bg-slate-50 transition-all duration-200 group">
+                    <td className="py-5 px-8 border-r border-slate-200 text-slate-400 text-center font-mono text-[10px]">{i + 1}</td>
+                    <td className="py-5 px-8 border-r border-slate-200 font-bold text-slate-600">{formatDate(bill.date)}</td>
+                    <td className="py-5 px-8 border-r border-slate-200 font-mono font-bold text-slate-900">{bill.bill_number}</td>
+                    <td className="py-5 px-8 border-r border-slate-200 font-bold text-slate-900 truncate max-w-[250px]">{bill.vendor_name}</td>
+                    <td className="py-5 px-8 border-r border-slate-200 text-right text-slate-600 font-medium">{formatCurrency(bill.total_without_gst)}</td>
+                    <td className="py-5 px-8 border-r border-slate-200 text-right font-bold text-slate-900">{formatCurrency(bill.grand_total)}</td>
+                    <td className="py-5 px-8 text-center">
+                      <span className={`text-[9px] font-bold uppercase px-3 py-1 rounded-full border shadow-sm ${bill.status === 'Paid' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>{bill.status}</span>
                     </td>
                   </tr>
                 ))}
                 {recentBills.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-20 text-center text-slate-400 italic text-xs">No recent activity detected in this workspace.</td>
+                    <td colSpan={7} className="py-40 text-center">
+                      <PieChart className="w-16 h-16 text-slate-100 mx-auto mb-4" />
+                      <p className="text-slate-300 italic font-medium">No transactional activity detected in this selected range.</p>
+                    </td>
                   </tr>
                 )}
               </tbody>

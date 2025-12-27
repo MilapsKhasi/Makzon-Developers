@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, X, Percent, Banknote, Package, ShieldCheck } from 'lucide-react';
+import { Check, Package, ShieldCheck, Tag, Box, Hash } from 'lucide-react';
 import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES } from '../utils/helpers';
 
 interface StockFormProps {
@@ -44,64 +44,76 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
   }
 
   return (
-    <div className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="col-span-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Particulars (Item Name)</label>
+    <div className="space-y-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="col-span-2 space-y-2">
+                <label className="text-sm font-bold text-slate-500 capitalize">Product / Item Master Name</label>
                 <div className="relative">
-                    <Package className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                    <input ref={firstInputRef} type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-md text-sm font-bold text-slate-900 outline-none focus:border-slate-400" placeholder="e.g. UltraTech Cement 50kg" />
+                    <Package className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-300" />
+                    <input ref={firstInputRef} type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} className="w-full h-16 pl-14 pr-6 border border-slate-200 rounded-xl text-xl font-bold text-slate-900 outline-none focus:border-slate-400 shadow-sm" placeholder="e.g. UltraTech Cement 50kg Grade-A" />
                 </div>
             </div>
 
-            <div className="space-y-4">
-                <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">SKU / Item Code</label>
-                    <input type="text" value={formData.sku} onChange={(e) => handleInputChange('sku', e.target.value)} className="w-full px-4 py-2.5 border border-slate-200 rounded-md text-sm font-mono text-slate-600 outline-none focus:border-slate-400" placeholder="PRO-1001" />
-                </div>
-                <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Unit of Measure</label>
-                    <select value={formData.unit} onChange={(e) => handleInputChange('unit', e.target.value)} className="w-full px-4 py-2.5 border border-slate-200 rounded-md text-sm font-bold outline-none focus:border-slate-400 bg-white">
-                        {['PCS', 'NOS', 'KGS', 'LTR', 'BAGS', 'BOX'].map(u => <option key={u} value={u}>{u}</option>)}
-                    </select>
-                </div>
-            </div>
-
-            <div className="space-y-4">
-                <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">HSN / SAC Code</label>
-                    <input type="text" value={formData.hsn} onChange={(e) => handleInputChange('hsn', e.target.value)} className="w-full px-4 py-2.5 border border-slate-200 rounded-md text-sm font-mono text-slate-600 outline-none focus:border-slate-400" placeholder="HSN-8451" />
-                </div>
-                <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Default GST %</label>
+            <div className="space-y-8">
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 capitalize">Stock Keeping Unit (SKU)</label>
                     <div className="relative">
-                        <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-dark" />
-                        <select value={formData.tax_rate} onChange={(e) => handleInputChange('tax_rate', Number(e.target.value))} className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-md text-sm font-black outline-none focus:border-slate-400 bg-white">
+                      <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                      <input type="text" value={formData.sku} onChange={(e) => handleInputChange('sku', e.target.value)} className="w-full h-12 pl-12 pr-5 border border-slate-200 rounded-lg text-base font-mono font-bold text-slate-700 outline-none focus:border-slate-400" placeholder="SKU-1001" />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 capitalize">Unit Of Measure</label>
+                    <div className="relative">
+                      <Box className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                      <select value={formData.unit} onChange={(e) => handleInputChange('unit', e.target.value)} className="w-full h-12 pl-12 pr-5 border border-slate-200 rounded-lg text-base font-bold outline-none focus:border-slate-400 bg-white shadow-sm appearance-none">
+                          {['PCS', 'NOS', 'KGS', 'LTR', 'BAGS', 'BOX'].map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-8">
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 capitalize">HSN / SAC Code</label>
+                    <div className="relative">
+                      <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                      <input type="text" value={formData.hsn} onChange={(e) => handleInputChange('hsn', e.target.value)} className="w-full h-12 pl-12 pr-5 border border-slate-200 rounded-lg text-base font-mono font-bold text-slate-700 outline-none focus:border-slate-400" placeholder="HSN-8451" />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 capitalize">Applied GST Rate</label>
+                    <div className="relative">
+                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+                        <select value={formData.tax_rate} onChange={(e) => handleInputChange('tax_rate', Number(e.target.value))} className="w-full h-12 pl-12 pr-5 border border-slate-200 rounded-lg text-base font-bold outline-none focus:border-slate-400 bg-white shadow-sm appearance-none">
                             {TAX_RATES.map(r => <option key={r} value={r}>{r}% GST</option>)}
                         </select>
                     </div>
                 </div>
             </div>
 
-            <div className="col-span-2 grid grid-cols-2 gap-8 p-6 bg-slate-50 border border-slate-200 rounded-lg">
-                <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Standard Purchase Rate</label>
+            <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-10 p-10 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-600 capitalize">Purchase Valuation Rate</label>
                     <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">{currencySymbol}</span>
-                        <input type="number" value={formData.rate} onChange={(e) => handleInputChange('rate', parseFloat(e.target.value) || 0)} className="w-full pl-8 pr-4 py-2.5 border border-slate-200 rounded-md text-base font-black text-slate-900 outline-none focus:border-slate-400" />
+                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 text-lg font-bold">{currencySymbol}</span>
+                        <input type="number" value={formData.rate} onChange={(e) => handleInputChange('rate', parseFloat(e.target.value) || 0)} className="w-full h-16 pl-12 pr-6 border border-slate-200 rounded-xl text-2xl font-bold text-slate-900 outline-none focus:border-slate-400 font-mono shadow-sm" />
                     </div>
                 </div>
-                <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Opening Stock In-Hand</label>
-                    <input type="number" value={formData.in_stock} onChange={(e) => handleInputChange('in_stock', parseFloat(e.target.value) || 0)} className="w-full px-4 py-2.5 border border-slate-200 rounded-md text-base font-black text-slate-900 outline-none focus:border-slate-400" />
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-600 capitalize">Available Opening Stock</label>
+                    <div className="relative">
+                      <Box className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
+                      <input type="number" value={formData.in_stock} onChange={(e) => handleInputChange('in_stock', parseFloat(e.target.value) || 0)} className="w-full h-16 pl-14 pr-6 border border-slate-200 rounded-xl text-2xl font-bold text-slate-900 outline-none focus:border-slate-400 font-mono shadow-sm" />
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div className="pt-6 border-t border-slate-100 flex justify-end space-x-3">
-            <button onClick={onCancel} className="px-8 py-3 text-slate-400 font-bold uppercase text-[10px] tracking-widest hover:text-slate-600">Discard</button>
-            <button onClick={handleSubmit} className="px-12 py-3 bg-primary text-slate-900 font-bold uppercase text-[10px] tracking-widest rounded-md border border-slate-200 hover:bg-primary-dark transition-all shadow-md active:scale-95 flex items-center">
-                <Check className="w-4 h-4 mr-2" /> Save Particulars
+        <div className="pt-10 border-t border-slate-100 flex justify-end space-x-6">
+            <button onClick={onCancel} className="px-10 py-4 text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors">Discard Changes</button>
+            <button onClick={handleSubmit} className="px-14 py-4 bg-primary text-slate-900 font-bold text-sm rounded-lg border border-primary hover:bg-primary-dark transition-all shadow-xl active:scale-95 flex items-center">
+                <Check className="w-5 h-5 mr-3" /> Save Stock Details
             </button>
         </div>
     </div>
