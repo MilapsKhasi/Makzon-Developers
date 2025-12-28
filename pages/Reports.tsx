@@ -325,7 +325,7 @@ const Reports = () => {
             className="w-full pl-12 pr-6 py-3.5 bg-white border border-slate-200 rounded-xl text-base outline-none focus:border-slate-400 shadow-sm transition-all font-medium" 
           />
         </div>
-        <div className="flex items-center space-x-3 bg-slate-50 px-5 py-3 rounded-xl border border-slate-200 shadow-inner">
+        <div className="flex items-center space-x-3 bg-[#f9f9f9] px-5 py-3 rounded-xl border border-slate-200 shadow-inner">
            <Filter className="w-4 h-4 text-slate-400" />
            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="text-xs font-bold uppercase border-none bg-transparent outline-none cursor-pointer text-slate-600">
              <option value="All">All Vouchers</option>
@@ -342,7 +342,7 @@ const Reports = () => {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`w-full text-left px-6 py-5 text-[11px] font-bold uppercase tracking-widest transition-all rounded-xl border-2 ${
-                activeTab === tab ? 'bg-slate-100 text-slate-900 border-slate-800 shadow-sm' : 'text-slate-400 hover:bg-slate-50 border-transparent'
+                activeTab === tab ? 'bg-[#ffea79]/20 text-slate-900 border-[#ffea79] shadow-sm' : 'text-slate-400 hover:bg-[#f9f9f9] border-transparent'
               }`}
             >
               {tab}
@@ -356,12 +356,12 @@ const Reports = () => {
             <span>Record Volume: {reportTableData.length}</span>
           </div>
           
-          <div className="flex-1 overflow-auto border border-slate-100 rounded-xl bg-slate-50/20 custom-scrollbar">
+          <div className="flex-1 overflow-auto border border-slate-100 rounded-xl bg-[#f9f9f9]/50 custom-scrollbar">
             {reportTableData.length === 0 ? (
                 <div className="py-40 text-center text-slate-300 italic text-base">No data records found for the selected period.</div>
             ) : (
                 <table className="w-full text-left text-[12px] border-collapse">
-                  <thead className="bg-slate-50/80 border-b border-slate-200 sticky top-0 z-10">
+                  <thead className="bg-[#f9f9f9] border-b border-slate-200 sticky top-0 z-10">
                     <tr className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                       {['Purchases', 'Starred', 'Favorites'].includes(activeTab) && <th className="py-4 px-6">Flags</th>}
                       {Object.keys(reportTableData[0] || {}).filter(k => !['id', 'isStarred', 'isFavorite', 'originalBillId', 'status'].includes(k)).map(h => (
@@ -371,7 +371,7 @@ const Reports = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {reportTableData.map((row: any) => (
-                      <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={row.id} className="hover:bg-[#f9f9f9] transition-colors">
                         {['Purchases', 'Starred', 'Favorites'].includes(activeTab) && (
                           <td className="py-4 px-6 flex space-x-3">
                             <button onClick={() => toggleFlag(row.originalBillId, 'is_starred')} className={`${row.isStarred ? 'text-amber-400' : 'text-slate-200 hover:text-slate-400'} transition-colors`}><Star className={`w-4 h-4 ${row.isStarred ? 'fill-amber-400' : ''}`} /></button>
@@ -379,7 +379,7 @@ const Reports = () => {
                           </td>
                         )}
                         {Object.keys(row).filter(k => !['id', 'isStarred', 'isFavorite', 'originalBillId', 'status'].includes(k)).map(k => (
-                          <td key={k} className="py-4 px-6 border-r border-slate-100 whitespace-nowrap font-medium text-slate-700">{row[k]}</td>
+                          <td key={k} className={`py-4 px-6 border-r border-slate-100 whitespace-nowrap font-medium ${k === 'Party Name' || k === 'Voucher No' ? 'text-[#38b6ff] cursor-pointer hover:underline' : 'text-slate-700'}`}>{row[k]}</td>
                         ))}
                       </tr>
                     ))}

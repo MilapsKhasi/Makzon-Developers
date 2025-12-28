@@ -1,9 +1,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, ArrowRight, Lock, Loader2 } from 'lucide-react';
+import { Mail, ArrowRight, Lock, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import Logo from '../components/Logo';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -36,74 +35,75 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-sans">
-      <div className="max-w-md w-full bg-white border border-slate-200 p-10 boxy-shadow rounded-md">
-        <div className="text-center mb-10">
-          <div className="flex justify-center mb-6">
-            <Logo size={64} />
-          </div>
-          <h1 className="text-2xl font-semibold text-slate-900 mb-2">
+    <div className="min-h-screen bg-[#f9f9f9] flex items-center justify-center p-6 font-sans">
+      {/* Outer Primary Yellow Card Container - 10px rounded edges */}
+      <div className="w-full max-w-sm bg-[#ffea79] rounded-[10px] p-2 animate-in zoom-in-95 duration-700 border border-slate-200/20 shadow-xl">
+        
+        {/* Welcome Text Header Area */}
+        <div className="text-center py-8">
+          <h2 className="text-2xl font-semibold text-slate-900">
             {isLogin ? 'Welcome Back' : 'Create Account'}
-          </h1>
-          <p className="text-slate-400 text-sm">
-            {isLogin ? 'Login to access your workspace' : 'Start your cloud-synced inventory'}
-          </p>
+          </h2>
         </div>
 
-        <form onSubmit={handleAuth} className="space-y-6">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded font-medium">
-              {error}
+        {/* Inner White Form Container */}
+        <div className="bg-white rounded-[10px] p-6 pb-10">
+          <form onSubmit={handleAuth} className="space-y-6">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-[10px] font-semibold animate-shake">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-slate-900 ml-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-slate-400 font-medium text-slate-900 transition-all placeholder:text-slate-300 text-sm"
+                  placeholder="Your Email Address"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-slate-900 ml-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-slate-400 font-medium text-slate-900 transition-all placeholder:text-slate-300 text-sm"
+                  placeholder="Your Password"
+                />
+              </div>
             </div>
-          )}
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-slate-500 capitalize">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-md outline-none focus:border-slate-400 font-medium"
-                placeholder="email@business.com"
-              />
+            <div className="pt-2 space-y-4">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-[10px] font-bold bg-[#ffea79] text-slate-900 hover:bg-[#f0db69] transition-all flex items-center justify-center disabled:opacity-50 text-xs tracking-[0.15em] border border-transparent active:scale-[0.98] shadow-md"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : 'GET STARTED'} 
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
+                className="w-full text-center text-[10px] text-slate-400 font-medium"
+              >
+                {isLogin ? (
+                  <>Don't have an account? <span className="text-[#38b6ff] font-bold uppercase ml-1">SIGN UP</span></>
+                ) : (
+                  <>Already have an account? <span className="text-[#38b6ff] font-bold uppercase ml-1">LOGIN</span></>
+                )}
+              </button>
             </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-slate-500 capitalize">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-md outline-none focus:border-slate-400 font-medium"
-                placeholder="••••••••"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-4 rounded-md font-semibold bg-primary text-slate-800 hover:bg-primary-dark border border-slate-200 transition-colors flex items-center justify-center disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : (isLogin ? 'Login' : 'Sign Up')} 
-            {!loading && <ArrowRight className="w-4 h-4 ml-2" />}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsLogin(!isLogin)}
-            className="w-full text-center text-xs text-slate-400 hover:text-slate-600 font-medium"
-          >
-            {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Login"}
-          </button>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

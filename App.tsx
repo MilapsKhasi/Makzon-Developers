@@ -13,15 +13,26 @@ import Purchases from './pages/Purchases';
 import DutiesTaxes from './pages/DutiesTaxes';
 import Auth from './pages/Auth';
 import Companies from './pages/Companies';
+import SplashScreen from './components/SplashScreen';
 import { getActiveCompanyId } from './utils/helpers';
 import { supabase } from './lib/supabase';
 
 const App = () => {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
+  const [isSplashExiting, setIsSplashExiting] = useState(false);
   const [activeCompanyId, setActiveCompanyId] = useState(getActiveCompanyId());
 
   useEffect(() => {
+    // 3.0 seconds splash duration + 0.7s fade transition
+    const splashTimer = setTimeout(() => {
+      setIsSplashExiting(true);
+      setTimeout(() => {
+        setShowSplash(false);
+      }, 700);
+    }, 3000);
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
@@ -37,10 +48,13 @@ const App = () => {
 
     window.addEventListener('appSettingsChanged', handleSettingsChange);
     return () => {
+      clearTimeout(splashTimer);
       subscription.unsubscribe();
       window.removeEventListener('appSettingsChanged', handleSettingsChange);
     };
   }, []);
+
+  if (showSplash) return <SplashScreen isExiting={isSplashExiting} />;
 
   if (loading) return (
     <div className="h-screen w-screen flex items-center justify-center bg-white">
@@ -50,22 +64,24 @@ const App = () => {
 
   return (
     <Router>
-      <Routes>
-        <Route path="/setup" element={session ? <Navigate to="/companies" replace /> : <Auth />} />
-        <Route path="/companies" element={session ? <Companies /> : <Navigate to="/setup" replace />} />
-        <Route path="/" element={session ? (activeCompanyId ? <Layout /> : <Navigate to="/companies" replace />) : (<Navigate to="/setup" replace />)}>
-          <Route index element={<Dashboard />} />
-          <Route path="masters" element={<Masters />} />
-          <Route path="purchases" element={<Purchases />} />
-          <Route path="bills" element={<Bills />} />
-          <Route path="vendors" element={<Vendors />} />
-          <Route path="duties-taxes" element={<DutiesTaxes />} />
-          <Route path="stock" element={<Stock />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <div className="animate-in fade-in duration-1000">
+        <Routes>
+          <Route path="/setup" element={session ? <Navigate to="/companies" replace /> : <Auth />} />
+          <Route path="/companies" element={session ? <Companies /> : <Navigate to="/setup" replace />} />
+          <Route path="/" element={session ? (activeCompanyId ? <Layout /> : <Navigate to="/companies" replace />) : (<Navigate to="/setup" replace />)}>
+            <Route index element={<Dashboard />} />
+            <Route path="masters" element={<Masters />} />
+            <Route path="purchases" element={<Purchases />} />
+            <Route path="bills" element={<Bills />} />
+            <Route path="vendors" element={<Vendors />} />
+            <Route path="duties-taxes" element={<DutiesTaxes />} />
+            <Route path="stock" element={<Stock />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
     </Router>
   );
 };

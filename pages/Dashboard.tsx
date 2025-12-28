@@ -98,10 +98,10 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
         <StatCard label="Net Total Volume" value={formatCurrency(stats.totalPurchases)} icon={TrendingUp} color="bg-blue-50 text-blue-600" />
-        <StatCard label="Basic Taxable Val" value={formatCurrency(stats.withoutGst)} icon={DollarSign} color="bg-slate-50 text-slate-600" />
+        <StatCard label="Basic Taxable Val" value={formatCurrency(stats.withoutGst)} icon={DollarSign} color="bg-slate-100 text-slate-600" />
         <StatCard label="Total Tax Accrual" value={formatCurrency(stats.gst)} icon={PieChart} color="bg-amber-50 text-amber-600" />
         <StatCard label="Grand Total (Net)" value={formatCurrency(stats.withGst)} icon={ReceiptText} color="bg-green-50 text-green-600" />
-        <StatCard label="Cleared Tax Credit" value={formatCurrency(stats.gstPaid)} icon={Check} color="bg-primary/20 text-slate-900" />
+        <StatCard label="Cleared Tax Credit" value={formatCurrency(stats.gstPaid)} icon={Check} color="bg-[#fff5bd] text-slate-900" />
       </div>
 
       <div className="space-y-6">
@@ -117,7 +117,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-[#f9f9f9] border-b border-slate-200">
                 <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                   <th className="py-5 px-8 border-r border-slate-200 w-12 text-center">No</th>
                   <th className="py-5 px-8 border-r border-slate-200">Voucher Date</th>
@@ -130,7 +130,7 @@ const Dashboard = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {recentBills.map((bill, i) => (
-                  <tr key={bill.id} className="hover:bg-slate-50 transition-all duration-200 group">
+                  <tr key={bill.id} className="hover:bg-[#f9f9f9] transition-all duration-200 group">
                     <td className="py-5 px-8 border-r border-slate-200 text-slate-400 text-center font-mono text-[10px]">{i + 1}</td>
                     <td className="py-5 px-8 border-r border-slate-200 font-bold text-slate-600">{formatDate(bill.date)}</td>
                     <td className="py-5 px-8 border-r border-slate-200 font-mono font-bold text-slate-900">{bill.bill_number}</td>
