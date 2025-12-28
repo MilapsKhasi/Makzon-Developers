@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Save, Plus, Trash2, Loader2, Calculator, Percent, Banknote, ShieldCheck, UserPlus, UserRoundPen, Check } from 'lucide-react';
+import { Save, Plus, Trash2, Loader2, Calculator, Percent, Banknote, ShieldCheck, UserPlus, UserRoundPen, Check, Info } from 'lucide-react';
 import { getActiveCompanyId, formatCurrency, getDatePlaceholder, parseDateFromInput, formatDate } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
@@ -44,7 +44,6 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   const [formData, setFormData] = useState<any>(getInitialState());
   const [vendors, setVendors] = useState<any[]>([]);
   const [stockItems, setStockItems] = useState<any[]>([]);
-  const [taxMasters, setTaxMasters] = useState<any[]>([]);
   
   const [vendorModal, setVendorModal] = useState<{ isOpen: boolean, initialData: any | null, prefilledName: string }>({
     isOpen: false,
@@ -52,81 +51,54 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     prefilledName: ''
   });
 
-  const loadDependencies = async () => {
-    if (!cid) return;
-    try {
-      const { data: v } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false);
-      const { data: s } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
-      const { data: t } = await supabase.from('duties_taxes').select('*').eq('company_id', cid).eq('is_deleted', false);
-      const { data: c } = await supabase.from('companies').select('state').eq('id', cid).single();
-      
-      setVendors(v || []);
-      setStockItems(s || []);
-      setTaxMasters(t || []);
-      setFormData(prev => ({ ...prev, company_state: c?.state || '' }));
-    } catch (e) {
-      console.error("Dependency load failed", e);
-    }
-  };
-
-  useEffect(() => {
-    loadDependencies();
-    if (initialData) {
-      setFormData(prev => ({ 
-        ...prev,
-        ...initialData,
-        displayDate: formatDate(initialData.date || today),
-        items: Array.isArray(initialData.items) ? initialData.items : getInitialState().items
-      }));
-    }
-  }, [initialData, cid]);
-
-  const uniqueTaxMasters = useMemo(() => {
-    const seenNames = new Set();
-    return taxMasters.filter(t => {
-      const lowerName = t.name.trim().toLowerCase();
-      if (seenNames.has(lowerName)) return false;
-      seenNames.add(lowerName);
-      return true;
-    });
-  }, [taxMasters]);
-
-  const getStickyChargesKey = (vendorId: string) => `sticky_charges_${cid}_${vendorId}`;
-  const saveStickyCharges = (vendorId: string, duties: any[]) => {
-    localStorage.setItem(getStickyChargesKey(vendorId), JSON.stringify(duties));
-  };
-  const getStickyCharges = (vendorId: string) => {
-    const saved = localStorage.getItem(getStickyChargesKey(vendorId));
-    return saved ? JSON.parse(saved) : null;
-  };
-
-  const recalculate = (items: any[], gstType = formData.gst_type, duties = formData.duties_and_taxes) => {
-    let totalTaxable = 0;
-    let totalTax = 0;
+  const recalculateManual = (state: any) => {
+    // 1. Recalculate basic line items
+    let calculatedTaxable = 0;
+    let autoGstTotal = 0;
     
-    const updatedItems = items.map(item => {
-      const taxable = (Number(item.qty) || 0) * (Number(item.rate) || 0);
-      const taxRate = Number(item.tax_rate) || 0;
+    const updatedItems = (state.items || []).map((item: any) => {
+      const qty = parseFloat(item.qty) || 0;
+      const rate = parseFloat(item.rate) || 0;
+      const taxRate = parseFloat(item.tax_rate) || 0;
+      const taxable = qty * rate;
       const taxAmount = taxable * (taxRate / 100);
-      totalTaxable += taxable;
-      totalTax += taxAmount;
+      calculatedTaxable += taxable;
+      autoGstTotal += taxAmount;
       return { ...item, taxableAmount: taxable, amount: taxable + taxAmount };
     });
 
-    let cgst = 0, sgst = 0, igst = 0;
-    if (gstType === 'Intra-State') {
-      cgst = totalTax / 2;
-      sgst = totalTax / 2;
-    } else {
-      igst = totalTax;
+    // 2. Handle GST (Only overwrite if resetTaxes is true)
+    let cgst = parseFloat(state.total_cgst);
+    let sgst = parseFloat(state.total_sgst);
+    let igst = parseFloat(state.total_igst);
+
+    if (isNaN(cgst)) cgst = 0;
+    if (isNaN(sgst)) sgst = 0;
+    if (isNaN(igst)) igst = 0;
+
+    if (state.resetTaxes) {
+      if (state.gst_type === 'Intra-State') {
+        cgst = autoGstTotal / 2;
+        sgst = autoGstTotal / 2;
+        igst = 0;
+      } else {
+        igst = autoGstTotal;
+        cgst = 0;
+        sgst = 0;
+      }
     }
 
-    let runningTotal = totalTaxable + cgst + sgst + igst;
-    const processedDuties = duties.map((d: any) => {
+    // 3. Start running total for Duties & Taxes
+    let runningTotal = calculatedTaxable + cgst + sgst + igst;
+
+    // 4. Calculate Ledger Charges (Duties & Taxes)
+    const processedDuties = (state.duties_and_taxes || []).map((d: any) => {
       let calcAmt = 0;
-      const base = d.apply_on === 'Subtotal' ? totalTaxable : runningTotal;
-      const rate = Number(d.rate) || 0;
-      const fixed = Number(d.fixed_amount) || 0;
+      // If the field was manually edited, we might want to respect it, 
+      // but standard behavior is to recalculate based on master rate unless rate is zero.
+      const base = d.apply_on === 'Subtotal' ? calculatedTaxable : runningTotal;
+      const rate = parseFloat(d.rate) || 0;
+      const fixed = parseFloat(d.fixed_amount) || 0;
 
       if (d.calc_method === 'Percentage') calcAmt = base * (rate / 100);
       else if (d.calc_method === 'Fixed') calcAmt = fixed;
@@ -137,41 +109,80 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       return { ...d, amount: finalAmt };
     });
 
+    // 5. Finalize Round Off and Grand Total
     const roundedTotal = Math.round(runningTotal);
     const ro = parseFloat((roundedTotal - runningTotal).toFixed(2));
 
-    setFormData(prev => ({
-      ...prev,
+    return {
+      ...state,
       items: updatedItems,
-      gst_type: gstType,
-      total_without_gst: totalTaxable,
+      total_without_gst: calculatedTaxable,
       total_cgst: cgst,
       total_sgst: sgst,
       total_igst: igst,
-      total_gst: totalTax,
+      total_gst: cgst + sgst + igst,
       duties_and_taxes: processedDuties,
       round_off: ro,
-      grand_total: roundedTotal
-    }));
+      grand_total: roundedTotal,
+      resetTaxes: false
+    };
+  };
+
+  const loadDependencies = async () => {
+    if (!cid) return;
+    try {
+      const { data: v } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false);
+      const { data: s } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
+      const { data: t } = await supabase.from('duties_taxes').select('*').eq('company_id', cid).eq('is_deleted', false);
+      const { data: c } = await supabase.from('companies').select('state').eq('id', cid).single();
+      
+      const allMasters = (t || []).map(tm => ({ ...tm, amount: 0 }));
+      setVendors(v || []);
+      setStockItems(s || []);
+      
+      if (!initialData) {
+        setFormData(prev => {
+          const newState = { ...prev, company_state: c?.state || '', duties_and_taxes: allMasters };
+          return recalculateManual(newState);
+        });
+      } else {
+         setFormData(prev => ({ ...prev, company_state: c?.state || '' }));
+      }
+    } catch (e) {
+      console.error("Dependency load failed", e);
+    }
+  };
+
+  useEffect(() => {
+    loadDependencies();
+    if (initialData) {
+      // On load, we want to maintain the specific values saved in the DB
+      setFormData(prev => recalculateManual({ 
+        ...prev,
+        ...initialData,
+        displayDate: formatDate(initialData.date || today),
+        items: Array.isArray(initialData.items) ? initialData.items : getInitialState().items,
+        resetTaxes: false // Don't auto-reset stored taxes
+      }));
+    }
+  }, [initialData, cid]);
+
+  const handleManualTaxChange = (field: string, value: any) => {
+    const numVal = parseFloat(value);
+    setFormData(prev => recalculateManual({ ...prev, [field]: isNaN(numVal) ? 0 : numVal, resetTaxes: false }));
   };
 
   const handleVendorChange = (name: string) => {
     const selectedVendor = vendors.find(v => v.name.toLowerCase() === name.toLowerCase());
-    let appliedDuties = [];
-    if (selectedVendor) {
-        const localSticky = getStickyCharges(selectedVendor.id);
-        appliedDuties = localSticky || uniqueTaxMasters.map(m => ({ ...m, amount: 0 }));
-    } else {
-        appliedDuties = uniqueTaxMasters.map(m => ({ ...m, amount: 0 }));
-    }
-    setFormData(prev => ({
-      ...prev,
-      vendor_name: name,
-      gstin: selectedVendor?.gstin || prev.gstin,
-      address: selectedVendor?.address || prev.address,
-      duties_and_taxes: appliedDuties
-    }));
-    recalculate(formData.items, formData.gst_type, appliedDuties);
+    setFormData(prev => {
+        const next = {
+            ...prev,
+            vendor_name: name,
+            gstin: selectedVendor?.gstin || prev.gstin,
+            address: selectedVendor?.address || prev.address
+        };
+        return recalculateManual(next);
+    });
   };
 
   const matchedVendor = useMemo(() => vendors.find(v => v.name.toLowerCase() === formData.vendor_name.toLowerCase()), [formData.vendor_name, vendors]);
@@ -195,66 +206,49 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     } else {
       newItems[index] = { ...newItems[index], itemName: name };
     }
-    recalculate(newItems);
+    setFormData(prev => recalculateManual({ ...prev, items: newItems, resetTaxes: true }));
   };
 
   const updateItemField = (index: number, field: string, value: any) => {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [field]: value };
-    recalculate(newItems);
+    setFormData(prev => recalculateManual({ ...prev, items: newItems, resetTaxes: true }));
   };
 
   const handleDutyFieldChange = (id: string, field: string, value: any) => {
-    const newDuties = formData.duties_and_taxes.map((d: any) => {
-      if (d.id === id) return { ...d, [field]: Number(value) };
+    const numVal = parseFloat(value);
+    const newDuties = (formData.duties_and_taxes || []).map((d: any) => {
+      if (d.id === id) return { ...d, [field]: isNaN(numVal) ? 0 : numVal };
       return d;
     });
-    recalculate(formData.items, formData.gst_type, newDuties);
-  };
-
-  const addDuty = (tax: any) => {
-    if (formData.duties_and_taxes.find((d: any) => d.name === tax.name)) return;
-    recalculate(formData.items, formData.gst_type, [...formData.duties_and_taxes, tax]);
+    setFormData(prev => recalculateManual({ ...prev, duties_and_taxes: newDuties, resetTaxes: false }));
   };
 
   const removeRow = (idx: number) => {
     const newItems = formData.items.filter((_: any, i: number) => i !== idx);
-    recalculate(newItems.length ? newItems : getInitialState().items);
+    const data = newItems.length ? newItems : getInitialState().items;
+    setFormData(prev => recalculateManual({ ...prev, items: data, resetTaxes: true }));
   };
-
-  const gstAnalysis = useMemo(() => {
-    const groups: Record<number, any> = {};
-    formData.items.forEach((item: any) => {
-      const rate = Number(item.tax_rate) || 0;
-      if (!groups[rate]) groups[rate] = { rate, taxable: 0, tax: 0 };
-      groups[rate].taxable += item.taxableAmount || 0;
-      groups[rate].tax += (item.taxableAmount || 0) * (rate / 100);
-    });
-    return Object.values(groups).filter(g => g.taxable > 0).sort((a, b) => a.rate - b.rate);
-  }, [formData.items]);
 
   const saveBillToSupabase = async (payload: any): Promise<any> => {
     const operation = initialData?.id 
-        ? supabase.from('bills').update(payload).eq('id', initialData.id)
-        : supabase.from('bills').insert([payload]);
-
+      ? supabase.from('bills').update(payload).eq('id', initialData.id).select()
+      : supabase.from('bills').insert([payload]).select();
+    
     const res = await operation;
 
     if (res.error) {
       const msg = res.error.message;
-      const missingColumnMatch = msg.match(/'(.+?)' column/) || msg.match(/column '(.+?)' of/);
+      const missingColumnMatch = msg.match(/column '(.+?)' of/i) || 
+                                 msg.match(/'(.+?)' column/i) || 
+                                 msg.match(/find the '(.+?)' column/i);
+      
       if (missingColumnMatch) {
         const offendingColumn = missingColumnMatch[1];
         if (offendingColumn && payload.hasOwnProperty(offendingColumn)) {
-          const nextPayload = { ...payload };
-          delete nextPayload[offendingColumn];
+          const nextPayload = { ...payload }; 
+          delete nextPayload[offendingColumn]; 
           return saveBillToSupabase(nextPayload);
-        }
-      }
-      const commonMismatches = ['round_off', 'gst_type', 'is_starred', 'is_favorite', 'duties_and_taxes', 'items'];
-      for (const col of commonMismatches) {
-        if (msg.includes(`'${col}'`) && payload.hasOwnProperty(col)) {
-           const nextPayload = { ...payload }; delete nextPayload[col]; return saveBillToSupabase(nextPayload);
         }
       }
       throw res.error;
@@ -269,15 +263,17 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const payload = { ...formData, company_id: cid, user_id: user?.id, is_deleted: false };
-      delete payload.displayDate; delete payload.company_state; delete payload.vendor_state;
+      const internalFields = ['displayDate', 'company_state', 'vendor_state', 'resetTaxes'];
+      internalFields.forEach(field => delete payload[field]);
       await saveBillToSupabase(payload);
-      if (matchedVendor) {
-        saveStickyCharges(matchedVendor.id, formData.duties_and_taxes);
-        try { await supabase.from('vendors').update({ default_duties: formData.duties_and_taxes }).eq('id', matchedVendor.id); } catch {}
-      }
       window.dispatchEvent(new Event('appSettingsChanged'));
       onSubmit(payload);
-    } catch (err: any) { alert("Submission Error: " + err.message); } finally { setLoading(false); }
+    } catch (err: any) { 
+      console.error("Save Error:", err);
+      alert("Submission Error: " + err.message); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   return (
@@ -287,12 +283,12 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       </Modal>
 
       <form onSubmit={handleSubmit} className="space-y-10">
-        <div className="bg-slate-50 p-8 border border-slate-200 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="bg-[#f9f9f9] p-8 border border-slate-200 rounded-xl grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-500 capitalize">Transaction Category</label>
+            <label className="text-sm font-bold text-slate-500 capitalize">Category</label>
             <div className="flex p-1.5 bg-slate-200 rounded-lg">
                {['Intra-State', 'Inter-State'].map(mode => (
-                 <button key={mode} type="button" onClick={() => recalculate(formData.items, mode)} className={`flex-1 py-2.5 text-sm font-bold rounded-md transition-all ${formData.gst_type === mode ? 'bg-white text-slate-900 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
+                 <button key={mode} type="button" onClick={() => setFormData(prev => recalculateManual({...prev, gst_type: mode, resetTaxes: true}))} className={`flex-1 py-2.5 text-sm font-bold rounded-md transition-all ${formData.gst_type === mode ? 'bg-white text-slate-900 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
                    {mode}
                  </button>
                ))}
@@ -300,17 +296,17 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-500 capitalize">Voucher Date</label>
-            <input required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full h-12 px-5 border border-slate-200 rounded-lg text-base focus:border-slate-400 outline-none shadow-sm transition-all" placeholder={getDatePlaceholder()} />
+            <input required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full h-12 px-5 border border-slate-200 rounded-lg text-base focus:border-slate-400 outline-none shadow-sm transition-all bg-white font-medium" />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-500 capitalize">Invoice Reference No</label>
-            <input required value={formData.bill_number} onChange={e => setFormData({...formData, bill_number: e.target.value})} className="w-full h-12 px-5 border border-slate-200 rounded-lg text-base font-mono font-bold focus:border-slate-400 outline-none shadow-sm" placeholder="INV-100" />
+            <label className="text-sm font-bold text-slate-500 capitalize">Invoice No</label>
+            <input required value={formData.bill_number} onChange={e => setFormData({...formData, bill_number: e.target.value})} className="w-full h-12 px-5 border border-slate-200 rounded-lg text-base font-mono font-bold focus:border-slate-400 outline-none shadow-sm bg-white" />
           </div>
           <div className="space-y-2 relative">
-            <label className="text-sm font-bold text-slate-500 capitalize">Vendor Business Name</label>
+            <label className="text-sm font-bold text-slate-500 capitalize">Vendor</label>
             <div className="flex items-center gap-3">
-                <input required list="vlist" value={formData.vendor_name} onChange={e => handleVendorChange(e.target.value)} className="w-full h-12 px-5 border border-slate-200 rounded-lg text-base font-bold focus:border-slate-400 outline-none shadow-inner bg-white" placeholder="Search registered parties..." />
-                <button type="button" onClick={() => setVendorModal({ isOpen: true, initialData: matchedVendor || null, prefilledName: matchedVendor ? '' : formData.vendor_name })} className={`h-12 w-12 flex items-center justify-center rounded-lg border border-slate-200 transition-all ${matchedVendor ? 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100' : 'bg-primary/20 text-slate-700 hover:bg-primary border-primary/30'}`}>
+                <input required list="vlist" value={formData.vendor_name} onChange={e => handleVendorChange(e.target.value)} className="w-full h-12 px-5 border border-slate-200 rounded-lg text-base font-bold focus:border-slate-400 outline-none shadow-inner bg-white" />
+                <button type="button" onClick={() => setVendorModal({ isOpen: true, initialData: matchedVendor || null, prefilledName: matchedVendor ? '' : formData.vendor_name })} className={`h-12 w-12 flex items-center justify-center rounded-lg border border-slate-200 transition-all ${matchedVendor ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-[#ffea79]/20 text-slate-700'}`}>
                     {matchedVendor ? <UserRoundPen className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
                 </button>
             </div>
@@ -323,21 +319,21 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
             <thead className="bg-slate-100 text-slate-600 font-bold capitalize border-b border-slate-200">
               <tr>
                 <th className="p-6 border-r border-slate-200">Item Description</th>
-                <th className="p-6 border-r border-slate-200 w-32 text-center">HSN Code</th>
-                <th className="p-6 border-r border-slate-200 w-28 text-center">Quantity</th>
-                <th className="p-6 border-r border-slate-200 w-32 text-right">Unit Rate</th>
-                <th className="p-6 border-r border-slate-200 w-32 text-center">GST Rate</th>
-                <th className="p-6 text-right w-44">Taxable Amount</th>
+                <th className="p-6 border-r border-slate-200 w-32 text-center">HSN</th>
+                <th className="p-6 border-r border-slate-200 w-28 text-center">Qty</th>
+                <th className="p-6 border-r border-slate-200 w-32 text-right">Rate</th>
+                <th className="p-6 border-r border-slate-200 w-32 text-center">Tax %</th>
+                <th className="p-6 text-right w-44">Taxable Amt</th>
                 <th className="w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {formData.items.map((it: any, idx: number) => (
                 <tr key={it.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="p-0 border-r border-slate-100"><input list="slist" value={it.itemName} onChange={e => handleItemSelect(idx, e.target.value)} className="w-full p-6 border-none outline-none font-semibold bg-transparent text-slate-900" placeholder="Select item from stock..." /></td>
+                  <td className="p-0 border-r border-slate-100"><input list="slist" value={it.itemName} onChange={e => handleItemSelect(idx, e.target.value)} className="w-full p-6 border-none outline-none font-semibold bg-transparent text-slate-900" /></td>
                   <td className="p-0 border-r border-slate-100"><input value={it.hsnCode} onChange={e => updateItemField(idx, 'hsnCode', e.target.value)} className="w-full p-6 border-none outline-none text-center text-slate-400 font-mono" /></td>
-                  <td className="p-0 border-r border-slate-100"><input type="number" value={it.qty} onChange={e => updateItemField(idx, 'qty', Number(e.target.value))} className="w-full p-6 border-none outline-none text-center font-bold text-slate-800" /></td>
-                  <td className="p-0 border-r border-slate-100"><input type="number" value={it.rate} onChange={e => updateItemField(idx, 'rate', Number(e.target.value))} className="w-full p-6 border-none outline-none text-right font-mono font-bold" /></td>
+                  <td className="p-0 border-r border-slate-100"><input type="number" value={it.qty} onChange={e => updateItemField(idx, 'qty', e.target.value)} className="w-full p-6 border-none outline-none text-center font-bold text-slate-800" /></td>
+                  <td className="p-0 border-r border-slate-100"><input type="number" value={it.rate} onChange={e => updateItemField(idx, 'rate', e.target.value)} className="w-full p-6 border-none outline-none text-right font-mono font-bold" /></td>
                   <td className="p-0 border-r border-slate-100"><select value={it.tax_rate} onChange={e => updateItemField(idx, 'tax_rate', Number(e.target.value))} className="w-full h-full p-6 border-none outline-none text-center bg-transparent font-bold text-slate-900">{TAX_RATES.map(r => <option key={r} value={r}>{r}%</option>)}</select></td>
                   <td className="p-6 text-right font-bold text-slate-900 font-mono bg-slate-50/30">{formatCurrency(it.taxableAmount)}</td>
                   <td className="text-center"><button type="button" onClick={() => removeRow(idx)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-5 h-5" /></button></td>
@@ -345,135 +341,95 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
               ))}
             </tbody>
           </table>
-          <button type="button" onClick={() => setFormData({ ...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: 1, unit: 'PCS', rate: 0, tax_rate: 0, amount: 0 }] })} className="w-full py-5 bg-slate-50 text-sm font-bold text-slate-400 capitalize border-t border-slate-200 hover:bg-slate-100 transition-all">
-            + Add New Line Particular
+          <button type="button" onClick={() => setFormData(prev => recalculateManual({ ...prev, items: [...prev.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: 1, unit: 'PCS', rate: 0, tax_rate: 0, amount: 0 }], resetTaxes: true }))} className="w-full py-5 bg-slate-50 text-sm font-bold text-slate-400 capitalize border-t border-slate-200 hover:bg-slate-100 transition-all">
+            + Add New Line Item
           </button>
         </div>
 
-        <div className="bg-slate-50 p-10 border border-slate-200 rounded-xl space-y-8">
-            <div className="flex justify-between items-center">
-                <h4 className="text-sm font-bold text-slate-600 capitalize flex items-center">
-                  <Calculator className="w-5 h-5 mr-3 text-slate-400" /> Additional Ledgers & Surcharges
-                </h4>
-                <div className="flex flex-wrap gap-3">
-                   {uniqueTaxMasters.map(tax => (
-                     <button key={tax.id} type="button" onClick={() => addDuty(tax)} className="px-5 py-2.5 bg-white border border-slate-200 rounded-lg text-xs font-bold capitalize hover:bg-slate-100 transition-all flex items-center shadow-sm">
-                       <Plus className="w-4 h-4 mr-2 text-slate-400" /> {tax.name}
-                     </button>
-                   ))}
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              {formData.duties_and_taxes.map((d: any, idx: number) => (
-                 <div key={d.id || idx} className="bg-white border border-slate-200 rounded-xl p-6 flex items-center justify-between group shadow-sm">
-                    <div className="w-1/3">
-                      <p className="text-sm font-bold text-slate-900">{d.name}</p>
-                      <p className="text-xs text-slate-400 font-semibold capitalize">{d.type} - {d.calc_method}</p>
-                    </div>
-                    <div className="flex items-center space-x-8 w-2/3 justify-end">
-                      {(d.calc_method === 'Percentage' || d.calc_method === 'Both') && (
-                        <div className="flex items-center bg-slate-50 rounded-lg px-4 border border-slate-100 h-12">
-                          <Percent className="w-4 h-4 text-slate-300 mr-3" /><input type="number" step="0.01" value={d.rate} onChange={(e) => handleDutyFieldChange(d.id, 'rate', e.target.value)} className="w-24 bg-transparent border-none text-sm font-mono py-3 outline-none font-bold" />
-                        </div>
-                      )}
-                      {(d.calc_method === 'Fixed' || d.calc_method === 'Both') && (
-                        <div className="flex items-center bg-slate-50 rounded-lg px-4 border border-slate-100 h-12">
-                          <Banknote className="w-4 h-4 text-slate-300 mr-3" /><input type="number" step="0.01" value={d.fixed_amount} onChange={(e) => handleDutyFieldChange(d.id, 'fixed_amount', e.target.value)} className="w-28 bg-transparent border-none text-sm font-mono py-3 outline-none font-bold" />
-                        </div>
-                      )}
-                      <div className="w-48 text-right"><span className={`text-xl font-bold font-mono ${d.type === 'Deduction' ? 'text-red-500' : 'text-slate-900'}`}>{d.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(d.amount))}</span></div>
-                      <button type="button" onClick={() => { const next = formData.duties_and_taxes.filter((_, i) => i !== idx); recalculate(formData.items, formData.gst_type, next); }} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-5 h-5" /></button>
-                    </div>
-                 </div>
-              ))}
-            </div>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-          <div className="lg:col-span-7 space-y-8">
-              <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm">
-                  <h4 className="text-sm font-bold text-slate-500 capitalize mb-8 flex items-center">
-                      <ShieldCheck className="w-5 h-5 mr-3 text-slate-400" /> Summary Of Tax Distributions
-                  </h4>
-                  <table className="w-full text-sm font-medium border-collapse">
-                      <thead className="text-slate-400 border-b border-slate-100">
-                          <tr>
-                              <th className="py-4 text-left font-bold uppercase text-[10px] tracking-widest">Rate</th>
-                              <th className="py-4 text-right font-bold uppercase text-[10px] tracking-widest">Taxable Val</th>
-                              {formData.gst_type === 'Intra-State' ? (<><th className="py-4 text-right font-bold uppercase text-[10px] tracking-widest">CGST</th><th className="py-4 text-right font-bold uppercase text-[10px] tracking-widest">SGST</th></>) : (<th className="py-4 text-right font-bold uppercase text-[10px] tracking-widest">IGST</th>)}
-                              <th className="py-4 text-right font-bold uppercase text-[10px] tracking-widest">Line Total</th>
-                          </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50">
-                          {gstAnalysis.map(g => (
-                              <tr key={g.rate} className="text-slate-700">
-                                  <td className="py-4 font-bold">{g.rate}%</td>
-                                  <td className="py-4 text-right">{formatCurrency(g.taxable)}</td>
-                                  {formData.gst_type === 'Intra-State' ? (<><td className="py-4 text-right">{formatCurrency(g.tax / 2)}</td><td className="py-4 text-right">{formatCurrency(g.tax / 2)}</td></>) : (<td className="py-4 text-right">{formatCurrency(g.tax)}</td>)}
-                                  <td className="py-4 text-right font-bold">{formatCurrency(g.tax)}</td>
-                              </tr>
-                          ))}
-                          <tr className="border-t-2 border-slate-100 bg-slate-50 font-bold text-slate-900">
-                              <td className="py-4">Grand Totals</td>
-                              <td className="py-4 text-right">{formatCurrency(formData.total_without_gst)}</td>
-                              {formData.gst_type === 'Intra-State' ? (<><td className="py-4 text-right">{formatCurrency(formData.total_cgst)}</td><td className="py-4 text-right">{formatCurrency(formData.total_sgst)}</td></>) : (<td className="py-4 text-right">{formatCurrency(formData.total_igst)}</td>)}
-                              <td className="py-4 text-right">{formatCurrency(formData.total_gst)}</td>
-                          </tr>
-                      </tbody>
-                  </table>
+          <div className="lg:col-span-6 space-y-6">
+              <div className="bg-blue-50 border border-blue-100 p-8 rounded-xl flex items-start gap-4 shadow-sm">
+                  <Info className="w-6 h-6 text-blue-500 shrink-0" />
+                  <p className="text-xs text-blue-700 font-medium leading-relaxed">
+                      All calculations are automated based on line items. You can manually adjust taxes and ledger charges here if required for specific vouchers.
+                  </p>
               </div>
           </div>
 
-          <div className="lg:col-span-5 bg-slate-50 text-slate-900 p-10 rounded-xl space-y-6 border border-slate-200 shadow-md">
-              <div className="flex justify-between items-center text-sm font-bold text-slate-500 border-b border-slate-200 pb-6 mb-6 capitalize">
-                  <span>Gross Taxable Amount</span>
-                  <span className="text-lg font-mono font-bold text-slate-900">{formatCurrency(formData.total_without_gst)}</span>
+          <div className="lg:col-span-6 bg-[#f9f9f9] border border-slate-200 p-10 rounded-xl space-y-6 shadow-md">
+              <div className="flex justify-between items-center text-sm font-bold text-slate-600 border-b border-slate-200 pb-4 mb-2">
+                  <span>Basic Taxable Value</span>
+                  <span className="font-mono text-slate-900">{formatCurrency(formData.total_without_gst)}</span>
               </div>
-              
-              <div className="space-y-4 pb-6 border-b border-slate-200 font-semibold">
+
+              <div className="space-y-4">
                   {formData.gst_type === 'Intra-State' ? (
-                      <>
-                          <div className="flex justify-between items-center">
-                              <span className="text-sm text-slate-500 capitalize">Central Goods Tax (CGST)</span>
-                              <span className="text-lg font-mono font-bold">{formatCurrency(formData.total_cgst)}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                              <span className="text-sm text-slate-500 capitalize">State Goods Tax (SGST)</span>
-                              <span className="text-lg font-mono font-bold">{formatCurrency(formData.total_sgst)}</span>
-                          </div>
-                      </>
-                  ) : (
-                      <div className="flex justify-between items-center">
-                          <span className="text-sm text-slate-500 capitalize">Integrated Goods Tax (IGST)</span>
-                          <span className="text-lg font-mono font-bold">{formatCurrency(formData.total_igst)}</span>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">CGST Amount</label>
+                            <input type="number" step="0.01" value={formData.total_cgst} onChange={(e) => handleManualTaxChange('total_cgst', e.target.value)} className="w-full h-11 px-4 border border-slate-200 rounded-lg font-mono font-bold text-slate-900 focus:border-slate-400 outline-none bg-white shadow-inner" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">SGST Amount</label>
+                            <input type="number" step="0.01" value={formData.total_sgst} onChange={(e) => handleManualTaxChange('total_sgst', e.target.value)} className="w-full h-11 px-4 border border-slate-200 rounded-lg font-mono font-bold text-slate-900 focus:border-slate-400 outline-none bg-white shadow-inner" />
+                        </div>
                       </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">IGST Amount</label>
+                        <input type="number" step="0.01" value={formData.total_igst} onChange={(e) => handleManualTaxChange('total_igst', e.target.value)} className="w-full h-11 px-4 border border-slate-200 rounded-lg font-mono font-bold text-slate-900 focus:border-slate-400 outline-none bg-white shadow-inner" />
+                    </div>
                   )}
               </div>
 
-              {formData.duties_and_taxes.length > 0 && (
-                  <div className="space-y-4 pb-6 border-b border-slate-200 font-semibold">
-                      {formData.duties_and_taxes.map((d: any, idx: number) => (
-                          <div key={d.id || idx} className={`flex justify-between items-center text-sm ${d.type === 'Deduction' ? 'text-red-500' : 'text-slate-500'}`}>
-                              <span className="capitalize">{d.name}</span>
-                              <span className="text-lg font-mono font-bold">{d.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(d.amount))}</span>
-                          </div>
-                      ))}
-                  </div>
+              {formData.duties_and_taxes && formData.duties_and_taxes.length > 0 && (
+                <div className="space-y-4 border-t border-slate-200 pt-4">
+                    {formData.duties_and_taxes.map((d: any, idx: number) => {
+                         const isRate = d.calc_method === 'Percentage' || d.calc_method === 'Both';
+                         const isFixed = d.calc_method === 'Fixed' || d.calc_method === 'Both';
+                         return (
+                            <div key={d.id || idx} className="grid grid-cols-12 gap-3 items-end">
+                                <div className="col-span-5">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate block mb-1">{d.name}</label>
+                                    <div className="flex items-center bg-white border border-slate-200 rounded-lg h-11 px-3 shadow-inner">
+                                        {isRate ? (
+                                            <>
+                                                <Percent className="w-3 h-3 text-slate-300 mr-2" />
+                                                <input type="number" step="0.01" value={d.rate} onChange={(e) => handleDutyFieldChange(d.id, 'rate', e.target.value)} className="w-full bg-transparent border-none text-xs font-mono font-bold outline-none" />
+                                            </>
+                                        ) : isFixed ? (
+                                            <>
+                                                <Banknote className="w-3 h-3 text-slate-300 mr-2" />
+                                                <input type="number" step="0.01" value={d.fixed_amount} onChange={(e) => handleDutyFieldChange(d.id, 'fixed_amount', e.target.value)} className="w-full bg-transparent border-none text-xs font-mono font-bold outline-none" />
+                                            </>
+                                        ) : null}
+                                    </div>
+                                </div>
+                                <div className="col-span-5 text-right flex flex-col items-end">
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase mb-1">Charge</span>
+                                    <span className={`text-sm font-bold font-mono h-11 flex items-center ${d.type === 'Deduction' ? 'text-rose-500' : 'text-slate-900'}`}>{d.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(d.amount))}</span>
+                                </div>
+                                <div className="col-span-2 text-right">
+                                    <button type="button" onClick={() => setFormData(prev => recalculateManual({...prev, duties_and_taxes: prev.duties_and_taxes.filter((_: any, i: number) => i !== idx)}))} className="h-11 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+                         );
+                    })}
+                </div>
               )}
 
-              <div className="flex justify-between items-center text-sm font-bold text-slate-400 italic">
-                  <span>Currency Rounding Difference</span>
-                  <span className="font-mono">{formData.round_off >= 0 ? '+' : ''}{formData.round_off.toFixed(2)}</span>
+              <div className="flex justify-between items-center text-xs font-bold text-slate-400 border-t border-slate-200 pt-6 capitalize italic">
+                  <span>Round Off Adjustment</span>
+                  <span className="font-mono">{formData.round_off >= 0 ? '+' : ''}{(formData.round_off || 0).toFixed(2)}</span>
               </div>
 
-              <div className="flex justify-between items-end pt-10">
+              <div className="flex justify-between items-end pt-4 border-t border-slate-200">
                   <div>
-                      <p className="text-xs font-bold text-slate-400 capitalize mb-2">Final Payable Net Total</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Payable Net Total</p>
                       <h2 className="text-4xl font-bold font-mono tracking-tighter text-slate-900 leading-none">{formatCurrency(formData.grand_total)}</h2>
                   </div>
-                  <button type="submit" disabled={loading} className="bg-primary text-slate-900 px-12 py-5 rounded-lg font-bold capitalize text-base hover:bg-white border-2 border-primary transition-all shadow-xl active:scale-95 disabled:opacity-50 flex items-center">
-                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Confirm Bill Voucher'}
+                  <button type="submit" disabled={loading} className="bg-[#ffea79] text-slate-900 px-10 py-5 rounded-lg font-bold capitalize text-base hover:bg-[#f0db69] border border-[#ffea79] transition-all shadow-md active:scale-95 disabled:opacity-50">
+                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Commit Bill'}
                   </button>
               </div>
           </div>
