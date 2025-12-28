@@ -26,11 +26,13 @@ const Purchases = () => {
     const cid = getActiveCompanyId();
     if (!cid) return;
 
+    // Filter to exclude 'Sale' types so only Purchases show here
     const { data } = await supabase
       .from('bills')
       .select('*')
       .eq('company_id', cid)
       .eq('is_deleted', false)
+      .neq('type', 'Sale')
       .order('date', { ascending: false });
 
     setBills(data || []);
@@ -68,7 +70,7 @@ const Purchases = () => {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Purchase Voucher">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Purchase Voucher" maxWidth="max-w-full">
         <BillForm initialData={editingBill} onSubmit={() => { setIsModalOpen(false); loadData(); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>
 

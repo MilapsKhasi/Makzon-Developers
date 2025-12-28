@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, Package, ShieldCheck, Tag, Box, Hash } from 'lucide-react';
+import { Save, Package, ShieldCheck, Tag, Box, Hash } from 'lucide-react';
 import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES } from '../utils/helpers';
 
 interface StockFormProps {
@@ -111,9 +111,9 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
         </div>
 
         <div className="pt-10 border-t border-slate-100 flex justify-end space-x-6">
-            <button onClick={onCancel} className="px-10 py-4 text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors">Discard Changes</button>
-            <button onClick={handleSubmit} className="px-14 py-4 bg-primary text-slate-900 font-bold text-sm rounded-lg border border-primary hover:bg-primary-dark transition-all shadow-xl active:scale-95 flex items-center">
-                <Check className="w-5 h-5 mr-3" /> Save Stock Details
+            <button onClick={onCancel} className="px-10 py-4 text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors">Discard</button>
+            <button onClick={handleSubmit} className="h-16 w-16 bg-primary text-slate-900 rounded-none border border-primary hover:bg-primary-dark transition-all flex items-center justify-center">
+                <Save className="w-6 h-6" />
             </button>
         </div>
     </div>

@@ -36,8 +36,8 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-[#f9f9f9] flex items-center justify-center p-6 font-sans">
-      {/* Outer Primary Yellow Card Container - 10px rounded edges */}
-      <div className="w-full max-w-sm bg-[#ffea79] rounded-[10px] p-2 animate-in zoom-in-95 duration-700 border border-slate-200/20 shadow-xl">
+      {/* Outer Primary Yellow Card Container - Removed shadow-xl */}
+      <div className="w-full max-w-sm bg-[#ffea79] rounded-[10px] p-2 animate-in zoom-in-95 duration-700 border border-slate-200/20 shadow-none">
         
         {/* Welcome Text Header Area */}
         <div className="text-center py-8">
@@ -47,7 +47,7 @@ const Auth = () => {
         </div>
 
         {/* Inner White Form Container */}
-        <div className="bg-white rounded-[10px] p-6 pb-10">
+        <div className="bg-white rounded-[10px] p-6 pb-10 shadow-none">
           <form onSubmit={handleAuth} className="space-y-6">
             {error && (
               <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-[10px] font-semibold animate-shake">
@@ -63,7 +63,7 @@ const Auth = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-slate-400 font-medium text-slate-900 transition-all placeholder:text-slate-300 text-sm"
+                  className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-slate-400 font-medium text-slate-900 transition-all placeholder:text-slate-300 text-sm shadow-none"
                   placeholder="Your Email Address"
                 />
               </div>
@@ -75,7 +75,7 @@ const Auth = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-slate-400 font-medium text-slate-900 transition-all placeholder:text-slate-300 text-sm"
+                  className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-slate-400 font-medium text-slate-900 transition-all placeholder:text-slate-300 text-sm shadow-none"
                   placeholder="Your Password"
                 />
               </div>
@@ -85,7 +85,7 @@ const Auth = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-[10px] font-bold bg-[#ffea79] text-slate-900 hover:bg-[#f0db69] transition-all flex items-center justify-center disabled:opacity-50 text-xs tracking-[0.15em] border border-transparent active:scale-[0.98] shadow-md"
+                className="w-full py-3.5 rounded-[10px] font-bold bg-[#ffea79] text-slate-900 hover:bg-[#f0db69] transition-all flex items-center justify-center disabled:opacity-50 text-xs tracking-[0.15em] border border-transparent active:scale-[0.98] shadow-none"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : 'GET STARTED'} 
               </button>

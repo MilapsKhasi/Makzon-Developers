@@ -25,7 +25,6 @@ const App = () => {
   const [activeCompanyId, setActiveCompanyId] = useState(getActiveCompanyId());
 
   useEffect(() => {
-    // 3.0 seconds splash duration + 0.7s fade transition
     const splashTimer = setTimeout(() => {
       setIsSplashExiting(true);
       setTimeout(() => {

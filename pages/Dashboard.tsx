@@ -1,35 +1,21 @@
 
 import React, { useEffect, useState } from 'react';
-import { Search, Loader2, ReceiptText, TrendingUp, DollarSign, PieChart, Check, Plus, LayoutDashboard } from 'lucide-react';
-import { formatCurrency, getActiveCompanyId, formatDate } from '../utils/helpers';
+import { Search, Loader2, ChevronDown } from 'lucide-react';
+import { getActiveCompanyId, formatDate } from '../utils/helpers';
 import DateFilter from '../components/DateFilter';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
 import { supabase } from '../lib/supabase';
 
-const StatCard = ({ label, value, icon: Icon, color }: { label: string, value: string, icon: any, color: string }) => (
-  <div className="bg-white p-8 border border-slate-200 rounded-2xl boxy-shadow hover:border-primary transition-all duration-300 flex flex-col justify-between h-full group">
-    <div className="flex justify-between items-start mb-6">
-      <div className={`p-3 rounded-xl ${color} shadow-inner transition-transform group-hover:scale-110 duration-300`}>
-        <Icon className="w-6 h-6" />
-      </div>
-    </div>
-    <div>
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{label}</p>
-      <h2 className="text-3xl font-bold text-slate-900 tracking-tight truncate">{value}</h2>
-    </div>
-  </div>
-);
-
 const Dashboard = () => {
   const [stats, setStats] = useState({ 
     totalPurchases: 0, 
-    withoutGst: 0, 
-    gst: 0, 
-    withGst: 0, 
-    gstPaid: 0 
+    withoutGst: 0,
+    gst: 0,
+    withGst: 0,
+    gstPaid: 0
   });
-  const [recentBills, setRecentBills] = useState<any[]>([]);
+  const [recentVouchers, setRecentVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
@@ -39,30 +25,34 @@ const Dashboard = () => {
     const cid = getActiveCompanyId();
     if (!cid) return;
 
-    let query = supabase
-      .from('bills')
-      .select('*')
-      .eq('company_id', cid)
-      .eq('is_deleted', false)
-      .order('date', { ascending: false });
-
+    let query = supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false).eq('type', 'Purchase');
     if (dateRange.startDate && dateRange.endDate) {
       query = query.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
     }
+    const { data: vouchers } = await query;
+    const items = vouchers || [];
 
-    const { data } = await query;
-    const bills = data || [];
+    const totalWithoutGst = items.reduce((acc, b) => acc + Number(b.total_without_gst || 0), 0);
+    const totalGst = items.reduce((acc, b) => acc + Number(b.total_gst || 0), 0);
+    const totalWithGst = items.reduce((acc, b) => acc + Number(b.grand_total || 0), 0);
+    const paidGst = items.filter(i => i.status === 'Paid').reduce((acc, i) => acc + Number(i.total_gst || 0), 0);
 
-    const summary = bills.reduce((acc: any, b: any) => ({
-      totalPurchases: acc.totalPurchases + Number(b.grand_total || 0),
-      withoutGst: acc.withoutGst + Number(b.total_without_gst || 0),
-      gst: acc.gst + Number(b.total_gst || 0),
-      withGst: acc.withGst + Number(b.grand_total || 0),
-      gstPaid: acc.gstPaid + (b.status === 'Paid' ? Number(b.total_gst || 0) : 0)
-    }), { totalPurchases: 0, withoutGst: 0, gst: 0, withGst: 0, gstPaid: 0 });
-    
-    setStats(summary);
-    setRecentBills(bills.slice(0, 10));
+    setStats({
+      totalPurchases: items.length,
+      withoutGst: totalWithoutGst,
+      gst: totalGst,
+      withGst: totalWithGst,
+      gstPaid: paidGst
+    });
+
+    const combined = items.map(b => ({ 
+      ...b, 
+      type: 'Purchase', 
+      docNo: b.bill_number, 
+      party: b.vendor_name 
+    })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    setRecentVouchers(combined.slice(0, 10));
     setLoading(false);
   };
 
@@ -73,86 +63,91 @@ const Dashboard = () => {
   }, [dateRange]);
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-500">
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Register Purchase Bill">
+    <div className="space-y-6">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Register Purchase Bill" maxWidth="max-w-4xl">
         <BillForm onSubmit={() => { setIsModalOpen(false); loadData(); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 bg-white border border-slate-200 rounded-xl flex items-center justify-center shadow-sm">
-            <LayoutDashboard className="w-6 h-6 text-slate-400" />
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-none">Executive Dashboard</h1>
-        </div>
-        <div className="flex items-center space-x-4">
+        <h1 className="text-[20px] font-normal text-slate-900">Dashboard</h1>
+        <div className="flex items-center space-x-3">
           <DateFilter onFilterChange={setDateRange} />
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="bg-primary text-slate-900 px-8 py-3 rounded-lg font-bold text-sm border border-primary hover:bg-primary-dark shadow-md transition-all active:scale-95 flex items-center"
+            className="bg-primary text-slate-900 px-6 py-2 rounded-md font-normal text-sm hover:bg-primary-dark transition-none"
           >
-            <Plus className="w-4.5 h-4.5 mr-2" /> Quick Entry
+            NEW ENTRY
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-        <StatCard label="Net Total Volume" value={formatCurrency(stats.totalPurchases)} icon={TrendingUp} color="bg-blue-50 text-blue-600" />
-        <StatCard label="Basic Taxable Val" value={formatCurrency(stats.withoutGst)} icon={DollarSign} color="bg-slate-100 text-slate-600" />
-        <StatCard label="Total Tax Accrual" value={formatCurrency(stats.gst)} icon={PieChart} color="bg-amber-50 text-amber-600" />
-        <StatCard label="Grand Total (Net)" value={formatCurrency(stats.withGst)} icon={ReceiptText} color="bg-green-50 text-green-600" />
-        <StatCard label="Cleared Tax Credit" value={formatCurrency(stats.gstPaid)} icon={Check} color="bg-[#fff5bd] text-slate-900" />
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {[
+          { label: 'TOTAL PURCHASE', value: stats.withGst.toFixed(2) },
+          { label: 'WITHOUT GST', value: stats.withoutGst.toFixed(2) },
+          { label: 'GST', value: stats.gst.toFixed(2) },
+          { label: 'WITH GST', value: stats.withGst.toFixed(2) },
+          { label: 'GST PAID', value: stats.gstPaid.toFixed(2) },
+        ].map((stat, i) => (
+          <div key={i} className="bg-white border border-slate-200 rounded-md p-5 flex flex-col">
+            <span className="text-[11px] text-slate-500 font-normal uppercase tracking-tight mb-1">{stat.label}</span>
+            <span className="text-[24px] font-normal text-slate-900 leading-none">{stat.value}</span>
+          </div>
+        ))}
       </div>
 
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Historical Voucher Activity</h2>
-          <span className="text-[10px] text-slate-400 font-medium">Last 10 Records</span>
+      <div className="space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+          <input 
+            type="text" 
+            placeholder="Search anything" 
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-md text-xs outline-none"
+          />
         </div>
-        <div className="border border-slate-200 rounded-2xl overflow-hidden boxy-shadow bg-white">
-          {loading ? (
-            <div className="py-32 flex flex-col items-center justify-center">
-              <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-              <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Updating Dashboard analytics...</p>
-            </div>
-          ) : (
-            <table className="w-full text-left text-sm border-collapse">
-              <thead className="bg-[#f9f9f9] border-b border-slate-200">
-                <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                  <th className="py-5 px-8 border-r border-slate-200 w-12 text-center">No</th>
-                  <th className="py-5 px-8 border-r border-slate-200">Voucher Date</th>
-                  <th className="py-5 px-8 border-r border-slate-200">Invoice No</th>
-                  <th className="py-5 px-8 border-r border-slate-200">Vendor / Party</th>
-                  <th className="py-5 px-8 border-r border-slate-200 text-right">Taxable</th>
-                  <th className="py-5 px-8 border-r border-slate-200 text-right font-bold">Grand Total</th>
-                  <th className="py-5 px-8 text-center">Status</th>
+        
+        <h2 className="text-[16px] font-normal text-slate-900">Recent Entries</h2>
+        
+        <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
+          <table className="clean-table">
+            <thead>
+              <tr>
+                <th className="w-16">SR NO</th>
+                <th>DATE</th>
+                <th>BILL NO</th>
+                <th>VENDOR</th>
+                <th>WITHOUT GST</th>
+                <th>GST</th>
+                <th>WITH GST</th>
+                <th>STATUS</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={9} className="text-center py-10 text-slate-400">Loading entries...</td></tr>
+              ) : recentVouchers.map((v, i) => (
+                <tr key={v.id}>
+                  <td>{i + 1}</td>
+                  <td>{formatDate(v.date)}</td>
+                  <td className="font-mono">{v.docNo}</td>
+                  <td className="uppercase">{v.party}</td>
+                  <td>{v.total_without_gst.toFixed(2)}</td>
+                  <td>{v.total_gst.toFixed(2)}</td>
+                  <td className="font-medium text-slate-900">{v.grand_total.toFixed(2)}</td>
+                  <td>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-sm uppercase ${v.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                      {v.status}
+                    </span>
+                  </td>
+                  <td>---</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {recentBills.map((bill, i) => (
-                  <tr key={bill.id} className="hover:bg-[#f9f9f9] transition-all duration-200 group">
-                    <td className="py-5 px-8 border-r border-slate-200 text-slate-400 text-center font-mono text-[10px]">{i + 1}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 font-bold text-slate-600">{formatDate(bill.date)}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 font-mono font-bold text-slate-900">{bill.bill_number}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 font-bold text-slate-900 truncate max-w-[250px]">{bill.vendor_name}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 text-right text-slate-600 font-medium">{formatCurrency(bill.total_without_gst)}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 text-right font-bold text-slate-900">{formatCurrency(bill.grand_total)}</td>
-                    <td className="py-5 px-8 text-center">
-                      <span className={`text-[9px] font-bold uppercase px-3 py-1 rounded-full border shadow-sm ${bill.status === 'Paid' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>{bill.status}</span>
-                    </td>
-                  </tr>
-                ))}
-                {recentBills.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-40 text-center">
-                      <PieChart className="w-16 h-16 text-slate-100 mx-auto mb-4" />
-                      <p className="text-slate-300 italic font-medium">No transactional activity detected in this selected range.</p>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
+              ))}
+              {!loading && recentVouchers.length === 0 && (
+                <tr><td colSpan={9} className="text-center py-20 text-slate-400 italic">No transactions found.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Plus, Search, Loader2, Check, Globe, LogOut } from 'lucide-react';
+import { Building2, Plus, Search, Loader2, Check, Globe, LogOut, Save, User, ArrowRight } from 'lucide-react';
 import Modal from '../components/Modal';
+import Logo from '../components/Logo';
 import { supabase } from '../lib/supabase';
 
 const Companies = () => {
@@ -12,12 +13,14 @@ const Companies = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCompany, setNewCompany] = useState({ name: '', gstin: '', address: '', state: '' });
   const [creating, setCreating] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const loadData = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return navigate('/setup');
+    setUserEmail(user.email || null);
     const { data } = await supabase.from('companies').select('*').eq('user_id', user.id).eq('is_deleted', false).order('created_at', { ascending: false });
     setCompanies(data || []);
     setLoading(false);
@@ -50,108 +53,148 @@ const Companies = () => {
     navigate('/', { replace: true });
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.clear();
+    navigate('/setup');
+  };
+
+  const filteredCompanies = companies.filter(c => 
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    c.gstin?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
-      <div className="w-full px-8 md:px-16 lg:px-24 py-16">
-        <div className="flex justify-between items-end mb-12">
-          <div>
-            <h1 className="text-4xl font-bold text-slate-900 tracking-tight mb-3">Workspaces & Accounts</h1>
-            <p className="text-slate-500 text-lg font-medium">Select a business entity to manage purchases and inventory.</p>
+    <div className="flex flex-col h-screen bg-white overflow-hidden font-sans">
+      {/* Replicated Main App Top Bar */}
+      <header className="h-16 border-b border-slate-200 flex items-center justify-between px-4 shrink-0 z-[100] bg-white">
+        <div className="flex items-center space-x-2">
+          <Logo size={32} />
+          <div className="flex items-center px-3 py-1.5 border border-slate-200 rounded-md bg-slate-50 cursor-not-allowed">
+            <span className="text-xs font-normal text-slate-400 uppercase tracking-tight mr-2">Workspaces</span>
           </div>
-          <button 
-            onClick={() => { supabase.auth.signOut(); navigate('/setup'); }} 
-            className="flex items-center space-x-2 px-6 py-3 border border-slate-200 text-slate-600 bg-white rounded-lg hover:bg-slate-50 text-sm font-bold transition-all shadow-sm"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Switch User</span>
-          </button>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-6 mb-12">
-          <div className="relative flex-1">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
+        <div className="flex-1 max-w-lg mx-8">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
             <input 
-                type="text" 
-                value={searchQuery} 
-                onChange={(e) => setSearchQuery(e.target.value)} 
-                placeholder="Search registered workspaces..." 
-                className="w-full pl-14 pr-6 py-5 bg-white border border-slate-200 rounded-xl outline-none focus:border-slate-400 font-medium text-lg shadow-sm transition-all" 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search workspaces..." 
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-slate-300"
             />
           </div>
-          <button 
-            onClick={() => setIsModalOpen(true)} 
-            className="bg-primary text-slate-900 px-10 py-5 rounded-xl font-bold border border-primary hover:bg-primary-dark shadow-md flex items-center justify-center text-base transition-all active:scale-95"
-          >
-            <Plus className="w-5 h-5 mr-3" /> Register New Account
-          </button>
         </div>
 
-        {loading ? (
-          <div className="py-40 flex flex-col items-center justify-center">
-            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Synchronizing Clouds...</p>
+        <div className="flex items-center space-x-2">
+          <div className="px-3 py-1 text-[10px] font-bold text-slate-400 border border-slate-100 rounded uppercase">
+            {userEmail}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {companies.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())).map((company) => (
-              <div 
-                key={company.id} 
-                onClick={() => selectCompany(company)} 
-                className="bg-white border border-slate-200 rounded-2xl p-10 boxy-shadow cursor-pointer hover:border-primary group transition-all relative flex flex-col h-full"
-              >
-                <div className="w-16 h-16 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center mb-8 group-hover:bg-primary transition-colors duration-300 shadow-inner">
-                    <Building2 className="w-8 h-8 text-slate-400 group-hover:text-slate-900 transition-colors" />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 group-hover:text-primary-dark transition-colors truncate mb-2">{company.name}</h3>
-                <p className="text-sm text-slate-400 font-mono mb-6">{company.gstin || 'No GST Registered'}</p>
-                
-                <div className="mt-auto space-y-4 pt-8 border-t border-slate-50">
-                  <div className="flex items-center space-x-3 text-sm font-bold text-slate-500">
-                    <Globe className="w-4 h-4 text-slate-300" /> 
-                    <span>{company.state || 'Global Territory'}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm font-bold text-slate-300 group-hover:text-slate-900 transition-colors uppercase tracking-widest">
-                    <span>Enter Dashboard</span>
-                    <Check className="w-5 h-5 opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1 transition-all" />
-                  </div>
-                </div>
-              </div>
-            ))}
-            
-            <div 
-                onClick={() => setIsModalOpen(true)}
-                className="border-4 border-dashed border-slate-200 rounded-2xl p-10 flex flex-col items-center justify-center text-slate-300 hover:border-slate-300 hover:text-slate-400 cursor-pointer transition-all group"
+          <button onClick={handleLogout} className="p-2 border border-slate-200 rounded-md text-slate-500 hover:bg-red-50 hover:text-red-500 transition-none">
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      <div className="flex-1 overflow-y-auto p-8 bg-white">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-[20px] font-normal text-slate-900">Workspaces & Accounts</h1>
+            <button 
+              onClick={() => setIsModalOpen(true)} 
+              className="bg-primary text-slate-900 px-6 py-2 rounded-md font-normal text-sm hover:bg-primary-dark transition-none flex items-center"
             >
-                <Plus className="w-12 h-12 mb-4 transform group-hover:scale-110 transition-transform" />
-                <p className="text-lg font-bold uppercase tracking-widest">Add Workspace</p>
-            </div>
+              <Plus className="w-4 h-4 mr-2" /> NEW ACCOUNT
+            </button>
           </div>
-        )}
+
+          {loading ? (
+            <div className="py-40 flex flex-col items-center justify-center">
+              <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+              <p className="text-slate-400 font-normal text-xs uppercase tracking-widest">Synchronizing Accounts...</p>
+            </div>
+          ) : (
+            <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
+              <table className="clean-table">
+                <thead>
+                  <tr>
+                    <th className="w-16">SR NO</th>
+                    <th>BUSINESS NAME</th>
+                    <th>GSTIN</th>
+                    <th>OPERATING STATE</th>
+                    <th className="text-right">ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCompanies.map((company, i) => (
+                    <tr key={company.id} className="hover:bg-slate-50/50 cursor-pointer" onClick={() => selectCompany(company)}>
+                      <td>{i + 1}</td>
+                      <td>
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 bg-slate-50 border border-slate-200 rounded-md flex items-center justify-center mr-3">
+                            <Building2 className="w-4 h-4 text-slate-400" />
+                          </div>
+                          <span className="font-medium text-slate-900 uppercase">{company.name}</span>
+                        </div>
+                      </td>
+                      <td className="font-mono text-slate-500">{company.gstin || 'UNREGISTERED'}</td>
+                      <td>
+                        <span className="text-[11px] font-normal text-slate-500 uppercase">{company.state || 'N/A'}</span>
+                      </td>
+                      <td className="text-right">
+                        <button className="text-slate-400 hover:text-slate-900 flex items-center justify-end w-full space-x-1 group transition-none">
+                          <span className="text-[10px] font-bold uppercase opacity-0 group-hover:opacity-100">ENTER</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredCompanies.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-32 text-center text-slate-400 italic text-sm">
+                        {searchQuery ? `No workspaces found matching "${searchQuery}"` : "No accounts registered yet. Click 'NEW ACCOUNT' to get started."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Register Business Workspace">
-        <form onSubmit={handleCreateCompany} className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="md:col-span-2 space-y-2">
-              <label className="text-sm font-bold text-slate-500 capitalize">Legal Workspace Name</label>
-              <input required type="text" value={newCompany.name} onChange={(e) => setNewCompany({...newCompany, name: e.target.value})} className="w-full px-5 py-4 border border-slate-200 rounded-lg outline-none text-lg font-bold text-slate-900 focus:border-slate-400 shadow-sm" placeholder="e.g. Acme Corp India Pvt Ltd" />
+        <form onSubmit={handleCreateCompany} className="space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Legal Workspace Name</label>
+              <input required type="text" value={newCompany.name} onChange={(e) => setNewCompany({...newCompany, name: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 uppercase font-medium" placeholder="ACME SOLUTIONS PVT LTD" />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-500 capitalize">GSTIN Number (Optional)</label>
-              <input type="text" value={newCompany.gstin} onChange={(e) => setNewCompany({...newCompany, gstin: e.target.value.toUpperCase()})} className="w-full px-5 py-4 border border-slate-200 rounded-lg outline-none text-base font-mono font-bold tracking-widest" placeholder="27AAAAA0000A1Z5" />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">GSTIN Number (Optional)</label>
+                <input type="text" value={newCompany.gstin} onChange={(e) => setNewCompany({...newCompany, gstin: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono outline-none focus:border-slate-400" placeholder="27AAAAA0000A1Z5" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Operating State</label>
+                <input required type="text" value={newCompany.state} onChange={(e) => setNewCompany({...newCompany, state: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 uppercase" placeholder="MAHARASHTRA" />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-500 capitalize">Operating State</label>
-              <input required type="text" value={newCompany.state} onChange={(e) => setNewCompany({...newCompany, state: e.target.value})} className="w-full px-5 py-4 border border-slate-200 rounded-lg outline-none text-base font-bold text-slate-700" placeholder="e.g. Maharashtra" />
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Registered Business Address</label>
+              <textarea value={newCompany.address} onChange={(e) => setNewCompany({...newCompany, address: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none h-24 resize-none focus:border-slate-400" placeholder="Complete address for records..." />
             </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-500 capitalize">Registered Business Address</label>
-            <textarea value={newCompany.address} onChange={(e) => setNewCompany({...newCompany, address: e.target.value})} className="w-full px-5 py-4 border border-slate-200 rounded-lg outline-none h-32 resize-none text-base font-medium shadow-sm" placeholder="Complete address for billing and taxes..." />
+
+          <div className="flex justify-end pt-4 border-t border-slate-100">
+            <button type="submit" disabled={creating} className="bg-primary text-slate-900 px-8 py-2 rounded-md font-normal text-sm hover:bg-primary-dark transition-none">
+              {creating ? 'REGISTERING...' : 'SAVE WORKSPACE'}
+            </button>
           </div>
-          <button type="submit" disabled={creating} className="w-full bg-primary text-slate-900 py-5 rounded-lg font-bold border border-primary text-lg hover:bg-primary-dark transition-all flex items-center justify-center shadow-lg active:scale-95 disabled:opacity-50">
-            {creating ? <Loader2 className="w-6 h-6 animate-spin mr-3" /> : <Plus className="w-6 h-6 mr-3" />} Complete Registration
-          </button>
         </form>
       </Modal>
     </div>
