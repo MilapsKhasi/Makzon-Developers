@@ -1,9 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Landmark, Globe, Loader2, Mail, Phone, MapPin } from 'lucide-react';
-import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES } from '../utils/helpers';
+import { Save, Landmark, Globe, Loader2, Mail, Phone, MapPin, Building2, CreditCard, ShieldCheck } from 'lucide-react';
+import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES, getActiveCompanyId, safeSupabaseSave } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
-import { getActiveCompanyId } from '../utils/helpers';
 
 interface VendorFormProps {
   initialData?: any | null;
@@ -20,7 +19,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, prefilledName, onS
     default_duties: []
   });
 
-  const currencySymbol = CURRENCIES[getAppSettings().currency as keyof typeof CURRENCIES]?.symbol || '$';
+  const currencySymbol = CURRENCIES[getAppSettings().currency as keyof typeof CURRENCIES]?.symbol || '₹';
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -46,102 +45,203 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, prefilledName, onS
     setFormData((prev: any) => ({ ...prev, ...updates }));
   };
 
-  const saveToSupabase = async (payload: any): Promise<any> => {
-      const operation = initialData?.id 
-        ? supabase.from('vendors').update(payload).eq('id', initialData.id).select()
-        : supabase.from('vendors').insert([payload]).select();
-      
-      const res = await operation;
-
-      if (res.error) {
-          const msg = res.error.message;
-          const missingColumnMatch = msg.match(/'(.+?)' column/) || msg.match(/column '(.+?)' of/);
-          if (missingColumnMatch) {
-              const offendingColumn = missingColumnMatch[1];
-              if (offendingColumn && payload.hasOwnProperty(offendingColumn)) {
-                  const nextPayload = { ...payload }; delete nextPayload[offendingColumn]; return saveToSupabase(nextPayload);
-              }
-          }
-          throw res.error;
-      }
-      return res;
-  };
-
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
       if (!formData.name.trim()) return alert("Vendor Name is required.");
       setLoading(true);
       try {
         const cid = getActiveCompanyId();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const payload = { ...formData, balance: toStorageValue(formData.balance), company_id: cid, user_id: user.id, is_deleted: false };
-        const result = await saveToSupabase(payload);
+        
+        const payload = { 
+            ...formData, 
+            balance: toStorageValue(formData.balance), 
+            company_id: cid, 
+            user_id: user.id, 
+            is_deleted: false 
+        };
+        
+        const result = await safeSupabaseSave('vendors', payload, initialData?.id);
         onSubmit(result.data[0]);
-      } catch (err: any) { alert("Error saving vendor: " + err.message); } finally { setLoading(false); }
+      } catch (err: any) { 
+        alert("Error saving vendor: " + err.message); 
+      } finally { 
+        setLoading(false); 
+      }
   }
 
   return (
-    <div className="space-y-12">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        <div className="md:col-span-2 space-y-2">
-          <label className="block text-sm font-bold text-slate-500 capitalize">Official Vendor Business Name</label>
-          <input ref={firstInputRef} type="text" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} className="w-full h-14 border border-slate-200 rounded-xl px-6 text-lg font-bold text-slate-900 focus:border-slate-400 outline-none shadow-sm transition-all" placeholder="Enter Full Legal Name" />
+    <div className="max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Business Identity Section */}
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2 text-slate-400 mb-2">
+            <Building2 className="w-4 h-4" />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Business Identity</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div className="md:col-span-8 space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Vendor Business Name</label>
+              <input 
+                ref={firstInputRef} 
+                required 
+                type="text" 
+                value={formData.name} 
+                onChange={(e) => handleChange('name', e.target.value)} 
+                className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-bold text-slate-900 outline-none focus:border-slate-400 shadow-sm uppercase" 
+                placeholder="LEGAL ENTITY NAME" 
+              />
+            </div>
+            <div className="md:col-span-4 space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Opening Balance ({currencySymbol})</label>
+              <input 
+                type="number" 
+                value={formData.balance} 
+                onChange={(e) => handleChange('balance', e.target.value)} 
+                className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono font-bold text-slate-900 outline-none focus:border-slate-400 shadow-sm" 
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">GSTIN Number</label>
+              <input 
+                type="text" 
+                value={formData.gstin} 
+                onChange={(e) => handleGstinChange(e.target.value)} 
+                className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono font-bold tracking-widest outline-none focus:border-slate-400 shadow-sm uppercase" 
+                placeholder="27AAAAA0000A1Z5" 
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">PAN Number</label>
+              <input 
+                type="text" 
+                value={formData.pan} 
+                onChange={(e) => handleChange('pan', e.target.value.toUpperCase())} 
+                className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono font-bold tracking-widest outline-none focus:border-slate-400 shadow-sm uppercase" 
+                placeholder="ABCDE1234F" 
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Operating State</label>
+              <input 
+                type="text" 
+                value={formData.state} 
+                onChange={(e) => handleChange('state', e.target.value)} 
+                className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-bold text-slate-900 outline-none focus:border-slate-400 shadow-sm uppercase" 
+                placeholder="e.g. MAHARASHTRA" 
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-bold text-slate-500 capitalize">GSTIN Identification Number</label>
-          <input type="text" value={formData.gstin} onChange={(e) => handleGstinChange(e.target.value)} className="w-full h-12 border border-slate-200 rounded-lg px-5 text-base focus:border-slate-400 outline-none font-mono font-bold tracking-widest bg-slate-50/50" placeholder="e.g. 27AAAAA0000A1Z5" />
-        </div>
-        <div className="space-y-2">
-          <label className="block text-sm font-bold text-slate-500 capitalize">Business State / Province</label>
-          <div className="relative">
-            <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-300" />
-            <input type="text" value={formData.state} onChange={(e) => handleChange('state', e.target.value)} className="w-full h-12 pl-12 pr-5 border border-slate-200 rounded-lg text-base focus:border-slate-400 outline-none font-bold text-slate-700" placeholder="e.g. Maharashtra" />
+        {/* Contact & Logistics */}
+        <div className="space-y-4 pt-4 border-t border-slate-100">
+          <div className="flex items-center space-x-2 text-slate-400 mb-2">
+            <Mail className="w-4 h-4" />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Communication & Address</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
+                <input 
+                  type="email" 
+                  value={formData.email} 
+                  onChange={(e) => handleChange('email', e.target.value)} 
+                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 shadow-sm" 
+                  placeholder="vendor@company.com" 
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Phone Number</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
+                <input 
+                  type="text" 
+                  value={formData.phone} 
+                  onChange={(e) => handleChange('phone', e.target.value)} 
+                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 shadow-sm" 
+                  placeholder="+91 98765 43210" 
+                />
+              </div>
+            </div>
+            <div className="md:col-span-2 space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Registered Address</label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 w-3.5 h-3.5 text-slate-300" />
+                <textarea 
+                  value={formData.address} 
+                  onChange={(e) => handleChange('address', e.target.value)} 
+                  rows={2} 
+                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 shadow-sm resize-none" 
+                  placeholder="Complete billing address for records..." 
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="md:col-span-2 bg-slate-50 p-10 rounded-2xl border border-slate-200 space-y-8 shadow-inner">
-          <div className="flex items-center space-x-4">
-            <Landmark className="w-6 h-6 text-slate-400" />
-            <h4 className="text-base font-bold text-slate-700 capitalize">Banking & Settlement Profile</h4>
+        {/* Settlement Profile */}
+        <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 space-y-4">
+          <div className="flex items-center space-x-2 text-slate-400 mb-2">
+            <CreditCard className="w-4 h-4" />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Banking Profile</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="space-y-2"><label className="block text-xs font-bold text-slate-400 capitalize">Account Number</label><input type="text" value={formData.account_number} onChange={(e) => handleChange('account_number', e.target.value)} className="w-full h-11 border border-slate-200 rounded-lg px-4 text-sm focus:border-slate-400 outline-none font-mono font-bold bg-white" /></div>
-            <div className="space-y-2"><label className="block text-xs font-bold text-slate-400 capitalize">Beneficiary Name</label><input type="text" value={formData.account_name} onChange={(e) => handleChange('account_name', e.target.value)} className="w-full h-11 border border-slate-200 rounded-lg px-4 text-sm focus:border-slate-400 outline-none font-bold text-slate-700 bg-white" /></div>
-            <div className="space-y-2"><label className="block text-xs font-bold text-slate-400 capitalize">IFSC / Swift Code</label><input type="text" value={formData.ifsc_code} onChange={(e) => handleChange('ifsc_code', e.target.value.toUpperCase())} className="w-full h-11 border border-slate-200 rounded-lg px-4 text-sm focus:border-slate-400 outline-none font-mono font-bold bg-white" /></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Account Number</label>
+              <input 
+                type="text" 
+                value={formData.account_number} 
+                onChange={(e) => handleChange('account_number', e.target.value)} 
+                className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono font-bold bg-white outline-none focus:border-slate-400 shadow-sm" 
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Beneficiary Name</label>
+              <input 
+                type="text" 
+                value={formData.account_name} 
+                onChange={(e) => handleChange('account_name', e.target.value)} 
+                className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-bold bg-white outline-none focus:border-slate-400 shadow-sm" 
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">IFSC / Swift Code</label>
+              <input 
+                type="text" 
+                value={formData.ifsc_code} 
+                onChange={(e) => handleChange('ifsc_code', e.target.value.toUpperCase())} 
+                className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono font-bold bg-white outline-none focus:border-slate-400 shadow-sm" 
+              />
+            </div>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-bold text-slate-500 capitalize">Contact Email Address</label>
-          <div className="relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-            <input type="email" value={formData.email} onChange={(e) => handleChange('email', e.target.value)} className="w-full h-12 pl-12 pr-5 border border-slate-200 rounded-lg text-base focus:border-slate-400 outline-none font-medium" placeholder="vendor@business.com" />
-          </div>
+        <div className="flex justify-end pt-4 space-x-3">
+          <button 
+            type="button" 
+            onClick={onCancel} 
+            className="px-6 py-2 text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
+          >
+            Discard
+          </button>
+          <button 
+            type="submit" 
+            disabled={loading} 
+            className="bg-primary text-slate-900 px-10 py-2 rounded-md font-bold text-sm hover:bg-primary-dark transition-all flex items-center shadow-md border border-slate-900 disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+            SAVE VENDOR PROFILE
+          </button>
         </div>
-        <div className="space-y-2">
-          <label className="block text-sm font-bold text-slate-500 capitalize">Primary Phone Number</label>
-          <div className="relative">
-            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-            <input type="text" value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} className="w-full h-12 pl-12 pr-5 border border-slate-200 rounded-lg text-base focus:border-slate-400 outline-none font-medium" placeholder="+91 00000 00000" />
-          </div>
-        </div>
-
-        <div className="md:col-span-2 space-y-2">
-          <label className="block text-sm font-bold text-slate-500 capitalize">Registered Business Address</label>
-          <div className="relative">
-            <MapPin className="absolute left-4 top-5 w-4.5 h-4.5 text-slate-300" />
-            <textarea value={formData.address} onChange={(e) => handleChange('address', e.target.value)} rows={3} className="w-full pl-12 pr-5 py-4 border border-slate-200 rounded-lg text-base focus:border-slate-400 outline-none resize-none shadow-sm font-medium" placeholder="Complete street address for billing..." />
-          </div>
-        </div>
-      </div>
-      
-      <div className="pt-10 border-t border-slate-100 flex justify-end space-x-6">
-        <button onClick={onCancel} className="px-10 py-4 border border-slate-200 rounded-lg text-slate-400 font-bold text-sm hover:bg-slate-50 transition-colors">Discard</button>
-        <button onClick={handleSubmit} disabled={loading} className="h-14 w-14 bg-primary text-slate-900 rounded-none border border-primary hover:bg-primary-dark transition-all flex items-center justify-center disabled:opacity-50">
-          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-        </button>
-      </div>
+      </form>
     </div>
   );
 };

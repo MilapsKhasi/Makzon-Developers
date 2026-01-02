@@ -1,15 +1,17 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ReceiptText, BarChart3, Package, Calculator } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, BarChart3, Package, Calculator, Users, Wallet } from 'lucide-react';
 
 const Sidebar = () => {
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Bills', path: '/bills', icon: ReceiptText },
-    { name: 'Reports', path: '/reports', icon: BarChart3 },
+    { name: 'Vendors', path: '/vendors', icon: Users },
     { name: 'Stock Management', path: '/stock', icon: Package },
+    { name: 'Cashbook', path: '/cashbook', icon: Wallet },
     { name: 'Duties & Taxes', path: '/duties-taxes', icon: Calculator },
+    { name: 'Reports', path: '/reports', icon: BarChart3 },
   ];
 
   return (
@@ -22,11 +24,12 @@ const Sidebar = () => {
             className={({ isActive }) =>
               `flex items-center space-x-4 px-6 py-3 text-[14px] font-normal transition-none ${
                 isActive
-                  ? 'bg-primary text-slate-900'
+                  ? 'bg-primary text-slate-900 border-r-4 border-slate-900'
                   : 'text-slate-600 hover:bg-slate-50'
               }`
             }
           >
+            <item.icon className={`w-4 h-4 ${window.location.hash.includes(item.path) ? 'text-slate-900' : 'text-slate-400'}`} />
             <span className="truncate">{item.name}</span>
           </NavLink>
         ))}

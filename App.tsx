@@ -11,6 +11,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Purchases from './pages/Purchases';
 import DutiesTaxes from './pages/DutiesTaxes';
+import Cashbook from './pages/Cashbook';
 import Auth from './pages/Auth';
 import Companies from './pages/Companies';
 import SplashScreen from './components/SplashScreen';
@@ -73,6 +74,7 @@ const App = () => {
             <Route path="purchases" element={<Purchases />} />
             <Route path="bills" element={<Bills />} />
             <Route path="vendors" element={<Vendors />} />
+            <Route path="cashbook" element={<Cashbook />} />
             <Route path="duties-taxes" element={<DutiesTaxes />} />
             <Route path="stock" element={<Stock />} />
             <Route path="reports" element={<Reports />} />

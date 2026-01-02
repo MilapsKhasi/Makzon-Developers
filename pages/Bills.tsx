@@ -24,33 +24,58 @@ const Bills = () => {
   const loadData = async () => {
     setLoading(true);
     const cid = getActiveCompanyId();
-    if (!cid) return;
-    
-    let query = supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false).eq('type', 'Purchase');
-    
-    if (dateRange.startDate && dateRange.endDate) {
-      query = query.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
+    if (!cid) {
+      setLoading(false);
+      return;
     }
-    const { data } = await query.order('date', { ascending: false });
-    setBills(data || []);
-    setLoading(false);
+    
+    try {
+      // Fetch bills for this company that aren't deleted
+      // We filter by 'type' but also consider null/empty as 'Purchase' for robustness
+      let query = supabase.from('bills')
+        .select('*')
+        .eq('company_id', cid)
+        .eq('is_deleted', false);
+      
+      if (dateRange.startDate && dateRange.endDate) {
+        query = query.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
+      }
+      
+      const { data, error } = await query.order('date', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Client-side filter to strictly show Purchase bills or untyped ones (defaulting to purchase)
+      const purchaseBills = (data || []).filter(b => b.type === 'Purchase' || !b.type);
+      setBills(purchaseBills);
+    } catch (err) {
+      console.error("Error loading bills:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadData();
-    window.addEventListener('appSettingsChanged', loadData);
-    return () => window.removeEventListener('appSettingsChanged', loadData);
+    const handleRefresh = () => loadData();
+    window.addEventListener('appSettingsChanged', handleRefresh);
+    return () => window.removeEventListener('appSettingsChanged', handleRefresh);
   }, [dateRange]);
 
   const confirmDelete = async () => {
     if (!deleteDialog.bill) return;
-    await supabase.from('bills').update({ is_deleted: true }).eq('id', deleteDialog.bill.id);
-    loadData();
-    window.dispatchEvent(new Event('appSettingsChanged'));
+    const { error } = await supabase.from('bills').update({ is_deleted: true }).eq('id', deleteDialog.bill.id);
+    if (!error) {
+      loadData();
+      window.dispatchEvent(new Event('appSettingsChanged'));
+    }
+    setDeleteDialog({ isOpen: false, bill: null });
   };
 
   const filtered = bills.filter(b => {
-    return b.bill_number?.toLowerCase().includes(searchQuery.toLowerCase()) || b.vendor_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const search = searchQuery.toLowerCase();
+    return b.bill_number?.toLowerCase().includes(search) || 
+           b.vendor_name?.toLowerCase().includes(search);
   });
 
   const totalPurchase = filtered.reduce((acc, b) => acc + Number(b.grand_total || 0), 0);
@@ -118,17 +143,19 @@ const Bills = () => {
                   <td>{formatDate(b.date)}</td>
                   <td className="font-mono">{b.bill_number}</td>
                   <td className="uppercase">{b.vendor_name}</td>
-                  <td>{b.total_without_gst.toFixed(2)}</td>
-                  <td>{b.total_gst.toFixed(2)}</td>
-                  <td className="font-medium text-slate-900">{b.grand_total.toFixed(2)}</td>
+                  <td>{Number(b.total_without_gst || 0).toFixed(2)}</td>
+                  <td>{Number(b.total_gst || 0).toFixed(2)}</td>
+                  <td className="font-medium text-slate-900">{Number(b.grand_total || 0).toFixed(2)}</td>
                   <td>
                     <span className={`text-[10px] px-2 py-0.5 rounded-sm uppercase ${b.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
                       {b.status}
                     </span>
                   </td>
-                  <td className="flex space-x-2">
-                    <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="text-slate-400 hover:text-slate-900"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                  <td>
+                    <div className="flex space-x-2">
+                        <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="text-slate-400 hover:text-slate-900"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                    </div>
                   </td>
                 </tr>
               ))}

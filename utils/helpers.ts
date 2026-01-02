@@ -1,4 +1,6 @@
 
+import { supabase } from '../lib/supabase';
+
 export const CURRENCIES = {
   INR: { symbol: '₹', name: 'Indian Rupee', locale: 'en-IN' },
   USD: { symbol: '$', name: 'US Dollar', locale: 'en-US' }
@@ -66,18 +68,56 @@ export const toStorageValue = (value: any) => {
   return isNaN(num) ? 0 : num;
 };
 
-export const moveToTrash = (type: string, label: string, data: any) => {
-  const cid = getActiveCompanyId();
-  const trashKey = `trash_${cid}`;
-  const existingTrash = JSON.parse(localStorage.getItem(trashKey) || '[]');
+/**
+ * Smart save utility that strips columns not present in the DB schema.
+ * Prevents "Column not found" errors during schema mismatches.
+ */
+export const safeSupabaseSave = async (table: string, payload: any, id?: string): Promise<any> => {
+  const operation = id 
+    ? supabase.from(table).update(payload).eq('id', id).select()
+    : supabase.from(table).insert([payload]).select();
   
-  const newItem = {
-    id: Date.now().toString(),
-    type,
-    label,
-    data,
-    deletedAt: new Date().toISOString()
-  };
-  
-  localStorage.setItem(trashKey, JSON.stringify([newItem, ...existingTrash]));
+  const res = await operation;
+
+  if (res.error) {
+    const msg = res.error.message.toLowerCase();
+    // Broaden matching for different database/PostgREST error messages
+    if (msg.includes("column") && (msg.includes("not found") || msg.includes("does not exist") || msg.includes("schema cache"))) {
+      const missingColumnMatch = msg.match(/column ['"](.+?)['"] of/i) || 
+                                 msg.match(/['"](.+?)['"] column/i) || 
+                                 msg.match(/find the ['"](.+?)['"] column/i) ||
+                                 msg.match(/column ['"](.+?)['"] does not exist/i);
+      
+      if (missingColumnMatch) {
+        const offendingColumn = missingColumnMatch[1];
+        if (offendingColumn && payload.hasOwnProperty(offendingColumn)) {
+          console.warn(`SafeSave: Stripping missing column '${offendingColumn}' from ${table} payload.`);
+          const nextPayload = { ...payload }; 
+          delete nextPayload[offendingColumn]; 
+          return safeSupabaseSave(table, nextPayload, id);
+        }
+      }
+    }
+    throw res.error;
+  }
+  return res;
+};
+
+export const getSelectedLedgerIds = () => {
+    const cid = getActiveCompanyId();
+    try {
+      return JSON.parse(localStorage.getItem(`selectedLedgers_${cid}`) || '[]');
+    } catch {
+      return [];
+    }
+};
+
+export const toggleSelectedLedgerId = (ledgerId: string) => {
+    const cid = getActiveCompanyId();
+    const current = getSelectedLedgerIds();
+    const next = current.includes(ledgerId) 
+        ? current.filter((id: string) => id !== ledgerId)
+        : [...current, ledgerId];
+    localStorage.setItem(`selectedLedgers_${cid}`, JSON.stringify(next));
+    return next;
 };
