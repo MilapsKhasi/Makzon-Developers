@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, Loader2, Save, ArrowLeft } from 'lucide-react';
+import { X, ChevronDown, Loader2, Save, ArrowLeft, Trash2 } from 'lucide-react';
 
 interface CashbookRow {
   id: string;
@@ -48,6 +49,20 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, onSave, onCa
     setter(rows);
   };
 
+  const removeRow = (type: 'income' | 'expense', index: number) => {
+    const setter = type === 'income' ? setIncomeRows : setExpenseRows;
+    const rows = type === 'income' ? [...incomeRows] : [...expenseRows];
+    
+    // Always keep at least 15 rows to maintain the sheet aesthetic
+    if (rows.length > 15) {
+      rows.splice(index, 1);
+    } else {
+      // If 15 or fewer, just clear the row content instead of removing the element
+      rows[index] = createEmptyRow();
+    }
+    setter(rows);
+  };
+
   const handleKeyDown = (type: 'income' | 'expense', index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     const rows = type === 'income' ? incomeRows : expenseRows;
     const setter = type === 'income' ? setIncomeRows : setExpenseRows;
@@ -56,11 +71,18 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, onSave, onCa
       e.preventDefault();
       if (index === rows.length - 1) {
         setter([...rows, createEmptyRow()]);
+        // Focus will move automatically in next render or via Ref if needed
       } else {
         // Move to next row particulars input
         const nextInput = (e.currentTarget.closest('tr')?.nextElementSibling?.querySelector('input')) as HTMLInputElement;
         nextInput?.focus();
       }
+    }
+
+    // Delete row if "Delete" key is pressed and input is empty, or with a modifier like Alt
+    if (e.key === 'Delete' && e.currentTarget.value === '') {
+      e.preventDefault();
+      removeRow(type, index);
     }
   };
 
@@ -176,8 +198,17 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, onSave, onCa
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {incomeRows.map((row, idx) => (
-                    <tr key={row.id} className="hover:bg-slate-50 group border-b border-slate-100 last:border-0">
-                      <td className="py-2 px-3 border-r border-slate-200 text-slate-400 text-center font-mono select-none">{idx + 1}</td>
+                    <tr key={row.id} className="hover:bg-slate-50 group border-b border-slate-100 last:border-0 relative">
+                      <td className="py-2 px-3 border-r border-slate-200 text-slate-400 text-center font-mono select-none relative group/sr">
+                        <span className="group-hover:hidden">{idx + 1}</span>
+                        <button 
+                          type="button" 
+                          onClick={() => removeRow('income', idx)}
+                          className="hidden group-hover:flex absolute inset-0 items-center justify-center text-rose-500 hover:bg-rose-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
                       <td className="py-0 px-0">
                         <input
                           type="text"
@@ -216,8 +247,17 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, onSave, onCa
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {expenseRows.map((row, idx) => (
-                    <tr key={row.id} className="hover:bg-slate-50 group border-b border-slate-100 last:border-0">
-                      <td className="py-2 px-3 border-r border-slate-200 text-slate-400 text-center font-mono select-none">{idx + 1}</td>
+                    <tr key={row.id} className="hover:bg-slate-50 group border-b border-slate-100 last:border-0 relative">
+                      <td className="py-2 px-3 border-r border-slate-200 text-slate-400 text-center font-mono select-none relative group/sr">
+                        <span className="group-hover:hidden">{idx + 1}</span>
+                        <button 
+                          type="button" 
+                          onClick={() => removeRow('expense', idx)}
+                          className="hidden group-hover:flex absolute inset-0 items-center justify-center text-rose-500 hover:bg-rose-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
                       <td className="py-0 px-0">
                         <input
                           type="text"
