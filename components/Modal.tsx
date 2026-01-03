@@ -27,19 +27,21 @@ const Modal: React.FC<ModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
+      {/* 30% Opacity Grey-Toned Backdrop */}
       <div 
-        className="absolute inset-0 bg-slate-900/10" 
+        className="absolute inset-0 bg-slate-900/30" 
         onClick={() => !preventBackdropClose && onClose()} 
       />
-      <div className={`relative bg-white border border-slate-200 shadow-xl w-full ${maxWidth} flex flex-col overflow-hidden rounded-md`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white shrink-0">
-          <h3 className="text-sm font-normal text-slate-900">{title}</h3>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600">
+      {/* Modal Container - Flat (No Shadow), Scrollable flex structure */}
+      <div className={`relative bg-white border border-slate-300 w-full ${maxWidth} flex flex-col overflow-hidden rounded-md max-h-[90vh]`}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white shrink-0">
+          <h3 className="text-[18px] font-normal text-slate-900">{title}</h3>
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 transition-none">
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-6 bg-white">
+        <div className="flex-1 overflow-y-auto bg-white custom-scrollbar">
           {children}
         </div>
       </div>

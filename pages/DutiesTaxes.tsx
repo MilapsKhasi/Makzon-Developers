@@ -1,9 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Loader2, Save, Check, CheckCircle2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, X, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getActiveCompanyId, safeSupabaseSave, getSelectedLedgerIds, toggleSelectedLedgerId } from '../utils/helpers';
-import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 const DutiesTaxes = () => {
@@ -77,7 +76,6 @@ const DutiesTaxes = () => {
         is_deleted: false 
       };
       
-      // Use safe save utility to handle missing columns gracefully
       await safeSupabaseSave('duties_taxes', payload, editingTax?.id);
 
       setIsModalOpen(false);
@@ -90,44 +88,85 @@ const DutiesTaxes = () => {
     }
   };
 
-  const toggleSelection = async (tax: any) => {
-    // 1. Toggle in Local Storage for immediate UI reliability
-    const nextIds = toggleSelectedLedgerId(tax.id);
-    setSelectedIds(nextIds);
-
-    // 2. Try to update DB (this column might be missing in schema)
-    try {
-        await safeSupabaseSave('duties_taxes', { is_default: nextIds.includes(tax.id) }, tax.id);
-    } catch (e) {
-        // Silently continue if column is missing, local storage handles it
-    }
-    
-    // 3. Dispatch event so BillForm knows to refresh its active ledger list
-    window.dispatchEvent(new Event('appSettingsChanged'));
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deleteDialog.tax) return;
-    try {
-      const { error } = await supabase.from('duties_taxes').update({ is_deleted: true }).eq('id', deleteDialog.tax.id);
-      if (error) throw error;
-      await loadData();
-      window.dispatchEvent(new Event('appSettingsChanged'));
-      setDeleteDialog({ isOpen: false, tax: null });
-    } catch (err: any) {
-      alert("Error deleting: " + err.message);
-    }
-  };
-
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <ConfirmDialog 
         isOpen={deleteDialog.isOpen}
         onClose={() => setDeleteDialog({ isOpen: false, tax: null })}
-        onConfirm={handleConfirmDelete}
+        onConfirm={async () => {
+            const { error } = await supabase.from('duties_taxes').update({ is_deleted: true }).eq('id', deleteDialog.tax.id);
+            if (!error) await loadData();
+        }}
         title="Archive Ledger"
         message={`Are you sure you want to delete "${deleteDialog.tax?.name}"?`}
       />
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/70" onClick={() => setIsModalOpen(false)} />
+            <div className="relative bg-white w-full max-w-[650px] border border-slate-300 overflow-hidden rounded-md flex flex-col max-h-[90vh]">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white shrink-0">
+                    <h2 className="text-[18px] font-normal text-slate-900">{editingTax ? "Edit Tax" : "Create New Tax"}</h2>
+                    <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-none">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden bg-white">
+                    <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-white custom-scrollbar">
+                        <div className="border border-slate-200 rounded-md p-8 space-y-6 bg-white">
+                            <div className="space-y-1.5">
+                                <label className="text-[14px] font-normal text-slate-900">Ledger Name</label>
+                                <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white" placeholder="Ledger Name here" />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-1.5">
+                                    <label className="text-[14px] font-normal text-slate-900">Type</label>
+                                    <div className="relative">
+                                        <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full h-10 px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white appearance-none">
+                                            <option value="Charge">Select</option>
+                                            <option value="Charge">Charge</option>
+                                            <option value="Deduction">Deduction</option>
+                                        </select>
+                                        <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[14px] font-normal text-slate-900">Calculation at</label>
+                                    <div className="relative">
+                                        <select value={formData.calc_method} onChange={e => setFormData({...formData, calc_method: e.target.value})} className="w-full h-10 px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white appearance-none">
+                                            <option value="Percentage">Select</option>
+                                            <option value="Percentage">Percentage</option>
+                                            <option value="Fixed">Fixed Amount</option>
+                                        </select>
+                                        <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-[14px] font-normal text-slate-900">Default Value</label>
+                                <input type="number" step="0.01" value={formData.calc_method === 'Percentage' ? formData.rate : formData.fixed_amount} onChange={e => setFormData({...formData, [formData.calc_method === 'Percentage' ? 'rate' : 'fixed_amount']: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white font-mono" placeholder="0.00" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="px-8 py-4 border-t border-slate-200 flex items-center justify-end space-x-8 bg-white shrink-0">
+                        <button type="button" onClick={() => setIsModalOpen(false)} className="text-[13px] text-slate-500 hover:text-slate-800 transition-none font-normal">Discard</button>
+                        <button 
+                            type="submit"
+                            disabled={saving}
+                            className="bg-primary text-slate-900 px-8 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center"
+                        >
+                            {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                            Create Statement
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      )}
 
       <div className="flex justify-between items-center">
         <h1 className="text-[20px] font-normal text-slate-900">Duties & Taxes</h1>
@@ -139,118 +178,48 @@ const DutiesTaxes = () => {
         </button>
       </div>
 
-      <div className="border border-slate-200 rounded-md overflow-hidden bg-white shadow-sm">
+      <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
         <table className="clean-table">
           <thead>
             <tr>
               <th className="w-20 text-center">SELECT</th>
               <th>LEDGER NAME</th>
-              <th>CLASSIFICATION</th>
-              <th>ENGINE</th>
+              <th>TYPE</th>
+              <th>CALCULATION</th>
               <th>VALUE</th>
-              <th className="text-right w-32 px-6">ACTIONS</th>
+              <th className="text-right">ACTIONS</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-20"><Loader2 className="w-6 h-6 animate-spin mx-auto text-slate-300" /></td></tr>
-            ) : taxes.map((tax, i) => {
+              <tr><td colSpan={6} className="text-center py-20 text-slate-400">Loading ledgers...</td></tr>
+            ) : taxes.map((tax) => {
               const isSelected = selectedIds.includes(tax.id) || tax.is_default;
               return (
-                <tr key={tax.id} className={`${isSelected ? 'bg-primary/10' : ''} transition-all duration-200 group`}>
+                <tr key={tax.id} className="hover:bg-slate-50/50">
                   <td className="text-center">
-                    <div className="flex items-center justify-center py-2">
-                      <button
-                        onClick={() => toggleSelection(tax)}
-                        className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-all ${
-                          isSelected 
-                            ? 'bg-primary border-slate-900 text-slate-900 shadow-md transform scale-110' 
-                            : 'bg-white border-slate-300 text-transparent hover:border-slate-500'
-                        }`}
-                        title={isSelected ? "Unselect" : "Select for Billing"}
-                      >
-                        <Check className={`w-4 h-4 stroke-[4] ${isSelected ? 'opacity-100' : 'opacity-0'}`} />
-                      </button>
-                    </div>
+                    <button onClick={async () => {
+                        const nextIds = toggleSelectedLedgerId(tax.id);
+                        setSelectedIds(nextIds);
+                        window.dispatchEvent(new Event('appSettingsChanged'));
+                    }} className={`w-4 h-4 rounded border ${isSelected ? 'bg-primary border-slate-900' : 'bg-white border-slate-300'} mx-auto transition-none`} />
                   </td>
-                  <td className="font-medium text-slate-900">
-                    <div className="flex items-center">
-                      <span className={isSelected ? 'text-slate-900 font-bold' : 'text-slate-600'}>{tax.name}</span>
-                      {isSelected && <CheckCircle2 className="w-3.5 h-3.5 ml-2 text-slate-900" />}
-                    </div>
-                  </td>
-                  <td>
-                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${tax.type === 'Charge' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
-                        {tax.type}
-                    </span>
-                  </td>
-                  <td className="text-[10px] uppercase font-medium text-slate-400">{tax.calc_method}</td>
-                  <td className="font-mono text-xs text-slate-700 font-bold">
-                    {tax.calc_method === 'Percentage' ? `${tax.rate}%` : `₹${tax.fixed_amount}`}
-                  </td>
-                  <td className="px-6">
-                    <div className="flex items-center justify-end space-x-2">
-                      <button 
-                        onClick={() => { setEditingTax(tax); setFormData(tax); setIsModalOpen(true); }} 
-                        className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-                        title="Edit"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => setDeleteDialog({ isOpen: true, tax })} 
-                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                  <td className="font-medium text-slate-700">{tax.name}</td>
+                  <td className="text-[11px] font-bold uppercase">{tax.type}</td>
+                  <td className="text-[11px] text-slate-400 uppercase">{tax.calc_method}</td>
+                  <td className="font-mono text-[13px]">{tax.calc_method === 'Percentage' ? `${tax.rate}%` : tax.fixed_amount.toFixed(2)}</td>
+                  <td className="text-right">
+                    <div className="flex justify-end space-x-2">
+                      <button onClick={() => { setEditingTax(tax); setFormData(tax); setIsModalOpen(true); }} className="text-slate-400 hover:text-slate-900 transition-none"><Edit className="w-4 h-4" /></button>
+                      <button onClick={() => setDeleteDialog({ isOpen: true, tax })} className="text-slate-400 hover:text-red-500 transition-none"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>
               );
             })}
-            {!loading && taxes.length === 0 && (
-              <tr><td colSpan={6} className="text-center py-20 text-slate-400 italic font-medium">No ledgers found. Create one to get started.</td></tr>
-            )}
           </tbody>
         </table>
       </div>
-
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTax ? "Edit Ledger" : "Create New Tax/Charge Ledger"}>
-        <form onSubmit={handleSubmit} className="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ledger Name</label>
-              <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm outline-none focus:border-slate-400 shadow-sm" placeholder="e.g. Loading Charges, Market Fee" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Type</label>
-                <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm bg-white outline-none focus:border-slate-400 shadow-sm">
-                  <option value="Charge">Charge (+ Additive)</option>
-                  <option value="Deduction">Deduction (- Subtractive)</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Calculation Engine</label>
-                <select value={formData.calc_method} onChange={e => setFormData({...formData, calc_method: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm bg-white outline-none focus:border-slate-400 shadow-sm">
-                  <option value="Percentage">Percentage (%)</option>
-                  <option value="Fixed">Fixed Amount (₹)</option>
-                </select>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Default Value {formData.calc_method === 'Percentage' ? '(%)' : '(₹)'}</label>
-              <input type="number" step="0.01" value={formData.calc_method === 'Percentage' ? formData.rate : formData.fixed_amount} onChange={e => setFormData({...formData, [formData.calc_method === 'Percentage' ? 'rate' : 'fixed_amount']: parseFloat(e.target.value) || 0})} className="w-full px-4 py-3 border border-slate-200 rounded-lg text-sm outline-none focus:border-slate-400 font-mono font-bold shadow-sm" />
-            </div>
-          </div>
-          <div className="flex justify-end pt-4 border-t border-slate-100">
-            <button type="submit" disabled={saving} className="bg-primary text-slate-900 px-10 py-3 rounded-lg font-bold text-sm hover:bg-primary-dark disabled:opacity-50 shadow-md">
-              {saving ? 'PROCESSING...' : 'SAVE LEDGER MASTER'}
-            </button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };
