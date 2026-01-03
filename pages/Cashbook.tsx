@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Loader2, Calendar, Trash2, Edit, Eye, ArrowLeft } from 'lucide-react';
 import { getActiveCompanyId, formatDate } from '../utils/helpers';
@@ -17,7 +16,6 @@ const Cashbook = () => {
     setLoading(true);
     const cid = getActiveCompanyId();
     if (!cid) return;
-
     try {
       const { data, error } = await supabase
         .from('cashbooks')
@@ -25,20 +23,15 @@ const Cashbook = () => {
         .eq('company_id', cid)
         .eq('is_deleted', false)
         .order('date', { ascending: false });
-
       if (error) {
-        if (error.message.includes('schema cache') || error.message.includes('not found')) {
-          throw new Error("SCHEMA_MISSING");
-        }
+        if (error.message.includes('schema cache') || error.message.includes('not found')) throw new Error("SCHEMA_MISSING");
         throw error;
       }
       setEntries(data || []);
       setDbError(false);
     } catch (e: any) {
       const localData = localStorage.getItem(`local_cashbook_${cid}`);
-      if (localData) {
-        setEntries(JSON.parse(localData));
-      }
+      if (localData) setEntries(JSON.parse(localData));
       if (e.message === "SCHEMA_MISSING") setDbError(true);
     } finally {
       setLoading(false);
@@ -62,42 +55,17 @@ const Cashbook = () => {
   const handleSaveSheet = async (data: any) => {
     const cid = getActiveCompanyId();
     const { data: { user } } = await supabase.auth.getUser();
-    
-    const payload = {
-        company_id: cid,
-        user_id: user?.id,
-        date: data.date,
-        income_total: data.incomeTotal,
-        expense_total: data.expenseTotal,
-        balance: data.balance,
-        raw_data: data,
-        is_deleted: false,
-        created_at: data.id ? undefined : new Date().toISOString()
-    };
-
+    const payload = { company_id: cid, user_id: user?.id, date: data.date, income_total: data.incomeTotal, expense_total: data.expenseTotal, balance: data.balance, raw_data: data, is_deleted: false, created_at: data.id ? undefined : new Date().toISOString() };
     try {
-      if (data.id) {
-        const { error } = await supabase.from('cashbooks').update(payload).eq('id', data.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('cashbooks').insert([payload]);
-        if (error) throw error;
-      }
+      if (data.id) await supabase.from('cashbooks').update(payload).eq('id', data.id);
+      else await supabase.from('cashbooks').insert([payload]);
       loadData();
     } catch (e) {
       const existing = JSON.parse(localStorage.getItem(`local_cashbook_${cid}`) || '[]');
-      let updated;
-      if (data.id) {
-          updated = existing.map((e: any) => e.id === data.id ? { ...e, ...payload } : e);
-      } else {
-          updated = [{ ...payload, id: Math.random().toString(36).substr(2, 9) }, ...existing];
-      }
+      let updated = data.id ? existing.map((e: any) => e.id === data.id ? { ...e, ...payload } : e) : [{ ...payload, id: Math.random().toString(36).substr(2, 9) }, ...existing];
       localStorage.setItem(`local_cashbook_${cid}`, JSON.stringify(updated));
       setEntries(updated);
-    } finally {
-      setViewState('list');
-      setEditingEntry(null);
-    }
+    } finally { setViewState('list'); setEditingEntry(null); }
   };
 
   const deleteEntry = (id: string) => {
@@ -109,31 +77,14 @@ const Cashbook = () => {
                   const updated = existing.filter((e: any) => e.id !== id);
                   localStorage.setItem(`local_cashbook_${cid}`, JSON.stringify(updated));
                   setEntries(updated);
-              } else {
-                  loadData();
-              }
+              } else loadData();
           });
       }
   };
 
-  const filteredEntries = entries.filter(e => 
-    e.date.includes(searchQuery)
-  );
+  const filteredEntries = entries.filter(e => e.date.includes(searchQuery));
 
-  if (viewState === 'entry') {
-    return (
-      <div className="h-full flex flex-col animate-in slide-in-from-right duration-300">
-        <CashbookSheet 
-            initialData={editingEntry} 
-            onSave={handleSaveSheet} 
-            onCancel={() => {
-                setViewState('list');
-                setEditingEntry(null);
-            }} 
-        />
-      </div>
-    );
-  }
+  if (viewState === 'entry') return <div className="h-full flex flex-col animate-in slide-in-from-right duration-300"><CashbookSheet initialData={editingEntry} onSave={handleSaveSheet} onCancel={() => { setViewState('list'); setEditingEntry(null); }} /></div>;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -141,112 +92,20 @@ const Cashbook = () => {
         <h1 className="text-[20px] font-normal text-slate-900">Cashbook Register</h1>
         <div className="flex space-x-2">
             <button className="px-4 py-2 bg-white border border-slate-200 rounded-md text-xs hover:bg-slate-50 transition-none uppercase font-medium">Export Data</button>
-            <button 
-                onClick={() => {
-                    setEditingEntry(null);
-                    setViewState('entry');
-                }}
-                className="bg-primary text-slate-900 px-6 py-2 rounded-md font-normal text-sm hover:bg-primary-dark shadow-sm flex items-center transition-none uppercase"
-            >
-                <Plus className="w-4 h-4 mr-2" /> Create Statement
-            </button>
+            <button onClick={() => { setEditingEntry(null); setViewState('entry'); }} className="bg-primary text-slate-900 px-6 py-2 rounded-md font-normal text-sm hover:bg-primary-dark flex items-center transition-none uppercase"><Plus className="w-4 h-4 mr-2" /> Create Statement</button>
         </div>
       </div>
-
-      {/* Consistent Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          { label: 'TOTAL INCOME', value: stats.income, color: 'text-slate-900' },
-          { label: 'TOTAL EXPENSE', value: stats.expense, color: 'text-slate-900' },
-          { label: 'NET BALANCE', value: stats.balance, color: 'text-slate-900' },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white border border-slate-200 rounded-md p-5 flex flex-col shadow-sm">
+        {[ { label: 'TOTAL INCOME', value: stats.income }, { label: 'TOTAL EXPENSE', value: stats.expense }, { label: 'NET BALANCE', value: stats.balance } ].map((stat, i) => (
+          <div key={i} className="bg-white border border-slate-200 rounded-md p-5 flex flex-col">
             <span className="text-[11px] text-slate-500 font-normal uppercase tracking-tight mb-1 block">{stat.label}</span>
-            <span className={`text-[24px] font-normal ${stat.color} leading-none font-mono`}>
-               {stat.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-            </span>
+            <span className="text-[24px] font-normal text-slate-900 leading-none font-mono">{stat.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
           </div>
         ))}
       </div>
-
       <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
-          <input 
-            type="text" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search statements by date (YYYY-MM-DD)..." 
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-md text-xs outline-none focus:border-slate-300 shadow-sm"
-          />
-        </div>
-        
-        <div className="border border-slate-200 rounded-md overflow-hidden bg-white shadow-sm">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                <th className="w-16 py-4 px-6 text-center border-r border-slate-100">SR</th>
-                <th className="py-4 px-6 border-r border-slate-100">STMT DATE</th>
-                <th className="text-right py-4 px-6 border-r border-slate-100">INCOME</th>
-                <th className="text-right py-4 px-6 border-r border-slate-100">EXPENSE</th>
-                <th className="text-right py-4 px-6 border-r border-slate-100">BALANCE</th>
-                <th className="text-center py-4 px-6">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} className="text-center py-20 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Loading records...</td></tr>
-              ) : filteredEntries.map((e, i) => (
-                <tr key={e.id} className="hover:bg-slate-50/50 group transition-colors border-b border-slate-100 last:border-0">
-                  <td className="py-3 px-6 text-center border-r border-slate-100 font-mono text-slate-400">{i + 1}</td>
-                  <td className="py-3 px-6 border-r border-slate-100">
-                    <div className="flex items-center">
-                        <Calendar className="w-3.5 h-3.5 mr-2 text-slate-300" />
-                        <span className="text-slate-700 font-medium">{e.date}</span>
-                    </div>
-                  </td>
-                  <td className="text-right py-3 px-6 border-r border-slate-100 font-mono text-emerald-600 font-bold">{(e.income_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                  <td className="text-right py-3 px-6 border-r border-slate-100 font-mono text-rose-600 font-bold">{(e.expense_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                  <td className="text-right py-3 px-6 border-r border-slate-100 font-black text-slate-900 font-mono">{(e.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                  <td className="text-center py-3 px-6">
-                    <div className="flex items-center justify-center space-x-2">
-                        <button 
-                            onClick={() => {
-                                setEditingEntry(e);
-                                setViewState('entry');
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-link hover:bg-link/10 rounded transition-all"
-                            title="View Statement"
-                        >
-                            <Eye className="w-4 h-4" />
-                        </button>
-                        <button 
-                            onClick={() => {
-                                setEditingEntry(e);
-                                setViewState('entry');
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-200 rounded transition-all"
-                            title="Edit Statement"
-                        >
-                            <Edit className="w-4 h-4" />
-                        </button>
-                        <button 
-                            onClick={() => deleteEntry(e.id)} 
-                            className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded transition-all"
-                            title="Delete Record"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!loading && filteredEntries.length === 0 && (
-                <tr><td colSpan={6} className="text-center py-24 text-slate-300 italic">No cashbook entries found for this company.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" /><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search statements by date (YYYY-MM-DD)..." className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-md text-xs outline-none focus:border-slate-300" /></div>
+        <div className="border border-slate-200 rounded-md overflow-hidden bg-white"><table className="w-full text-left text-sm border-collapse"><thead><tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest"><th className="w-16 py-4 px-6 text-center border-r border-slate-100">SR</th><th className="py-4 px-6 border-r border-slate-100">STMT DATE</th><th className="text-right py-4 px-6 border-r border-slate-100">INCOME</th><th className="text-right py-4 px-6 border-r border-slate-100">EXPENSE</th><th className="text-right py-4 px-6 border-r border-slate-100">BALANCE</th><th className="text-center py-4 px-6">ACTIONS</th></tr></thead><tbody>{loading ? (<tr><td colSpan={6} className="text-center py-20 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Loading records...</td></tr>) : filteredEntries.map((e, i) => (<tr key={e.id} className="hover:bg-slate-50/50 group transition-colors border-b border-slate-100 last:border-0"><td className="py-3 px-6 text-center border-r border-slate-100 font-mono text-slate-400">{i + 1}</td><td className="py-3 px-6 border-r border-slate-100"><div className="flex items-center"><Calendar className="w-3.5 h-3.5 mr-2 text-slate-300" /><span className="text-slate-700 font-medium">{e.date}</span></div></td><td className="text-right py-3 px-6 border-r border-slate-100 font-mono text-emerald-600 font-bold">{(e.income_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td><td className="text-right py-3 px-6 border-r border-slate-100 font-mono text-rose-600 font-bold">{(e.expense_total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td><td className="text-right py-3 px-6 border-r border-slate-100 font-black text-slate-900 font-mono">{(e.balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td><td className="text-center py-3 px-6"><div className="flex items-center justify-center space-x-2"><button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 hover:text-link hover:bg-link/10 rounded transition-all"><Eye className="w-4 h-4" /></button><button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-200 rounded transition-all"><Edit className="w-4 h-4" /></button><button onClick={() => deleteEntry(e.id)} className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded transition-all"><Trash2 className="w-4 h-4" /></button></div></td></tr>))}{!loading && filteredEntries.length === 0 && (<tr><td colSpan={6} className="text-center py-24 text-slate-300 italic">No cashbook entries found for this company.</td></tr>)}</tbody></table></div>
       </div>
     </div>
   );

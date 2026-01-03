@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import Modal from './Modal';
@@ -45,7 +44,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               onConfirm();
               onClose();
             }}
-            className={`flex-1 px-4 py-2.5 text-white font-bold uppercase text-[10px] tracking-widest rounded transition-all shadow-md active:scale-95 ${
+            className={`flex-1 px-4 py-2.5 text-white font-bold uppercase text-[10px] tracking-widest rounded transition-all active:scale-95 ${
               variant === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600'
             }`}
           >

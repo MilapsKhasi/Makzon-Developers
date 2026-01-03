@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Logo from './Logo';
 
@@ -10,9 +9,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ isExiting }) => {
   return (
     <div className={`fixed inset-0 z-[1000] splash-bg flex flex-col items-center justify-center transition-opacity duration-700 ease-in-out font-['Poppins'] ${isExiting ? 'opacity-0' : 'opacity-100'}`}>
       <div className="relative z-10 flex flex-col items-center animate-in zoom-in-95 duration-1000">
-        {/* Slightly smaller logo size as requested */}
-        <Logo size={100} className="mb-6 rounded-[15px] shadow-sm" />
-        
+        <Logo size={100} className="mb-6 rounded-[15px]" />
         <div className="text-center">
           <h1 className="text-3xl font-semibold text-[#EF4444] tracking-tight mb-1 font-['Poppins']">
             Findesk Prime

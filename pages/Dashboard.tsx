@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Search, Loader2, ChevronDown } from 'lucide-react';
 import { getActiveCompanyId, formatDate } from '../utils/helpers';
@@ -30,24 +29,17 @@ const Dashboard = () => {
     }
 
     try {
-      // Fetch all non-deleted bills for the active workspace
       let query = supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false);
-      
       if (dateRange.startDate && dateRange.endDate) {
         query = query.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
       }
-      
       const { data: vouchers, error } = await query;
       if (error) throw error;
-
-      // Filter for Purchases (type 'Purchase' or untyped) to match Bills screen logic
       const items = (vouchers || []).filter(v => v.type === 'Purchase' || !v.type);
-
       const totalWithoutGst = items.reduce((acc, b) => acc + Number(b.total_without_gst || 0), 0);
       const totalGst = items.reduce((acc, b) => acc + Number(b.total_gst || 0), 0);
       const totalWithGst = items.reduce((acc, b) => acc + Number(b.grand_total || 0), 0);
       const paidGst = items.filter(i => i.status === 'Paid').reduce((acc, i) => acc + Number(i.total_gst || 0), 0);
-
       setStats({
         totalPurchases: items.length,
         withoutGst: totalWithoutGst,
@@ -55,13 +47,7 @@ const Dashboard = () => {
         withGst: totalWithGst,
         gstPaid: paidGst
       });
-
-      const combined = items.map(b => ({ 
-        ...b, 
-        docNo: b.bill_number, 
-        party: b.vendor_name 
-      })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
+      const combined = items.map(b => ({ ...b, docNo: b.bill_number, party: b.vendor_name })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setRecentVouchers(combined);
     } catch (err) {
       console.error("Dashboard load error:", err);
