@@ -29,8 +29,9 @@ const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose, title, children,
 
   return (
     <div className="fixed inset-0 z-[150]">
+      {/* 30% Opacity Backdrop */}
       <div 
-        className="absolute inset-0 bg-slate-900/20 backdrop-blur-[1px]" 
+        className="absolute inset-0 bg-slate-900/30 backdrop-blur-[1px]" 
         onClick={onClose} 
       />
       <div className={`absolute top-0 right-0 h-full bg-white shadow-2xl flex flex-col ${width} w-full border-l border-slate-200`}>

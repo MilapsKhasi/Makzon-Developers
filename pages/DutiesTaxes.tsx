@@ -103,7 +103,8 @@ const DutiesTaxes = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/70" onClick={() => setIsModalOpen(false)} />
+            {/* 30% Opacity Backdrop */}
+            <div className="absolute inset-0 bg-slate-900/30" onClick={() => setIsModalOpen(false)} />
             <div className="relative bg-white w-full max-w-[650px] border border-slate-300 overflow-hidden rounded-md flex flex-col max-h-[90vh]">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white shrink-0">
                     <h2 className="text-[18px] font-normal text-slate-900">{editingTax ? "Edit Tax" : "Create New Tax"}</h2>

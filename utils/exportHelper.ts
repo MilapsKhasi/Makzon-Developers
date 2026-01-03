@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 
 export interface ExportConfig {
@@ -18,58 +17,48 @@ export const exportToExcel = (
 ) => {
     const sheetData: any[][] = [];
     
-    // Header Row 1: Company Name
+    // Header Section for Excel
     sheetData.push([config.companyName.toUpperCase()]); 
-
-    // Header Row 2: Company Details
     sheetData.push([`GSTIN: ${config.gstin || 'N/A'} | Address: ${config.address || 'N/A'}`]); 
-
-    // Header Row 3: Report Info
     sheetData.push([`REPORT: ${config.reportTitle} | PERIOD: ${config.dateRange}`]);
-
-    // Header Row 4: Column Headers (Strictly following the provided mapping)
+    sheetData.push([]); // Spacer
     sheetData.push(headers);
 
-    // Data Rows
     rows.forEach(row => {
         sheetData.push(row);
     });
 
-    // Create Sheet
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-    // Set Column Widths for readability
-    const colWidths = headers.map(() => ({ wch: 15 }));
-    // Specific wider columns
-    colWidths[3] = { wch: 30 }; // Party Name
-    colWidths[7] = { wch: 25 }; // Item Name
-    colWidths[16] = { wch: 30 }; // Narration
-    
+    // Auto-size columns based on headers
+    const colWidths = headers.map(h => ({ wch: Math.max(h.length + 5, 12) }));
     ws['!cols'] = colWidths;
 
-    // Merge logic: Merge top 3 header rows across all columns
+    // Merges for the header
     const lastColIndex = headers.length - 1;
-    ws['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: lastColIndex } }, // Merge Company Name
-        { s: { r: 1, c: 0 }, e: { r: 1, c: lastColIndex } }, // Merge GSTIN/Address
-        { s: { r: 2, c: 0 }, e: { r: 2, c: lastColIndex } }  // Merge Report Info
-    ];
+    if (lastColIndex > 0) {
+        ws['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: lastColIndex } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: lastColIndex } },
+            { s: { r: 2, c: 0 }, e: { r: 2, c: lastColIndex } }
+        ];
+    }
 
-    XLSX.utils.book_append_sheet(wb, ws, "Professional_Report");
-    // Filename changed to avoid Tally keyword
-    XLSX.writeFile(wb, `${config.reportTitle.replace(/\s+/g, '_')}_Report.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Report");
+    XLSX.writeFile(wb, `${config.reportTitle.replace(/\s+/g, '_')}_${new Date().getTime()}.xlsx`);
 };
 
 export const exportToCSV = (headers: string[], rows: any[][], config: ExportConfig) => {
     const csvContent = [
         `"${config.companyName.replace(/"/g, '""')}"`,
         `"GSTIN: ${config.gstin}","Address: ${config.address}"`,
+        `"Report: ${config.reportTitle}","Period: ${config.dateRange}"`,
         '',
         headers.join(','),
         ...rows.map(row => row.map(cell => {
             const stringCell = String(cell ?? '');
-            if (stringCell.includes(',') || stringCell.includes('"')) {
+            if (stringCell.includes(',') || stringCell.includes('"') || stringCell.includes('\n')) {
                 return `"${stringCell.replace(/"/g, '""')}"`;
             }
             return stringCell;
@@ -81,10 +70,13 @@ export const exportToCSV = (headers: string[], rows: any[][], config: ExportConf
     const url = URL.createObjectURL(blob);
     
     link.setAttribute('href', url);
-    // Filename changed to avoid Tally keyword
-    link.setAttribute('download', `${config.reportTitle.replace(/\s+/g, '_')}_Report.csv`);
+    link.setAttribute('download', `${config.reportTitle.replace(/\s+/g, '_')}_Data.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+};
+
+export const triggerPrint = () => {
+    window.print();
 };

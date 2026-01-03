@@ -1,8 +1,9 @@
-
-import React, { useState, useEffect } from 'react';
-import { Trash2, Loader2, X, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Trash2, Loader2, X, ChevronDown, UserPlus, UserRoundPen } from 'lucide-react';
 import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
+import Modal from './Modal';
+import VendorForm from './VendorForm';
 
 interface BillFormProps {
   initialData?: any;
@@ -39,6 +40,16 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<any>(getInitialState());
   const [vendors, setVendors] = useState<any[]>([]);
+  const [vendorModal, setVendorModal] = useState<{ isOpen: boolean; initialData: any | null; prefilledName: string }>({
+    isOpen: false,
+    initialData: null,
+    prefilledName: ''
+  });
+
+  const matchedVendor = useMemo(() => 
+    vendors.find(v => v.name.toLowerCase() === formData.vendor_name.toLowerCase()), 
+    [formData.vendor_name, vendors]
+  );
 
   const recalculate = (state: any) => {
     let taxable = 0;
@@ -97,7 +108,10 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     const activeDuties = (allDuties || []).filter(d => d.is_default || selectedIds.includes(d.id));
 
     if (!initialData) {
-      setFormData(prev => recalculate({ ...prev, duties_and_taxes: activeDuties.map(d => ({ ...d, bill_rate: d.rate, bill_fixed_amount: d.fixed_amount, amount: 0 }))}));
+      setFormData(prev => {
+        if (prev.duties_and_taxes.length > 0) return prev;
+        return recalculate({ ...prev, duties_and_taxes: activeDuties.map(d => ({ ...d, bill_rate: d.rate, bill_fixed_amount: d.fixed_amount, amount: 0 }))});
+      });
     } else {
         setFormData(prev => recalculate({ ...getInitialState(), ...initialData, displayDate: formatDate(initialData.date), type: 'Purchase' }));
     }
@@ -116,6 +130,11 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     setFormData(recalculate({ ...formData, vendor_name: name, gstin: selected?.gstin || formData.gstin }));
   };
 
+  const onVendorSaved = (saved: any) => {
+    setVendorModal({ ...vendorModal, isOpen: false });
+    loadDependencies().then(() => handleVendorChange(saved.name));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.vendor_name || !formData.bill_number) return alert("Required: Vendor and Bill No");
@@ -132,9 +151,23 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
   return (
     <div className="bg-white w-full flex flex-col">
+      <Modal 
+        isOpen={vendorModal.isOpen} 
+        onClose={() => setVendorModal({ ...vendorModal, isOpen: false })} 
+        title={vendorModal.initialData ? "Edit Vendor Profile" : "Register New Vendor"}
+        maxWidth="max-w-[800px]"
+      >
+        <VendorForm 
+          initialData={vendorModal.initialData} 
+          prefilledName={vendorModal.prefilledName} 
+          onSubmit={onVendorSaved} 
+          onCancel={() => setVendorModal({ ...vendorModal, isOpen: false })} 
+        />
+      </Modal>
+
       <form onSubmit={handleSubmit} className="p-8 space-y-6">
         <div className="border border-slate-200 rounded-md p-8 space-y-6 bg-white">
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                     <label className="text-[14px] font-normal text-slate-900">Date</label>
                     <input required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px]" />
@@ -143,11 +176,34 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                     <label className="text-[14px] font-normal text-slate-900">Bill No</label>
                     <input required value={formData.bill_number} onChange={e => setFormData({...formData, bill_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-mono" />
                 </div>
+                <div className="space-y-1.5">
+                    <label className="text-[14px] font-normal text-slate-900">Payment Status</label>
+                    <div className="relative">
+                        <select 
+                            value={formData.status} 
+                            onChange={e => setFormData({...formData, status: e.target.value})}
+                            className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] appearance-none bg-white"
+                        >
+                            <option value="Pending">Pending</option>
+                            <option value="Paid">Paid</option>
+                        </select>
+                        <ChevronDown className="w-3 h-3 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                </div>
             </div>
 
             <div className="space-y-1.5">
                 <label className="text-[14px] font-normal text-slate-900">Vendor Name</label>
-                <input required list="vlist" value={formData.vendor_name} onChange={e => handleVendorChange(e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] uppercase" placeholder="Search Vendor..." />
+                <div className="flex items-center gap-3">
+                  <input required list="vlist" value={formData.vendor_name} onChange={e => handleVendorChange(e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] uppercase shadow-inner bg-white" placeholder="Search Vendor..." />
+                  <button 
+                    type="button" 
+                    onClick={() => setVendorModal({ isOpen: true, initialData: matchedVendor || null, prefilledName: matchedVendor ? '' : formData.vendor_name })} 
+                    className={`h-10 w-10 flex items-center justify-center rounded border transition-all shrink-0 ${matchedVendor ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-primary/20 text-slate-700 border-slate-200'}`}
+                  >
+                    {matchedVendor ? <UserRoundPen className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                  </button>
+                </div>
                 <datalist id="vlist">{vendors.map(v => <option key={v.id} value={v.name} />)}</datalist>
             </div>
 
@@ -215,7 +271,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                 className="bg-primary text-slate-900 px-8 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center"
             >
                 {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                Create Statement
+                {initialData ? 'Update Bill' : 'Create Bill'}
             </button>
         </div>
       </form>
