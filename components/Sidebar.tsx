@@ -5,15 +5,15 @@ import { LayoutDashboard, ReceiptText, BarChart3, Package, Calculator, Users, Wa
 
 const Sidebar = () => {
   const navItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Sales Invoices', path: '/sales', icon: ShoppingBag },
-    { name: 'Customers', path: '/customers', icon: Contact },
-    { name: 'Purchase Bills', path: '/bills', icon: ReceiptText },
-    { name: 'Vendors', path: '/vendors', icon: Users },
-    { name: 'Stock Management', path: '/stock', icon: Package },
-    { name: 'Cashbook', path: '/cashbook', icon: Wallet },
-    { name: 'Duties & Taxes', path: '/duties-taxes', icon: Calculator },
-    { name: 'Reports', path: '/reports', icon: BarChart3 },
+    { name: 'Dashboard', path: '/', icon: LayoutDashboard, shortcut: 'D' },
+    { name: 'Sales Invoices', path: '/sales', icon: ShoppingBag, shortcut: 'I' },
+    { name: 'Customers', path: '/customers', icon: Contact, shortcut: 'C' },
+    { name: 'Purchase Bills', path: '/bills', icon: ReceiptText, shortcut: 'B' },
+    { name: 'Vendors', path: '/vendors', icon: Users, shortcut: 'V' },
+    { name: 'Stock Management', path: '/stock', icon: Package, shortcut: 'S' },
+    { name: 'Cashbook', path: '/cashbook', icon: Wallet, shortcut: 'K' },
+    { name: 'Duties & Taxes', path: '/duties-taxes', icon: Calculator, shortcut: 'T' },
+    { name: 'Reports', path: '/reports', icon: BarChart3, shortcut: 'R' },
   ];
 
   return (
@@ -24,15 +24,20 @@ const Sidebar = () => {
             key={item.name + item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center space-x-4 px-6 py-3 text-[14px] font-normal transition-none ${
+              `flex items-center justify-between px-6 py-3 text-[14px] font-normal transition-none ${
                 isActive
                   ? 'bg-primary text-slate-900 border-r-4 border-slate-900'
                   : 'text-slate-600 hover:bg-slate-50'
               }`
             }
           >
-            <item.icon className={`w-4 h-4 ${window.location.hash.includes(item.path) ? 'text-slate-900' : 'text-slate-400'}`} />
-            <span className="truncate">{item.name}</span>
+            <div className="flex items-center space-x-4 min-w-0">
+              <item.icon className="w-4 h-4 shrink-0 opacity-70" />
+              <span className="truncate">{item.name}</span>
+            </div>
+            <span className="text-[9px] font-bold text-slate-400 opacity-50 ml-2 border border-slate-200 px-1 rounded bg-slate-50">
+              Alt+{item.shortcut}
+            </span>
           </NavLink>
         ))}
       </nav>

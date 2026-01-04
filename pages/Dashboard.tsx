@@ -1,11 +1,12 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Search, Loader2, ChevronDown, TrendingUp, TrendingDown, Wallet, Clock, Receipt } from 'lucide-react';
 import { getActiveCompanyId, formatDate, normalizeBill } from '../utils/helpers';
-import DateFilter from '../components/DateFilter';
+import DateFilter, { DateFilterHandle } from '../components/DateFilter';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
 import SalesInvoiceForm from '../components/SalesInvoiceForm';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { supabase } from '../lib/supabase';
 
 const Dashboard = () => {
@@ -22,6 +23,20 @@ const Dashboard = () => {
   const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
   const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Selection / Shortcut states
+  const [headerFocusIdx, setHeaderFocusIdx] = useState<number | null>(null);
+  const [selectedRowIdx, setSelectedRowIdx] = useState<number | null>(null);
+  const [editingVoucher, setEditingVoucher] = useState<any>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; voucher: any | null }>({
+    isOpen: false,
+    voucher: null
+  });
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const dateFilterRef = useRef<DateFilterHandle>(null);
+  const newSaleBtnRef = useRef<HTMLButtonElement>(null);
+  const newPurchaseBtnRef = useRef<HTMLButtonElement>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -44,34 +59,13 @@ const Dashboard = () => {
       const purchaseItems = normalizedVouchers.filter(v => v.type === 'Purchase');
       const salesItems = normalizedVouchers.filter(v => v.type === 'Sale');
 
-      // 1. Total Sales: Sum of all Sales Invoices
       const totalSales = salesItems.reduce((acc, b) => acc + Number(b.grand_total || 0), 0);
-      
-      // 2. Total Purchases: Sum of all Purchase Bills
       const totalPurchases = purchaseItems.reduce((acc, b) => acc + Number(b.grand_total || 0), 0);
-      
-      // 3. Payables: Sum of unpaid (Pending) Purchase Bills
-      const payables = purchaseItems
-        .filter(v => v.status === 'Pending')
-        .reduce((acc, v) => acc + Number(v.grand_total || 0), 0);
-        
-      // 4. Receivables: Sum of unpaid (Pending) Sales Invoices
-      const receivables = salesItems
-        .filter(v => v.status === 'Pending')
-        .reduce((acc, v) => acc + Number(v.grand_total || 0), 0);
+      const payables = purchaseItems.filter(v => v.status === 'Pending').reduce((acc, v) => acc + Number(v.grand_total || 0), 0);
+      const receivables = salesItems.filter(v => v.status === 'Pending').reduce((acc, v) => acc + Number(v.grand_total || 0), 0);
+      const gstPaid = purchaseItems.filter(v => v.status === 'Paid').reduce((acc, v) => acc + Number(v.total_gst || 0), 0);
 
-      // 5. GST Paid: Total GST from paid Purchase Bills
-      const gstPaid = purchaseItems
-        .filter(v => v.status === 'Paid')
-        .reduce((acc, v) => acc + Number(v.total_gst || 0), 0);
-
-      setStats({
-        totalSales,
-        totalPurchases,
-        payables,
-        receivables,
-        gstPaid
-      });
+      setStats({ totalSales, totalPurchases, payables, receivables, gstPaid });
 
       const combined = normalizedVouchers.map(b => ({ 
         ...b, 
@@ -100,30 +94,138 @@ const Dashboard = () => {
     return v.docNo?.toLowerCase().includes(search) || v.party?.toLowerCase().includes(search);
   }).slice(0, 10);
 
+  // Focus effect for header elements
+  useEffect(() => {
+    if (headerFocusIdx === 0) dateFilterRef.current?.focusYear();
+    if (headerFocusIdx === 1) dateFilterRef.current?.focusMonth();
+    if (headerFocusIdx === 2) newSaleBtnRef.current?.focus();
+    if (headerFocusIdx === 3) newPurchaseBtnRef.current?.focus();
+  }, [headerFocusIdx]);
+
+  useEffect(() => {
+    const handleKeys = (e: KeyboardEvent) => {
+      // If we are in the delete confirmation state, Esc should cancel
+      if (deleteDialog.isOpen && e.key === 'Escape') {
+        setDeleteDialog({ isOpen: false, voucher: null });
+        return;
+      }
+
+      // Context Check: Are we in an input? (Unless it's our own search bar)
+      const isFocusedInInput = document.activeElement?.tagName === 'INPUT' && document.activeElement !== searchInputRef.current;
+      const isFocusedInSelect = document.activeElement?.tagName === 'SELECT';
+      if (isFocusedInInput) return;
+
+      // Table Navigation: Up/Down arrow keys move selection ONLY if a row is already selected
+      if (selectedRowIdx !== null) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedRowIdx(prev => (prev === null ? 0 : Math.min(prev + 1, filteredVouchers.length - 1)));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedRowIdx(prev => (prev === null ? 0 : Math.max(prev - 1, 0)));
+        }
+      }
+
+      if (e.shiftKey) {
+        // Shift + Arrows: Header Navigation
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          setHeaderFocusIdx(prev => (prev === null ? 0 : (prev + 1) % 4));
+          setSelectedRowIdx(null);
+        }
+        else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          setHeaderFocusIdx(prev => (prev === null ? 3 : (prev - 1 + 4) % 4));
+          setSelectedRowIdx(null);
+        }
+        // Shift + Enter: Context Switch (Search -> Table)
+        else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (document.activeElement !== searchInputRef.current) {
+            searchInputRef.current?.focus();
+            setSelectedRowIdx(null);
+            setHeaderFocusIdx(null);
+          } else {
+            if (filteredVouchers.length > 0) {
+              setSelectedRowIdx(0);
+              searchInputRef.current?.blur();
+            }
+          }
+        }
+        // Shift + E: Edit Entry
+        else if (e.key === 'E' || e.key === 'e') {
+          if (selectedRowIdx !== null && filteredVouchers[selectedRowIdx]) {
+            e.preventDefault();
+            const voucher = filteredVouchers[selectedRowIdx];
+            setEditingVoucher(voucher);
+            if (voucher.displayType === 'Sale') setIsSalesModalOpen(true);
+            else setIsPurchaseModalOpen(true);
+          }
+        }
+        // Shift + D: Delete Entry (Double Press Flow)
+        else if (e.key === 'D' || e.key === 'd') {
+          if (selectedRowIdx !== null && filteredVouchers[selectedRowIdx]) {
+            e.preventDefault();
+            const voucher = filteredVouchers[selectedRowIdx];
+            if (!deleteDialog.isOpen) {
+              setDeleteDialog({ isOpen: true, voucher });
+            } else {
+              // If already open, confirm delete
+              handleConfirmDelete();
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeys);
+    return () => window.removeEventListener('keydown', handleKeys);
+  }, [filteredVouchers, selectedRowIdx, deleteDialog, headerFocusIdx]);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteDialog.voucher) return;
+    const { error } = await supabase.from('bills').update({ is_deleted: true }).eq('id', deleteDialog.voucher.id);
+    if (!error) {
+      loadData();
+      window.dispatchEvent(new Event('appSettingsChanged'));
+    }
+    setDeleteDialog({ isOpen: false, voucher: null });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <Modal isOpen={isPurchaseModalOpen} onClose={() => setIsPurchaseModalOpen(false)} title="Register Purchase Bill" maxWidth="max-w-6xl">
-        <BillForm onSubmit={() => { setIsPurchaseModalOpen(false); loadData(); }} onCancel={() => setIsPurchaseModalOpen(false)} />
+      <Modal isOpen={isPurchaseModalOpen} onClose={() => { setIsPurchaseModalOpen(false); setEditingVoucher(null); }} title={editingVoucher ? "Edit Purchase Bill" : "Register Purchase Bill"} maxWidth="max-w-6xl">
+        <BillForm initialData={editingVoucher} onSubmit={() => { setIsPurchaseModalOpen(false); setEditingVoucher(null); loadData(); }} onCancel={() => { setIsPurchaseModalOpen(false); setEditingVoucher(null); }} />
       </Modal>
 
-      <Modal isOpen={isSalesModalOpen} onClose={() => setIsSalesModalOpen(false)} title="Generate Sales Invoice" maxWidth="max-w-6xl">
-        <SalesInvoiceForm onSubmit={() => { setIsSalesModalOpen(false); loadData(); }} onCancel={() => setIsSalesModalOpen(false)} />
+      <Modal isOpen={isSalesModalOpen} onClose={() => { setIsSalesModalOpen(false); setEditingVoucher(null); }} title={editingVoucher ? "Edit Sales Invoice" : "Generate Sales Invoice"} maxWidth="max-w-6xl">
+        <SalesInvoiceForm initialData={editingVoucher} onSubmit={() => { setIsSalesModalOpen(false); setEditingVoucher(null); loadData(); }} onCancel={() => { setIsSalesModalOpen(false); setEditingVoucher(null); }} />
       </Modal>
+
+      <ConfirmDialog 
+        isOpen={deleteDialog.isOpen} 
+        onClose={() => setDeleteDialog({ isOpen: false, voucher: null })} 
+        onConfirm={handleConfirmDelete} 
+        title="Archive Transaction" 
+        message={`Delete ${deleteDialog.voucher?.displayType} ${deleteDialog.voucher?.docNo}? (Press Shift + D again to confirm, or Esc to cancel)`} 
+      />
 
       <div className="flex items-center justify-between">
         <h1 className="text-[20px] font-normal text-slate-900">Dashboard Overview</h1>
         <div className="flex items-center space-x-3">
-          <DateFilter onFilterChange={setDateRange} />
+          <DateFilter ref={dateFilterRef} onFilterChange={setDateRange} />
           <div className="flex space-x-2">
             <button 
+                ref={newSaleBtnRef}
                 onClick={() => setIsSalesModalOpen(true)}
-                className="bg-link text-white px-6 py-2 rounded-md font-normal text-sm hover:bg-link/90 transition-none"
+                className={`px-6 py-2 rounded-md font-normal text-sm transition-none border-2 ${headerFocusIdx === 2 ? 'border-slate-900 ring-2 ring-link ring-offset-2' : 'border-transparent bg-link text-white hover:bg-link/90'}`}
             >
                 NEW SALE
             </button>
             <button 
+                ref={newPurchaseBtnRef}
                 onClick={() => setIsPurchaseModalOpen(true)}
-                className="bg-primary text-slate-900 px-6 py-2 rounded-md font-normal text-sm hover:bg-primary-dark transition-none"
+                className={`px-6 py-2 rounded-md font-normal text-sm transition-none border-2 ${headerFocusIdx === 3 ? 'border-slate-900 ring-2 ring-primary ring-offset-2' : 'border-transparent bg-primary text-slate-900 hover:bg-primary-dark'}`}
             >
                 NEW PURCHASE
             </button>
@@ -155,11 +257,12 @@ const Dashboard = () => {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
           <input 
+            ref={searchInputRef}
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search recent entries (Bill #, Party)..." 
-            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-slate-300"
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-primary shadow-sm"
           />
         </div>
         
@@ -182,7 +285,11 @@ const Dashboard = () => {
               {loading ? (
                 <tr><td colSpan={7} className="text-center py-10 text-slate-400 font-semibold tracking-widest text-[10px] uppercase">Loading register...</td></tr>
               ) : filteredVouchers.map((v, i) => (
-                <tr key={v.id} className="hover:bg-slate-50/50">
+                <tr 
+                  key={v.id} 
+                  className={`transition-colors cursor-pointer ${selectedRowIdx === i ? 'bg-slate-50 border-l-4 border-primary' : 'hover:bg-slate-50/50'}`}
+                  onClick={() => setSelectedRowIdx(i)}
+                >
                   <td>{i + 1}</td>
                   <td>{formatDate(v.date)}</td>
                   <td>

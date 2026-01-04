@@ -45,6 +45,35 @@ const Layout = () => {
     return () => window.removeEventListener('appSettingsChanged', loadWorkspaces);
   }, [navigate]);
 
+  // Global Keyboard Shortcuts for Navigation using Alt as modifier
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if Alt is pressed
+      if (e.altKey) {
+        const key = e.key.toLowerCase();
+        const routes: Record<string, string> = {
+          'd': '/',
+          'i': '/sales',
+          'c': '/customers',
+          'b': '/bills',
+          'v': '/vendors',
+          's': '/stock',
+          'k': '/cashbook',
+          't': '/duties-taxes',
+          'r': '/reports'
+        };
+
+        if (routes[key]) {
+          e.preventDefault();
+          navigate(routes[key]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate]);
+
   const switchWorkspace = (ws: any) => {
     localStorage.setItem('activeCompanyId', ws.id);
     localStorage.setItem('activeCompanyName', ws.name);
@@ -118,14 +147,15 @@ const Layout = () => {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto p-6 bg-white">
-          <Outlet />
-        </main>
+      <div className="flex-1 overflow-hidden">
+        <div className="flex h-full">
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto p-6 bg-white">
+            <Outlet />
+          </main>
+        </div>
       </div>
 
-      {/* Global Settings Modal */}
       <Modal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} title="Global System Configuration" maxWidth="max-w-4xl">
           <Settings onDone={() => setIsSettingsModalOpen(false)} />
       </Modal>
