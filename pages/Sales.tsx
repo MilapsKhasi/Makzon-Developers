@@ -1,20 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Trash2, Filter, ChevronDown, Loader2, Info, BadgeDollarSign } from 'lucide-react';
-import { formatCurrency, formatDate, getActiveCompanyId } from '../utils/helpers';
+import { Search, Loader2, Edit, Trash2, Plus, ReceiptText } from 'lucide-react';
+import { formatDate, getActiveCompanyId } from '../utils/helpers';
 import Modal from '../components/Modal';
 import SalesInvoiceForm from '../components/SalesInvoiceForm';
 import ConfirmDialog from '../components/ConfirmDialog';
+import DateFilter from '../components/DateFilter';
 import { supabase } from '../lib/supabase';
 
 const Sales = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
   
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; invoice: any | null }>({
     isOpen: false,
@@ -25,145 +25,141 @@ const Sales = () => {
     setLoading(true);
     const cid = getActiveCompanyId();
     if (!cid) return;
-
-    // Use 'bills' table as the storage for all vouchers
-    const { data } = await supabase
-      .from('bills')
-      .select('*')
-      .eq('company_id', cid)
-      .eq('is_deleted', false)
-      .eq('type', 'Sale') // Filter for Sales
-      .order('date', { ascending: false });
-
-    // Map database fields to UI terminology
-    const mappedData = (data || []).map(item => ({
-        ...item,
-        customer_name: item.vendor_name,
-        invoice_number: item.bill_number
-    }));
-
-    setInvoices(mappedData);
-    setLoading(false);
+    
+    try {
+      // First, attempt standard query
+      let query = supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false).eq('type', 'Sale');
+      if (dateRange.startDate && dateRange.endDate) {
+        query = query.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
+      }
+      const { data, error } = await query.order('date', { ascending: false });
+      
+      if (error) {
+        // Fallback: If 'type' column doesn't exist, fetch all and filter in memory
+        if (error.message.includes('column') && error.message.includes('not exist')) {
+            let fallbackQuery = supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false);
+            if (dateRange.startDate && dateRange.endDate) {
+                fallbackQuery = fallbackQuery.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
+            }
+            const { data: fallbackData, error: fallbackError } = await fallbackQuery.order('date', { ascending: false });
+            if (fallbackError) throw fallbackError;
+            setInvoices((fallbackData || []).filter(b => b.type === 'Sale'));
+        } else {
+            throw error;
+        }
+      } else {
+        setInvoices(data || []);
+      }
+    } catch (err: any) {
+      console.error("Error loading sales:", err.message || err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadData();
     window.addEventListener('appSettingsChanged', loadData);
     return () => window.removeEventListener('appSettingsChanged', loadData);
-  }, []);
+  }, [dateRange]);
 
   const confirmDelete = async () => {
     if (!deleteDialog.invoice) return;
     const { error } = await supabase.from('bills').update({ is_deleted: true }).eq('id', deleteDialog.invoice.id);
-    if (error) alert('Error deleting entry');
-    else { loadData(); window.dispatchEvent(new Event('appSettingsChanged')); }
+    if (!error) loadData();
+    setDeleteDialog({ isOpen: false, invoice: null });
   };
 
   const filtered = invoices.filter(i => {
-    const matchesStatus = statusFilter === 'All' ? true : i.status === statusFilter;
-    const matchesSearch = i.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          i.customer_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
+    const search = searchQuery.toLowerCase();
+    return i.bill_number?.toLowerCase().includes(search) || i.vendor_name?.toLowerCase().includes(search);
   });
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Sales Voucher">
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingInvoice ? "Update Sale Invoice" : "Generate Sale Invoice"} maxWidth="max-w-4xl">
         <SalesInvoiceForm initialData={editingInvoice} onSubmit={() => { setIsModalOpen(false); loadData(); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>
 
-      <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, invoice: null })} onConfirm={confirmDelete} title="Archive Sales Entry" message={`Move sales entry ${deleteDialog.invoice?.invoice_number} to trash?`} />
+      <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, invoice: null })} onConfirm={confirmDelete} title="Delete Invoice" message={`Permanently archive sale invoice ${deleteDialog.invoice?.bill_number}?`} />
 
-      <div className="flex justify-between items-center mb-10">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-none mb-2">Sales Ledger</h1>
-          <p className="text-slate-500 font-medium text-sm">Directory of outward supplies and verified customer invoices.</p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex items-center space-x-2 px-6 py-3 bg-white border border-slate-200 rounded-lg shadow-sm text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">
-              <Filter className="w-4 h-4 text-slate-400" />
-              <span>{statusFilter}</span>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {isMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)}></div>
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-2 overflow-hidden min-w-[150px] ring-1 ring-black/5">
-                  {['All', 'Paid', 'Pending'].map(opt => (
-                    <button key={opt} onClick={() => { setStatusFilter(opt); setIsMenuOpen(false); }} className={`w-full text-left px-5 py-3 text-sm font-bold transition-colors ${statusFilter === opt ? 'bg-primary text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}>{opt}</button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+      <div className="flex items-center justify-between">
+        <h1 className="text-[20px] font-normal text-slate-900">Sales Ledger</h1>
+        <div className="flex items-center space-x-2">
+          <DateFilter onFilterChange={setDateRange} />
+          <button 
+            onClick={() => { setEditingInvoice(null); setIsModalOpen(true); }}
+            className="bg-link text-white px-8 py-2 rounded-md font-normal text-sm hover:bg-link/90 transition-none uppercase"
+          >
+            <Plus className="w-4 h-4 mr-2" /> New Sale
+          </button>
         </div>
       </div>
 
-      <div className="flex items-stretch gap-6">
-        <div className="bg-white p-8 border border-slate-200 rounded-2xl w-fit min-w-[250px] boxy-shadow flex flex-col justify-center">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Gross Sales ({statusFilter})</p>
-          <h2 className="text-3xl font-bold text-slate-900 tracking-tight leading-none">{formatCurrency(filtered.reduce((acc, i) => acc + Number(i.grand_total || 0), 0))}</h2>
-        </div>
-        
-        <div className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl p-6 flex items-start gap-4 shadow-inner">
-          <div className="p-2.5 bg-[#ffea79]/20 text-slate-700 rounded-lg shrink-0">
-             <BadgeDollarSign className="w-6 h-6" />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-slate-900 uppercase tracking-tight mb-1">Sales Integration</h4>
-            <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                Sales records are derived from the <span className="text-slate-900 font-bold">Invoices</span> module. These vouchers represent outward stock movements and generated revenue.
-            </p>
-          </div>
-        </div>
+      <div className="bg-white border border-slate-200 rounded-md p-5 inline-block min-w-[240px]">
+        <span className="text-[11px] text-slate-500 font-normal uppercase tracking-tight mb-1 block">Total Revenue</span>
+        <span className="text-[24px] font-normal text-link font-mono">
+            {filtered.reduce((acc, i) => acc + Number(i.grand_total || 0), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+        </span>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="relative">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
-          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search sales by invoice number or customer..." className="w-full pl-14 pr-6 py-4 border border-slate-200 rounded-xl outline-none text-base focus:border-slate-400 bg-white shadow-sm transition-all font-medium" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+          <input 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search invoice number or customer name..." 
+            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-md text-xs outline-none focus:border-slate-300 shadow-sm"
+          />
         </div>
         
-        <div className="border border-slate-200 rounded-2xl overflow-hidden boxy-shadow bg-white">
-          {loading ? (
-            <div className="py-40 flex flex-col items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary mb-4" /><p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Filtering Sales...</p></div>
-          ) : (
-            <table className="w-full text-left text-base border-collapse">
-              <thead className="bg-slate-50/80 border-b border-slate-200">
-                <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                  <th className="py-5 px-8 border-r border-slate-200">Invoice Date</th>
-                  <th className="py-5 px-8 border-r border-slate-200 font-mono">Invoice No</th>
-                  <th className="py-5 px-8 border-r border-slate-200">Customer Name</th>
-                  <th className="py-5 px-8 border-r border-slate-200 text-right">Taxable</th>
-                  <th className="py-5 px-8 border-r border-slate-200 text-right font-bold">Net Total</th>
-                  <th className="py-5 px-8 border-r border-slate-200 text-center">Status</th>
-                  <th className="py-5 px-8 text-center">Actions</th>
+        <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
+          <table className="clean-table">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+                <th className="w-16">SR</th>
+                <th>DATE</th>
+                <th>INVOICE #</th>
+                <th>CUSTOMER</th>
+                <th className="text-right">TAXABLE</th>
+                <th className="text-right">GST</th>
+                <th className="text-right">NET TOTAL</th>
+                <th className="text-center">STATUS</th>
+                <th className="text-center">MANAGE</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={9} className="text-center py-20 text-slate-400 font-semibold tracking-widest text-[10px] uppercase">Loading register...</td></tr>
+              ) : filtered.map((inv, i) => (
+                <tr key={inv.id} className="hover:bg-slate-50/50 group transition-colors">
+                  <td>{i + 1}</td>
+                  <td>{formatDate(inv.date)}</td>
+                  <td className="font-mono font-bold text-slate-900">{inv.bill_number}</td>
+                  <td className="uppercase font-medium text-slate-700">{inv.vendor_name}</td>
+                  <td className="text-right font-mono text-slate-500">{(Number(inv.total_without_gst) || 0).toFixed(2)}</td>
+                  <td className="text-right font-mono text-slate-500">{(Number(inv.total_gst) || 0).toFixed(2)}</td>
+                  <td className="text-right font-mono font-bold text-slate-900">{(Number(inv.grand_total) || 0).toFixed(2)}</td>
+                  <td className="text-center">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-sm uppercase ${inv.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                      {inv.status}
+                    </span>
+                  </td>
+                  <td className="text-center">
+                    <div className="flex justify-center space-x-2">
+                        <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded transition-all"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => setDeleteDialog({ isOpen: true, invoice: inv })} className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded transition-all"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map(i => (
-                  <tr key={i.id} className="hover:bg-slate-50 group transition-all duration-200">
-                    <td className="py-5 px-8 border-r border-slate-200 font-bold text-slate-600">{formatDate(i.date)}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 font-mono text-[13px] font-bold text-slate-900">{i.invoice_number}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 font-bold text-slate-900 uppercase truncate max-w-[200px]">{i.customer_name}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 text-right text-slate-600 font-medium">{formatCurrency(i.total_without_gst)}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 text-right font-bold text-slate-900">{formatCurrency(i.grand_total)}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 text-center">
-                        <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border ${i.status === 'Paid' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>{i.status}</span>
-                    </td>
-                    <td className="py-5 px-8 text-center">
-                      <div className="flex justify-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setEditingInvoice(i); setIsModalOpen(true); }} className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white rounded-lg transition-all shadow-sm border border-transparent hover:border-slate-200"><Edit className="w-5 h-5" /></button>
-                        <button onClick={() => setDeleteDialog({ isOpen: true, invoice: i })} className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg transition-all shadow-sm border border-transparent hover:border-slate-200"><Trash2 className="w-5 h-5" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && <tr><td colSpan={7} className="py-40 text-center text-slate-300 italic font-medium">No sales records found.</td></tr>}
-              </tbody>
-            </table>
-          )}
+              ))}
+              {!loading && filtered.length === 0 && (
+                <tr><td colSpan={9} className="text-center py-20 text-slate-300 italic font-medium">No sales invoices found matching filters.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

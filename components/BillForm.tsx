@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Trash2, Loader2, X, ChevronDown, UserPlus, UserRoundPen } from 'lucide-react';
-import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds } from '../utils/helpers';
+import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, normalizeBill } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
 import VendorForm from './VendorForm';
@@ -40,6 +41,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<any>(getInitialState());
   const [vendors, setVendors] = useState<any[]>([]);
+  const [stockItems, setStockItems] = useState<any[]>([]);
   const [vendorModal, setVendorModal] = useState<{ isOpen: boolean; initialData: any | null; prefilledName: string }>({
     isOpen: false,
     initialData: null,
@@ -102,7 +104,10 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   const loadDependencies = async () => {
     if (!cid) return;
     const { data: vendorData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false);
+    const { data: stockData } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
     setVendors(vendorData || []);
+    setStockItems(stockData || []);
+    
     const { data: allDuties } = await supabase.from('duties_taxes').select('*').eq('company_id', cid).eq('is_deleted', false);
     const selectedIds = getSelectedLedgerIds();
     const activeDuties = (allDuties || []).filter(d => d.is_default || selectedIds.includes(d.id));
@@ -113,7 +118,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         return recalculate({ ...prev, duties_and_taxes: activeDuties.map(d => ({ ...d, bill_rate: d.rate, bill_fixed_amount: d.fixed_amount, amount: 0 }))});
       });
     } else {
-        setFormData(prev => recalculate({ ...getInitialState(), ...initialData, displayDate: formatDate(initialData.date), type: 'Purchase' }));
+        const normalized = normalizeBill(initialData);
+        setFormData(recalculate({ ...getInitialState(), ...normalized, displayDate: formatDate(normalized.date) }));
     }
   };
 
@@ -122,6 +128,21 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   const updateField = (idx: number, field: string, val: any) => {
     const newItems = [...formData.items];
     newItems[idx] = { ...newItems[idx], [field]: val };
+    
+    // AUTO-FILL logic: If Item Master matches, populate HSN, Rate, and Tax
+    if (field === 'itemName') {
+        const selected = stockItems.find(s => s.name.toLowerCase() === val.toLowerCase());
+        if (selected) {
+            newItems[idx] = { 
+                ...newItems[idx], 
+                hsnCode: selected.hsn || '', 
+                rate: selected.rate || 0, 
+                tax_rate: selected.tax_rate || 0,
+                unit: selected.unit || 'PCS'
+            };
+        }
+    }
+
     setFormData(recalculate({ ...formData, items: newItems }));
   };
 
@@ -130,23 +151,58 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     setFormData(recalculate({ ...formData, vendor_name: name, gstin: selected?.gstin || formData.gstin }));
   };
 
-  const onVendorSaved = (saved: any) => {
-    setVendorModal({ ...vendorModal, isOpen: false });
-    loadDependencies().then(() => handleVendorChange(saved.name));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.vendor_name || !formData.bill_number) return alert("Required: Vendor and Bill No");
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const payload = { ...formData, company_id: cid, user_id: user?.id, is_deleted: false, type: 'Purchase' };
-      delete payload.displayDate;
-      await safeSupabaseSave('bills', payload, initialData?.id);
+      if (!user) throw new Error("User session not found.");
+
+      // PACK METADATA into JSONB to avoid DB column errors if schema isn't updated
+      const payload: any = {
+          company_id: cid,
+          user_id: user.id,
+          vendor_name: formData.vendor_name,
+          bill_number: formData.bill_number,
+          date: formData.date,
+          total_without_gst: formData.total_without_gst,
+          total_gst: formData.total_gst,
+          grand_total: formData.grand_total,
+          status: formData.status,
+          is_deleted: false,
+          items: {
+              line_items: formData.items,
+              type: 'Purchase',
+              gst_type: formData.gst_type,
+              round_off: formData.round_off,
+              duties_and_taxes: formData.duties_and_taxes,
+              total_cgst: formData.total_cgst,
+              total_sgst: formData.total_sgst,
+              total_igst: formData.total_igst
+          },
+          // Send columns directly too (Supabase will strip them silently if safeSupabaseSave is used)
+          type: 'Purchase',
+          gst_type: formData.gst_type,
+          round_off: formData.round_off,
+          total_cgst: Number(formData.total_cgst) || 0,
+          total_sgst: Number(formData.total_sgst) || 0,
+          total_igst: Number(formData.total_igst) || 0
+      };
+      
+      const savedRes = await safeSupabaseSave('bills', payload, initialData?.id);
+      
+      // AUTO-REGISTER NEW ITEMS IN STOCK MASTER
+      await ensureStockItems(formData.items, cid, user.id);
+
+      // SYNC TO CASHBOOK: Only for Paid transactions
+      if (payload.status === 'Paid' && savedRes.data) {
+        await syncTransactionToCashbook(savedRes.data[0]);
+      }
+
       window.dispatchEvent(new Event('appSettingsChanged'));
       onSubmit(payload);
-    } catch (err: any) { alert("Error: " + err.message); } finally { setLoading(false); }
+    } catch (err: any) { alert("Error: " + (err.message || err)); } finally { setLoading(false); }
   };
 
   return (
@@ -160,7 +216,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         <VendorForm 
           initialData={vendorModal.initialData} 
           prefilledName={vendorModal.prefilledName} 
-          onSubmit={onVendorSaved} 
+          onSubmit={(v) => { setVendorModal({ ...vendorModal, isOpen: false }); loadDependencies().then(() => handleVendorChange(v.name)); }} 
           onCancel={() => setVendorModal({ ...vendorModal, isOpen: false })} 
         />
       </Modal>
@@ -196,11 +252,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                 <label className="text-[14px] font-normal text-slate-900">Vendor Name</label>
                 <div className="flex items-center gap-3">
                   <input required list="vlist" value={formData.vendor_name} onChange={e => handleVendorChange(e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] uppercase shadow-inner bg-white" placeholder="Search Vendor..." />
-                  <button 
-                    type="button" 
-                    onClick={() => setVendorModal({ isOpen: true, initialData: matchedVendor || null, prefilledName: matchedVendor ? '' : formData.vendor_name })} 
-                    className={`h-10 w-10 flex items-center justify-center rounded border transition-all shrink-0 ${matchedVendor ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-primary/20 text-slate-700 border-slate-200'}`}
-                  >
+                  <button type="button" onClick={() => setVendorModal({ isOpen: true, initialData: matchedVendor || null, prefilledName: matchedVendor ? '' : formData.vendor_name })} className={`h-10 w-10 flex items-center justify-center rounded border transition-all shrink-0 ${matchedVendor ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-primary/20 text-slate-700 border-slate-200'}`}>
                     {matchedVendor ? <UserRoundPen className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
                   </button>
                 </div>
@@ -212,6 +264,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-500">
                         <tr>
                             <th className="p-3 text-left font-normal border-r border-slate-200">Item Description</th>
+                            <th className="p-3 text-left font-normal w-24 border-r border-slate-200">HSN</th>
                             <th className="p-3 text-center font-normal w-20 border-r border-slate-200">Qty</th>
                             <th className="p-3 text-right font-normal w-24 border-r border-slate-200">Rate</th>
                             <th className="p-3 text-center font-normal w-20 border-r border-slate-200">GST %</th>
@@ -222,7 +275,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                     <tbody className="divide-y divide-slate-100">
                         {formData.items.map((it: any, idx: number) => (
                             <tr key={it.id}>
-                                <td className="p-0 border-r border-slate-100"><input value={it.itemName} onChange={e => updateField(idx, 'itemName', e.target.value)} className="w-full h-9 px-3 outline-none bg-transparent" /></td>
+                                <td className="p-0 border-r border-slate-100"><input list="itemslist" value={it.itemName} onChange={e => updateField(idx, 'itemName', e.target.value)} className="w-full h-9 px-3 outline-none bg-transparent" placeholder="Start typing item..." /></td>
+                                <td className="p-0 border-r border-slate-100"><input value={it.hsnCode} onChange={e => updateField(idx, 'hsnCode', e.target.value)} className="w-full h-9 px-3 outline-none bg-transparent font-mono" /></td>
                                 <td className="p-0 border-r border-slate-100"><input type="number" value={it.qty} onChange={e => updateField(idx, 'qty', e.target.value)} className="w-full h-9 px-2 text-center outline-none bg-transparent" /></td>
                                 <td className="p-0 border-r border-slate-100"><input type="number" value={it.rate} onChange={e => updateField(idx, 'rate', e.target.value)} className="w-full h-9 px-2 text-right outline-none bg-transparent" /></td>
                                 <td className="p-0 border-r border-slate-100">
@@ -236,6 +290,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                         ))}
                     </tbody>
                 </table>
+                <datalist id="itemslist">{stockItems.map(s => <option key={s.id} value={s.name} />)}</datalist>
                 <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: 1, unit: 'PCS', rate: 0, tax_rate: 0, amount: 0, taxableAmount: 0 }]}))} className="w-full py-2 bg-slate-50 text-[11px] font-normal text-slate-400 uppercase tracking-widest hover:bg-slate-100 border-t border-slate-200">
                     + Add New Particular
                 </button>
@@ -265,11 +320,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
         <div className="flex items-center justify-end space-x-6">
             <button type="button" onClick={onCancel} className="text-[13px] text-slate-500 hover:text-slate-800 transition-none font-normal">Discard</button>
-            <button 
-                type="submit"
-                disabled={loading}
-                className="bg-primary text-slate-900 px-8 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center"
-            >
+            <button type="submit" disabled={loading} className="bg-primary text-slate-900 px-8 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center">
                 {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                 {initialData ? 'Update Bill' : 'Create Bill'}
             </button>

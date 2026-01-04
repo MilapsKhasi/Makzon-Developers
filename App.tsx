@@ -4,7 +4,9 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Vendors from './pages/Vendors';
+import Customers from './pages/Customers';
 import Bills from './pages/Bills';
+import Sales from './pages/Sales';
 import Stock from './pages/Stock';
 import Masters from './pages/Masters';
 import Reports from './pages/Reports';
@@ -73,7 +75,9 @@ const App = () => {
             <Route path="masters" element={<Masters />} />
             <Route path="purchases" element={<Purchases />} />
             <Route path="bills" element={<Bills />} />
+            <Route path="sales" element={<Sales />} />
             <Route path="vendors" element={<Vendors />} />
+            <Route path="customers" element={<Customers />} />
             <Route path="cashbook" element={<Cashbook />} />
             <Route path="duties-taxes" element={<DutiesTaxes />} />
             <Route path="stock" element={<Stock />} />

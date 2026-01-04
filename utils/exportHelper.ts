@@ -49,6 +49,101 @@ export const exportToExcel = (
     XLSX.writeFile(wb, `${config.reportTitle.replace(/\s+/g, '_')}_${new Date().getTime()}.xlsx`);
 };
 
+/**
+ * Specialized export for Cashbook Entry Sheet with dual side-by-side layout
+ */
+export const exportCashbookEntryToExcel = (
+    incomeRows: any[],
+    expenseRows: any[],
+    config: { companyName: string; date: string }
+) => {
+    const sheetData: any[][] = [];
+    
+    // Branding Headers
+    sheetData.push([config.companyName.toUpperCase()]);
+    sheetData.push([`DAILY CASH STATEMENT - DATE: ${config.date}`]);
+    sheetData.push([]); // Spacer
+
+    // Section Headings
+    // Columns: A(Sr), B(Part), C(Amt), D(Spacer), E(Sr), F(Part), G(Amt)
+    sheetData.push(['INCOME (INWARD)', '', '', '', 'EXPENSE (OUTWARD)', '', '']);
+    
+    // Column Headers
+    sheetData.push(['SR NO', 'PARTICULARS / SOURCE', 'AMOUNT (INR)', '', 'SR NO', 'PARTICULARS / USAGE', 'AMOUNT (INR)']);
+
+    const maxRows = Math.max(incomeRows.length, expenseRows.length);
+    let totalIncome = 0;
+    let totalExpense = 0;
+
+    for (let i = 0; i < maxRows; i++) {
+        const inc = incomeRows[i] || { particulars: '', amount: '' };
+        const exp = expenseRows[i] || { particulars: '', amount: '' };
+        
+        const incAmt = parseFloat(inc.amount) || 0;
+        const expAmt = parseFloat(exp.amount) || 0;
+        
+        totalIncome += incAmt;
+        totalExpense += expAmt;
+
+        sheetData.push([
+            inc.particulars ? i + 1 : '',
+            inc.particulars || '',
+            inc.particulars ? incAmt : '',
+            '', // spacer column
+            exp.particulars ? i + 1 : '',
+            exp.particulars || '',
+            exp.particulars ? expAmt : ''
+        ]);
+    }
+
+    // Totals Row
+    sheetData.push([]);
+    sheetData.push([
+        'TOTAL', 
+        '', 
+        totalIncome, 
+        '', 
+        'TOTAL', 
+        '', 
+        totalExpense
+    ]);
+
+    // Net Balance Summary
+    sheetData.push([]);
+    const netBalance = totalIncome - totalExpense;
+    sheetData.push(['', 'CLOSING NET BALANCE:', netBalance]);
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+    // Column Widths: Sr(8), Particulars(45), Amount(15), Spacer(5)
+    ws['!cols'] = [
+        { wch: 8 },  // A: Sr
+        { wch: 45 }, // B: Particulars
+        { wch: 15 }, // C: Amount
+        { wch: 5 },  // D: Spacer
+        { wch: 8 },  // E: Sr
+        { wch: 45 }, // F: Particulars
+        { wch: 15 }  // G: Amount
+    ];
+
+    // Merges
+    ws['!merges'] = [
+        // Company Branding
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
+        // Section Titles
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 2 } }, // Income Header
+        { s: { r: 3, c: 4 }, e: { r: 3, c: 6 } }, // Expense Header
+        // Totals labels
+        { s: { r: 4 + maxRows + 1, c: 0 }, e: { r: 4 + maxRows + 1, c: 1 } }, // Total Income Label
+        { s: { r: 4 + maxRows + 1, c: 4 }, e: { r: 4 + maxRows + 1, c: 5 } }  // Total Expense Label
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, "Cashbook_Statement");
+    XLSX.writeFile(wb, `Cashbook_${config.date.replace(/[\/\-]/g, '_')}.xlsx`);
+};
+
 export const exportToCSV = (headers: string[], rows: any[][], config: ExportConfig) => {
     const csvContent = [
         `"${config.companyName.replace(/"/g, '""')}"`,

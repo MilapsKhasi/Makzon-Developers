@@ -1,5 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, Loader2, Save, ArrowLeft, Trash2 } from 'lucide-react';
+import { X, ChevronDown, Loader2, Save, ArrowLeft, Trash2, FileSpreadsheet } from 'lucide-react';
+import { exportCashbookEntryToExcel } from '../utils/exportHelper';
+import { formatDateShort, parseDateFromInput } from '../utils/helpers';
 
 interface CashbookRow {
   id: string;
@@ -9,22 +12,46 @@ interface CashbookRow {
 
 interface CashbookSheetProps {
   initialData?: any;
+  existingEntries?: any[];
   onSave: (data: any) => void;
   onCancel: () => void;
 }
 
-const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, onSave, onCancel }) => {
+const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntries = [], onSave, onCancel }) => {
   const [loading, setLoading] = useState(false);
-  const [reportDate, setReportDate] = useState('');
+  const [reportDate, setReportDate] = useState(''); // ISO Format (YYYY-MM-DD)
+  const [displayDate, setDisplayDate] = useState(''); // UI Format (DD/MM/YY)
+  const [openingBalance, setOpeningBalance] = useState(0);
   
   const createEmptyRow = () => ({ id: Math.random().toString(36).substr(2, 9), particulars: '', amount: '' });
 
   const [incomeRows, setIncomeRows] = useState<CashbookRow[]>([]);
   const [expenseRows, setExpenseRows] = useState<CashbookRow[]>([]);
 
+  const findPreviousBalance = (dateStr: string) => {
+    if (!dateStr || !existingEntries.length) {
+      setOpeningBalance(0);
+      return;
+    }
+
+    // Find entries with date < selected date
+    const previousEntries = existingEntries
+      .filter(e => e.date < dateStr && e.id !== initialData?.id)
+      .sort((a, b) => b.date.localeCompare(a.date)); // Sort descending to get most recent
+
+    if (previousEntries.length > 0) {
+      setOpeningBalance(Number(previousEntries[0].balance) || 0);
+    } else {
+      setOpeningBalance(0);
+    }
+  };
+
   useEffect(() => {
     if (initialData) {
-      setReportDate(initialData.date || '');
+      const isoDate = initialData.date || '';
+      setReportDate(isoDate);
+      setDisplayDate(formatDateShort(isoDate));
+      
       const raw = initialData.raw_data || {};
       const inc = Array.isArray(raw.incomeRows) ? [...raw.incomeRows] : [];
       const exp = Array.isArray(raw.expenseRows) ? [...raw.expenseRows] : [];
@@ -34,11 +61,34 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, onSave, onCa
       
       setIncomeRows(inc);
       setExpenseRows(exp);
+      setOpeningBalance(Number(raw.openingBalance) || 0);
     } else {
+      const todayIso = new Date().toISOString().split('T')[0];
+      setReportDate(todayIso);
+      setDisplayDate(formatDateShort(todayIso));
       setIncomeRows(Array(15).fill(null).map(createEmptyRow));
       setExpenseRows(Array(15).fill(null).map(createEmptyRow));
+      findPreviousBalance(todayIso);
     }
   }, [initialData]);
+
+  // When date changes, automatically find the previous closing balance
+  useEffect(() => {
+    if (!initialData && reportDate) {
+      findPreviousBalance(reportDate);
+    }
+  }, [reportDate, existingEntries]);
+
+  const handleDateBlur = () => {
+    const iso = parseDateFromInput(displayDate);
+    if (iso) {
+      setReportDate(iso);
+      setDisplayDate(formatDateShort(iso));
+    } else {
+      // Revert to last valid ISO date if user typed gibberish
+      setDisplayDate(formatDateShort(reportDate));
+    }
+  };
 
   const handleInputChange = (type: 'income' | 'expense', index: number, field: keyof CashbookRow, value: string) => {
     const setter = type === 'income' ? setIncomeRows : setExpenseRows;
@@ -83,9 +133,20 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, onSave, onCa
     return rows.reduce((acc, row) => acc + (parseFloat(row.amount) || 0), 0);
   };
 
+  const handleExportXLSX = () => {
+    const companyName = localStorage.getItem('activeCompanyName') || 'My Digital Finance Desk';
+    const cleanIncome = incomeRows.filter(r => r.particulars.trim() !== '' || r.amount !== '');
+    const cleanExpense = expenseRows.filter(r => r.particulars.trim() !== '' || r.amount !== '');
+    
+    exportCashbookEntryToExcel(cleanIncome, cleanExpense, {
+        companyName,
+        date: reportDate || new Date().toISOString().split('T')[0]
+    });
+  };
+
   const incomeTotal = calculateTotal(incomeRows);
   const expenseTotal = calculateTotal(expenseRows);
-  const balance = incomeTotal - expenseTotal;
+  const closingBalance = openingBalance + incomeTotal - expenseTotal;
 
   return (
     <div className="bg-white w-full border border-slate-300 rounded-md flex flex-col h-full animate-in fade-in duration-300 overflow-hidden">
@@ -101,14 +162,22 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, onSave, onCa
         </div>
         <div className="flex items-center space-x-3">
           <button 
+            onClick={handleExportXLSX}
+            className="flex items-center px-4 py-2.5 bg-white border border-slate-200 rounded text-slate-600 font-semibold text-[14px] hover:bg-slate-50 transition-all"
+          >
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Download XLSX
+          </button>
+          <button 
             onClick={() => {
               setLoading(true);
               onSave({
                 id: initialData?.id,
                 date: reportDate,
+                openingBalance,
                 incomeTotal,
                 expenseTotal,
-                balance,
+                balance: closingBalance,
                 incomeRows,
                 expenseRows
               });
@@ -126,34 +195,33 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, onSave, onCa
       <div className="flex-1 overflow-y-auto p-6 bg-slate-50 flex flex-col space-y-4 custom-scrollbar">
         {/* Info Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-white px-6 py-5 border border-slate-200 rounded flex items-center justify-between">
+          <div className="bg-white px-6 py-5 border border-slate-200 rounded flex items-center justify-between col-span-1 lg:col-span-2">
             <div className="flex items-center space-x-4">
               <label className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Statement Date</label>
               <input 
                 type="text" 
-                placeholder="YYYY-MM-DD"
-                value={reportDate}
-                onChange={(e) => setReportDate(e.target.value)}
+                placeholder="DD/MM/YY"
+                value={displayDate}
+                onChange={(e) => setDisplayDate(e.target.value)}
+                onBlur={handleDateBlur}
                 className="border border-slate-200 rounded px-4 py-2 text-[14px] outline-none w-40 font-mono focus:border-link transition-colors"
               />
             </div>
-            <div className="flex items-center space-x-3">
-              <span className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Closing Bal</span>
-              <span className={`text-[18px] font-semibold font-mono ${balance >= 0 ? 'text-blue-600' : 'text-rose-600'}`}>₹ {balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-            </div>
-          </div>
-          
-          <div className="bg-white px-6 py-5 border border-slate-200 rounded flex items-center justify-end space-x-6">
-            <div className="flex items-center space-x-2">
-                <span className="text-[12px] font-semibold text-slate-400 uppercase">Export Options</span>
-                <div className="relative">
-                  <select className="appearance-none border border-slate-200 rounded pl-4 pr-10 py-1.5 text-[12px] bg-slate-50 outline-none cursor-pointer text-slate-600 hover:bg-slate-100">
-                      <option>XLSX Sheet</option>
-                      <option>PDF Print</option>
-                      <option>CSV Data</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
+            
+            <div className="flex items-center space-x-8">
+              <div className="flex items-center space-x-3">
+                <span className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Opening Bal</span>
+                <span className="text-[18px] font-semibold font-mono text-slate-500">
+                  ₹ {openingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <span className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Closing Bal</span>
+                <span className={`text-[18px] font-semibold font-mono ${closingBalance >= 0 ? 'text-blue-600' : 'text-rose-600'}`}>
+                  ₹ {closingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -278,7 +346,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, onSave, onCa
             </div>
           </div>
 
-          {/* Sheet Footer Summary - Removed shadows from cards */}
+          {/* Sheet Footer Summary */}
           <div className="bg-slate-100 px-8 py-6 shrink-0 flex items-center justify-between border-t border-slate-200">
             <div className="flex space-x-6">
               <div className="flex flex-col bg-white px-6 py-3 rounded-md border border-slate-200 min-w-[180px]">
@@ -290,11 +358,14 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, onSave, onCa
                 <span className="text-xl font-semibold font-mono text-red-600">₹{expenseTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
-            <div className="flex flex-col items-end bg-white px-8 py-4 rounded-md border-2 border-slate-200 min-w-[240px]">
-              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Net Balance</span>
-              <span className="text-2xl font-semibold font-mono text-blue-600">
-                ₹{balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-              </span>
+            
+            <div className="flex items-center space-x-4">
+              <div className="flex flex-col items-end bg-white px-6 py-4 rounded-md border border-slate-200 min-w-[200px]">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Closing Balance</span>
+                <span className="text-2xl font-semibold font-mono text-blue-600">
+                  ₹{closingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
             </div>
           </div>
         </div>
