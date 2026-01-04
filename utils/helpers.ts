@@ -122,22 +122,27 @@ export const safeSupabaseSave = async (table: string, payload: any, id?: string)
  */
 export const normalizeBill = (bill: any) => {
     const itemsData = bill.items;
-    let type = bill.type;
+    let type = bill.transaction_type || bill.type;
     let gst_type = bill.gst_type;
     let round_off = bill.round_off;
     let line_items = Array.isArray(itemsData) ? itemsData : [];
 
-    // Check if metadata is packed inside items JSONB
     if (itemsData && !Array.isArray(itemsData) && itemsData.line_items) {
         line_items = itemsData.line_items;
-        type = type || itemsData.type;
+        type = type || itemsData.transaction_type || itemsData.type;
         gst_type = gst_type || itemsData.gst_type;
         round_off = round_off || itemsData.round_off;
     }
 
+    const normalizedTypeStr = type?.toLowerCase();
+    if (normalizedTypeStr === 'sale' || normalizedTypeStr === 'sales') type = 'Sale';
+    else if (normalizedTypeStr === 'purchase' || normalizedTypeStr === 'purchases') type = 'Purchase';
+    else type = 'Purchase'; 
+
     return {
         ...bill,
-        type: type || 'Purchase', // Default fallback
+        type: type, 
+        transaction_type: type.toLowerCase(),
         gst_type: gst_type || 'Intra-State',
         round_off: Number(round_off) || 0,
         items: line_items
@@ -151,35 +156,76 @@ export const ensureStockItems = async (items: any[], company_id: string, user_id
   if (!items || !Array.isArray(items)) return;
   
   for (const item of items) {
-    if (!item.itemName) continue;
+    const itemName = item.itemName?.trim();
+    if (!itemName) continue;
     
-    // Check if product master entry already exists
     const { data: existing } = await supabase
       .from('stock_items')
-      .select('id, name')
+      .select('id, name, in_stock')
       .eq('company_id', company_id)
-      .eq('name', item.itemName)
+      .eq('name', itemName)
       .eq('is_deleted', false)
       .maybeSingle();
 
-    const payload = {
-      name: item.itemName,
+    const payload: any = {
+      name: itemName,
       hsn: item.hsnCode || '',
       rate: Number(item.rate) || 0,
       tax_rate: Number(item.tax_rate) || 0,
       unit: item.unit || 'PCS',
+      kg_per_bag: Number(item.kgPerBag) || 0,
       company_id,
       user_id,
       is_deleted: false
     };
 
     if (existing) {
-      // Update existing (Rate/Tax/HSN) but maintain its opening stock
+      // Update master with latest transaction metadata (HSN, Rate etc)
       await supabase.from('stock_items').update(payload).eq('id', existing.id);
     } else {
-      // Create new master entry with 0 opening stock
-      // Actual inventory balance will be calculated dynamically from transactions
+      // Initialize new item in master
       await supabase.from('stock_items').insert([{ ...payload, in_stock: 0 }]);
+    }
+  }
+};
+
+/**
+ * Ensures a party (Customer or Vendor) is registered in the party table (vendors table)
+ */
+export const ensureParty = async (name: string, type: 'customer' | 'vendor', company_id: string, user_id: string) => {
+  if (!name || !name.trim()) return;
+  
+  const { data: existing } = await supabase
+    .from('vendors')
+    .select('*')
+    .eq('company_id', company_id)
+    .eq('name', name.trim())
+    .eq('is_deleted', false)
+    .maybeSingle();
+
+  if (!existing) {
+    const payload = {
+      name: name.trim(),
+      party_type: type,
+      is_customer: type === 'customer',
+      company_id,
+      user_id,
+      is_deleted: false,
+      balance: 0
+    };
+    await safeSupabaseSave('vendors', payload);
+  } else {
+    const updates: any = {};
+    if (type === 'customer' && !existing.is_customer && existing.party_type !== 'customer') {
+        updates.is_customer = true;
+        updates.party_type = 'customer';
+    } else if (type === 'vendor' && existing.is_customer !== false && existing.party_type !== 'vendor') {
+        updates.is_customer = false;
+        updates.party_type = 'vendor';
+    }
+
+    if (Object.keys(updates).length > 0) {
+        await safeSupabaseSave('vendors', updates, existing.id);
     }
   }
 };

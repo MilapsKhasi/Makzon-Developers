@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Save, Trash2, Loader2, UserPlus, UserRoundPen, ChevronDown, AlertCircle } from 'lucide-react';
-import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, syncTransactionToCashbook, ensureStockItems, normalizeBill } from '../utils/helpers';
+import { Save, Trash2, Loader2, UserPlus, UserRoundPen, ChevronDown } from 'lucide-react';
+import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
 import CustomerForm from './CustomerForm';
@@ -11,8 +11,6 @@ interface SalesInvoiceFormProps {
   onSubmit: (invoice: any) => void;
   onCancel: () => void;
 }
-
-const TAX_RATES = [0, 5, 12, 18, 28];
 
 const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubmit, onCancel }) => {
   const cid = getActiveCompanyId();
@@ -25,29 +23,27 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     date: today, 
     displayDate: formatDate(today), 
     gst_type: 'Intra-State',
-    items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: 1, rate: 0, tax_rate: 0, taxableAmount: 0, amount: 0 }],
+    items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', kgPerBag: '', unit: 'PCS', rate: '', tax_rate: 0, taxableAmount: 0, amount: 0 }],
     total_without_gst: 0, 
     total_gst: 0, 
     grand_total: 0, 
     status: 'Pending',
-    type: 'Sale'
+    type: 'Sale',
+    transaction_type: 'sale'
   });
 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<any>(getInitialState());
   const [customers, setCustomers] = useState<any[]>([]);
   const [stockItems, setStockItems] = useState<any[]>([]);
-  const [allBills, setAllBills] = useState<any[]>([]); 
   const [customerModal, setCustomerModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
 
   const loadData = async () => {
     if (!cid) return;
     const { data: v } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false);
     const { data: s } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
-    const { data: b } = await supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false);
-    setCustomers((v || []).filter(p => p.is_customer));
+    setCustomers((v || []).filter(p => p.party_type === 'customer' || p.is_customer === true));
     setStockItems(s || []);
-    setAllBills((b || []).map(normalizeBill));
   };
 
   useEffect(() => {
@@ -63,57 +59,44 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     }
   }, [initialData, cid]);
 
-  const getAvailableStock = (itemName: string) => {
-    const item = stockItems.find(s => s.name.toLowerCase() === itemName.toLowerCase());
-    if (!item) return 0;
+  const recalculate = (state: any, sourceField?: string) => {
+    let taxableTotal = parseFloat(state.total_without_gst) || 0;
+    let gstTotal = parseFloat(state.total_gst) || 0;
 
-    let purchased = 0;
-    let sold = 0;
-
-    allBills.forEach(bill => {
-      if (initialData?.id && bill.id === initialData.id) return;
-      bill.items?.forEach((it: any) => {
-        if (it.itemName?.trim().toLowerCase() === itemName.toLowerCase()) {
-          if (bill.type === 'Sale') sold += Number(it.qty || 0);
-          else purchased += Number(it.qty || 0);
-        }
+    // Only recalculate from items if not a manual override of totals
+    if (sourceField !== 'total_without_gst' && sourceField !== 'total_gst') {
+      taxableTotal = 0;
+      gstTotal = 0;
+      const items = (state.items || []).map((item: any) => {
+        const q = parseFloat(item.qty) || 0;
+        const r = parseFloat(item.rate) || 0;
+        const t = parseFloat(item.tax_rate) || 0;
+        const taxable = q * r;
+        const gst = taxable * (t / 100);
+        taxableTotal += taxable;
+        gstTotal += gst;
+        return { ...item, taxableAmount: taxable, amount: taxable + gst };
       });
-    });
-
-    return (Number(item.in_stock) || 0) + purchased - sold;
-  };
-
-  const recalculate = (state: any) => {
-    let taxableTotal = 0;
-    let gstTotal = 0;
-    const items = (state.items || []).map((item: any) => {
-      const q = parseFloat(item.qty) || 0;
-      const r = parseFloat(item.rate) || 0;
-      const t = parseFloat(item.tax_rate) || 0;
-      const taxable = q * r;
-      const gst = taxable * (t / 100);
-      taxableTotal += taxable;
-      gstTotal += gst;
-      return { ...item, taxableAmount: taxable, amount: taxable + gst };
-    });
+      state.items = items;
+    }
 
     const total = Math.round(taxableTotal + gstTotal);
-    return { ...state, items, total_without_gst: taxableTotal, total_gst: gstTotal, grand_total: total };
+    return { ...state, total_without_gst: taxableTotal, total_gst: gstTotal, grand_total: total };
   };
 
-  const updateItemField = (idx: number, field: string, val: any) => {
+  const updateItemRow = (idx: number, field: string, val: any) => {
     const items = [...formData.items];
     items[idx] = { ...items[idx], [field]: val };
 
-    // Auto-fill logic when Item name matches master record
     if (field === 'itemName') {
-        const selected = stockItems.find(s => s.name.toLowerCase() === val.toLowerCase());
+        const selected = stockItems.find(s => s.name.toLowerCase().trim() === val.toLowerCase().trim());
         if (selected) {
             items[idx] = { 
                 ...items[idx], 
                 hsnCode: selected.hsn || '',
-                rate: selected.rate || 0, 
-                tax_rate: selected.tax_rate || 0 
+                rate: selected.rate || '',
+                tax_rate: selected.tax_rate || 0,
+                unit: selected.unit || 'PCS'
             };
         }
     }
@@ -126,26 +109,20 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     setFormData(recalculate({ ...formData, customer_name: name, gstin: selected?.gstin || '' }));
   };
 
+  const matchedCustomer = useMemo(() => 
+    customers.find(c => c.name.toLowerCase() === formData.customer_name.toLowerCase()), 
+    [formData.customer_name, customers]
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.customer_name || !formData.invoice_number) return alert("Required: Customer and Invoice Number");
-
-    // Stock availability validation
-    for (const item of formData.items) {
-      if (!item.itemName) continue;
-      const available = getAvailableStock(item.itemName);
-      if (available < Number(item.qty)) {
-        alert(`Insufficient stock for ${item.itemName}. Available in inventory: ${available}`);
-        return;
-      }
-    }
 
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // PACK METADATA into items JSONB to avoid warnings and schema sync issues
       const payload: any = {
         company_id: cid,
         user_id: user.id,
@@ -160,21 +137,23 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         items: {
             line_items: formData.items,
             type: 'Sale',
+            transaction_type: 'sale',
             gst_type: formData.gst_type,
             round_off: Number(formData.round_off) || 0
         },
-        // Mirror as columns for standard support if they exist
         type: 'Sale',
+        transaction_type: 'sale',
         gst_type: formData.gst_type,
         round_off: Number(formData.round_off) || 0
       };
 
       const savedRes = await safeSupabaseSave('bills', payload, initialData?.id);
       
-      // AUTO-UPDATE STOCK MASTER info (HSN, etc)
+      // Auto-update master items
       await ensureStockItems(formData.items, cid, user.id);
-      
-      // SYNC TO CASHBOOK: Only for Paid transactions
+      // Auto-update master customer
+      await ensureParty(formData.customer_name, 'customer', cid, user.id);
+
       if (payload.status === 'Paid' && savedRes.data) {
         await syncTransactionToCashbook(savedRes.data[0]);
       }
@@ -185,101 +164,122 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   };
 
   return (
-    <div className="bg-white">
-      <Modal isOpen={customerModal.isOpen} onClose={() => setCustomerModal({ ...customerModal, isOpen: false })} title="Customer Profile">
+    <div className="bg-white w-full flex flex-col">
+      <Modal 
+        isOpen={customerModal.isOpen} 
+        onClose={() => setCustomerModal({ ...customerModal, isOpen: false })} 
+        title={customerModal.initialData ? "Edit Customer Ledger" : "Register New Customer"}
+        maxWidth="max-w-4xl"
+      >
         <CustomerForm 
-            initialData={customerModal.initialData} 
+            initialData={customerModal.initialData || matchedCustomer} 
             prefilledName={customerModal.prefilledName} 
             onSubmit={(saved) => { setCustomerModal({ ...customerModal, isOpen: false }); loadData().then(() => handleCustomerChange(saved.name)); }}
             onCancel={() => setCustomerModal({ ...customerModal, isOpen: false })}
         />
       </Modal>
 
-      <form onSubmit={handleSubmit} className="p-8 space-y-6">
-        <div className="border border-slate-200 rounded-md p-8 bg-slate-50/50 space-y-6">
+      <form onSubmit={handleSubmit} className="p-8 space-y-6 bg-white">
+        <div className="border border-slate-200 rounded-md p-8 bg-white space-y-6">
             <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-1.5">
-                    <label className="text-[13px] font-semibold text-slate-500 uppercase tracking-wider">Invoice Date</label>
-                    <input required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2.5 border border-slate-200 rounded outline-none text-sm font-medium bg-white" />
+                    <label className="text-[14px] font-normal text-slate-900">Invoice Date</label>
+                    <input required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-medium bg-white" />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-[13px] font-semibold text-slate-500 uppercase tracking-wider">Invoice No</label>
-                    <input required value={formData.invoice_number} onChange={e => setFormData({...formData, invoice_number: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded outline-none text-sm font-mono font-bold bg-white" />
+                    <label className="text-[14px] font-normal text-slate-900">Invoice No</label>
+                    <input required value={formData.invoice_number} onChange={e => setFormData({...formData, invoice_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-mono font-bold bg-white" />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-[13px] font-semibold text-slate-500 uppercase tracking-wider">Status</label>
+                    <label className="text-[14px] font-normal text-slate-900">Status</label>
                     <div className="relative">
-                        <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2.5 border border-slate-200 rounded outline-none text-sm bg-white appearance-none">
+                        <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] bg-white appearance-none">
                             <option value="Pending">Unpaid (Credit)</option>
                             <option value="Paid">Received (Paid)</option>
                         </select>
-                        <ChevronDown className="w-3 h-3 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <ChevronDown className="w-3 h-3 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
             </div>
 
             <div className="space-y-1.5">
-                <label className="text-[13px] font-semibold text-slate-500 uppercase tracking-wider">Customer Name</label>
+                <label className="text-[14px] font-normal text-slate-900">Customer Name</label>
                 <div className="flex gap-3">
-                    <input required list="custlist" value={formData.customer_name} onChange={e => handleCustomerChange(e.target.value)} className="flex-1 px-4 py-2.5 border border-slate-200 rounded outline-none text-sm font-bold uppercase bg-white" placeholder="Search Customer..." />
-                    <button type="button" onClick={() => setCustomerModal({ isOpen: true, initialData: null, prefilledName: formData.customer_name })} className="p-2.5 bg-link/10 text-link border border-link/20 rounded hover:bg-link/20"><UserPlus className="w-5 h-5" /></button>
+                    <input required list="custlist" value={formData.customer_name} onChange={e => handleCustomerChange(e.target.value)} className="flex-1 px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-bold uppercase bg-white" placeholder="Search Customer..." />
+                    <button type="button" onClick={() => setCustomerModal({ isOpen: true, initialData: matchedCustomer || null, prefilledName: matchedCustomer ? '' : formData.customer_name })} className={`h-10 w-10 flex items-center justify-center rounded border transition-all shrink-0 ${matchedCustomer ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-primary/20 text-slate-700 border-slate-200'}`}>
+                      {matchedCustomer ? <UserRoundPen className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                    </button>
                 </div>
                 <datalist id="custlist">{customers.map(c => <option key={c.id} value={c.name} />)}</datalist>
             </div>
 
-            <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
-                <table className="w-full text-sm border-collapse">
+            <div className="border border-slate-200 rounded-md overflow-x-auto bg-white">
+                <table className="w-full text-[13px] border-collapse min-w-[800px]">
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[11px] font-bold">
                         <tr>
-                            <th className="p-3 text-left border-r border-slate-200">Particulars (Item)</th>
+                            <th className="p-3 text-left border-r border-slate-200 min-w-[200px]">Particulars (Item)</th>
                             <th className="p-3 text-left w-24 border-r border-slate-200">HSN</th>
-                            <th className="p-3 text-center w-24 border-r border-slate-200">Qty</th>
-                            <th className="p-3 text-right w-32 border-r border-slate-200">Rate</th>
-                            <th className="p-3 text-center w-24 border-r border-slate-200">GST %</th>
-                            <th className="p-3 text-right w-40">Total</th>
-                            <th className="w-12"></th>
+                            <th className="p-3 text-center w-24 border-r border-slate-200">QTY</th>
+                            <th className="p-3 text-center w-24 border-r border-slate-200">KG PER BAG</th>
+                            <th className="p-3 text-right w-32 border-r border-slate-200">Rate per KG</th>
+                            <th className="p-3 text-right w-32">Amount</th>
+                            <th className="w-10"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {formData.items.map((it: any, idx: number) => (
                             <tr key={it.id}>
-                                <td className="p-0 border-r border-slate-100"><input list="itemslist" value={it.itemName} onChange={e => updateItemField(idx, 'itemName', e.target.value)} className="w-full p-3 outline-none font-medium bg-transparent" placeholder="Start typing..." /></td>
-                                <td className="p-0 border-r border-slate-100"><input value={it.hsnCode} onChange={e => updateItemField(idx, 'hsnCode', e.target.value)} className="w-full p-3 outline-none bg-transparent font-mono" /></td>
-                                <td className="p-0 border-r border-slate-100"><input type="number" value={it.qty} onChange={e => updateItemField(idx, 'qty', e.target.value)} className="w-full p-3 text-center outline-none bg-transparent font-bold" /></td>
-                                <td className="p-0 border-r border-slate-100"><input type="number" value={it.rate} onChange={e => updateItemField(idx, 'rate', e.target.value)} className="w-full p-3 text-right outline-none bg-transparent font-mono" /></td>
-                                <td className="p-0 border-r border-slate-100"><select value={it.tax_rate} onChange={e => updateItemField(idx, 'tax_rate', e.target.value)} className="w-full p-3 outline-none appearance-none text-center bg-transparent">{TAX_RATES.map(r => <option key={r} value={r}>{r}%</option>)}</select></td>
-                                <td className="p-3 text-right font-bold text-slate-900 font-mono bg-slate-50/50">{(it.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                <td className="p-0 border-r border-slate-100">
+                                    <input list="itemslist" value={it.itemName} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-9 px-3 outline-none font-medium bg-transparent" placeholder="Start typing item..." />
+                                </td>
+                                <td className="p-0 border-r border-slate-100"><input value={it.hsnCode} onChange={e => updateItemRow(idx, 'hsnCode', e.target.value)} className="w-full h-9 px-3 outline-none bg-transparent font-mono" /></td>
+                                <td className="p-0 border-r border-slate-100"><input type="number" step="any" value={it.qty} onChange={e => updateItemRow(idx, 'qty', e.target.value)} className="w-full h-9 px-2 text-center outline-none bg-transparent font-bold" placeholder="QTY" /></td>
+                                <td className="p-0 border-r border-slate-100"><input type="number" step="any" value={it.kgPerBag} onChange={e => updateItemRow(idx, 'kgPerBag', e.target.value)} className="w-full h-9 px-2 text-center outline-none bg-transparent" placeholder="Adapts..." /></td>
+                                <td className="p-0 border-r border-slate-100"><input type="number" step="any" value={it.rate} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-9 px-2 text-right outline-none bg-transparent font-mono" placeholder="Rate / KG" /></td>
+                                <td className="p-3 text-right font-bold text-slate-900 font-mono">{(it.taxableAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                                 <td className="p-2 text-center"><button type="button" onClick={() => setFormData(recalculate({...formData, items: formData.items.filter((_: any, i: number) => i !== idx)}))} className="text-slate-300 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button></td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
                 <datalist id="itemslist">{stockItems.map(s => <option key={s.id} value={s.name} />)}</datalist>
-                <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: 1, rate: 0, tax_rate: 0, taxableAmount: 0, amount: 0 }]}))} className="w-full py-3 bg-slate-50 text-[11px] font-bold text-slate-400 uppercase hover:bg-slate-100 transition-colors border-t border-slate-200">+ Add Row</button>
+                <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', kgPerBag: '', unit: 'PCS', rate: '', tax_rate: 0, taxableAmount: 0, amount: 0 }]}))} className="w-full py-3 bg-slate-50 text-[11px] font-bold text-slate-400 uppercase hover:bg-slate-100 transition-colors border-t border-slate-200">+ Add New Line</button>
             </div>
-        </div>
 
-        <div className="flex flex-col items-end space-y-3 pt-6 border-t border-slate-100">
-            <div className="flex justify-between w-80 text-sm font-semibold text-slate-500 uppercase">
-                <span>Total Taxable</span>
-                <span className="font-mono text-slate-900">₹ {formData.total_without_gst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-            </div>
-            <div className="flex justify-between w-80 text-sm font-semibold text-slate-500 uppercase">
-                <span>GST Aggregate</span>
-                <span className="font-mono text-slate-900">₹ {formData.total_gst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-            </div>
-            <div className="flex justify-between w-80 pt-4 border-t border-slate-200">
-                <span className="text-lg font-bold text-slate-900 uppercase tracking-tighter">Grand Total</span>
-                <span className="text-2xl font-bold text-link font-mono">₹ {formData.grand_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            <div className="flex flex-col items-center justify-center space-y-3 py-6 border-t border-slate-100">
+                <div className="flex items-center justify-between w-72 text-[14px]">
+                    <span className="text-slate-500 font-normal">Total Taxable</span>
+                    <input 
+                      type="number" 
+                      step="any"
+                      value={formData.total_without_gst} 
+                      onChange={e => setFormData(recalculate({...formData, total_without_gst: e.target.value}, 'total_without_gst'))}
+                      className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link" 
+                    />
+                </div>
+                <div className="flex items-center justify-between w-72 text-[14px]">
+                    <span className="text-slate-500 font-normal">GST Total</span>
+                    <input 
+                      type="number" 
+                      step="any"
+                      value={formData.total_gst} 
+                      onChange={e => setFormData(recalculate({...formData, total_gst: e.target.value}, 'total_gst'))}
+                      className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link" 
+                    />
+                </div>
+                <div className="flex items-center justify-between w-72 pt-3 border-t border-slate-100">
+                    <span className="text-slate-900 font-normal">Grand Total</span>
+                    <span className="text-[18px] font-bold text-link">₹{formData.grand_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
             </div>
         </div>
 
         <div className="flex justify-end gap-6 items-center">
-            <button type="button" onClick={onCancel} className="text-slate-400 font-bold uppercase text-[12px] hover:text-slate-600">Discard</button>
+            <button type="button" onClick={onCancel} className="text-[13px] text-slate-500 hover:text-slate-800 transition-none font-normal">Discard</button>
             <button 
                 type="submit" 
                 disabled={loading} 
-                className="bg-link text-white px-10 py-3 rounded font-bold text-sm hover:bg-link/90 transition-all flex items-center shadow-lg shadow-link/20"
+                className="bg-link text-white px-10 py-2.5 rounded font-normal text-[14px] hover:bg-link/90 transition-none flex items-center shadow-lg shadow-link/10"
             >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                 {initialData ? 'Update Invoice' : 'Generate Invoice'}

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Loader2, Edit, Trash2 } from 'lucide-react';
-import { formatDate, getActiveCompanyId } from '../utils/helpers';
+import { formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -30,8 +30,7 @@ const Bills = () => {
     }
     
     try {
-      // Fetch bills for this company that aren't deleted
-      // We filter by 'type' but also consider null/empty as 'Purchase' for robustness
+      // Fetch all records for the company and filter client-side to avoid "column not found" errors
       let query = supabase.from('bills')
         .select('*')
         .eq('company_id', cid)
@@ -45,11 +44,13 @@ const Bills = () => {
       
       if (error) throw error;
       
-      // Client-side filter to strictly show Purchase bills or untyped ones (defaulting to purchase)
-      const purchaseBills = (data || []).filter(b => b.type === 'Purchase' || !b.type);
-      setBills(purchaseBills);
-    } catch (err) {
-      console.error("Error loading bills:", err);
+      const normalizedData = (data || [])
+        .map(normalizeBill)
+        .filter(b => b.type === 'Purchase'); // Filter for Purchase only
+        
+      setBills(normalizedData);
+    } catch (err: any) {
+      console.error("Error loading bills:", err.message || err);
     } finally {
       setLoading(false);
     }
@@ -82,7 +83,7 @@ const Bills = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingBill ? "Edit Purchase Bill" : "Register Purchase Bill"} maxWidth="max-w-4xl">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingBill ? "Edit Purchase Bill" : "Register Purchase Bill"} maxWidth="max-w-6xl">
         <BillForm initialData={editingBill} onSubmit={() => { setIsModalOpen(false); loadData(); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>
 

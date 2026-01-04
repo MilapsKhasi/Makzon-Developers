@@ -130,7 +130,7 @@ const Layout = () => {
           <Settings onDone={() => setIsSettingsModalOpen(false)} />
       </Modal>
 
-      <Modal isOpen={!!globalModal.type} onClose={() => setGlobalModal({ type: null, title: '' })} title={globalModal.title}>
+      <Modal isOpen={!!globalModal.type} onClose={() => setGlobalModal({ type: null, title: '' })} title={globalModal.title} maxWidth={globalModal.type === 'bill' ? 'max-w-6xl' : 'max-w-2xl'}>
           {globalModal.type === 'vendor' && <VendorForm onSubmit={() => { setGlobalModal({ type: null, title: '' }); window.dispatchEvent(new Event('appSettingsChanged')); }} onCancel={() => setGlobalModal({ type: null, title: '' })} />}
           {globalModal.type === 'stock' && <StockForm onSubmit={() => { setGlobalModal({ type: null, title: '' }); window.dispatchEvent(new Event('appSettingsChanged')); }} onCancel={() => setGlobalModal({ type: null, title: '' })} />}
           {globalModal.type === 'bill' && <BillForm onSubmit={() => { setGlobalModal({ type: null, title: '' }); window.dispatchEvent(new Event('appSettingsChanged')); }} onCancel={() => setGlobalModal({ type: null, title: '' })} />}

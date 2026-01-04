@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
-import { Search, Loader2, ChevronDown, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
-import { getActiveCompanyId, formatDate } from '../utils/helpers';
+import { Search, Loader2, ChevronDown, TrendingUp, TrendingDown, Wallet, Clock, Receipt } from 'lucide-react';
+import { getActiveCompanyId, formatDate, normalizeBill } from '../utils/helpers';
 import DateFilter from '../components/DateFilter';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
@@ -10,11 +10,11 @@ import { supabase } from '../lib/supabase';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({ 
-    totalPurchases: 0, 
     totalSales: 0,
-    cashIn: 0,
-    cashOut: 0,
-    netProfit: 0
+    totalPurchases: 0, 
+    payables: 0,
+    receivables: 0,
+    gstPaid: 0
   });
   const [recentVouchers, setRecentVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,28 +39,45 @@ const Dashboard = () => {
       const { data: vouchers, error } = await query;
       if (error) throw error;
       
-      const purchaseItems = (vouchers || []).filter(v => v.type === 'Purchase' || !v.type);
-      const salesItems = (vouchers || []).filter(v => v.type === 'Sale');
+      const normalizedVouchers = (vouchers || []).map(normalizeBill);
+      
+      const purchaseItems = normalizedVouchers.filter(v => v.type === 'Purchase');
+      const salesItems = normalizedVouchers.filter(v => v.type === 'Sale');
 
-      const totalPurchases = purchaseItems.reduce((acc, b) => acc + Number(b.grand_total || 0), 0);
+      // 1. Total Sales: Sum of all Sales Invoices
       const totalSales = salesItems.reduce((acc, b) => acc + Number(b.grand_total || 0), 0);
       
-      const cashIn = salesItems.filter(v => v.status === 'Paid').reduce((acc, v) => acc + Number(v.grand_total || 0), 0);
-      const cashOut = purchaseItems.filter(v => v.status === 'Paid').reduce((acc, v) => acc + Number(v.grand_total || 0), 0);
+      // 2. Total Purchases: Sum of all Purchase Bills
+      const totalPurchases = purchaseItems.reduce((acc, b) => acc + Number(b.grand_total || 0), 0);
+      
+      // 3. Payables: Sum of unpaid (Pending) Purchase Bills
+      const payables = purchaseItems
+        .filter(v => v.status === 'Pending')
+        .reduce((acc, v) => acc + Number(v.grand_total || 0), 0);
+        
+      // 4. Receivables: Sum of unpaid (Pending) Sales Invoices
+      const receivables = salesItems
+        .filter(v => v.status === 'Pending')
+        .reduce((acc, v) => acc + Number(v.grand_total || 0), 0);
+
+      // 5. GST Paid: Total GST from paid Purchase Bills
+      const gstPaid = purchaseItems
+        .filter(v => v.status === 'Paid')
+        .reduce((acc, v) => acc + Number(v.total_gst || 0), 0);
 
       setStats({
-        totalPurchases,
         totalSales,
-        cashIn,
-        cashOut,
-        netProfit: totalSales - totalPurchases
+        totalPurchases,
+        payables,
+        receivables,
+        gstPaid
       });
 
-      const combined = (vouchers || []).map(b => ({ 
+      const combined = normalizedVouchers.map(b => ({ 
         ...b, 
         docNo: b.bill_number, 
         party: b.vendor_name,
-        displayType: b.type === 'Sale' ? 'Sale' : 'Purchase'
+        displayType: b.type
       })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       
       setRecentVouchers(combined);
@@ -85,11 +102,11 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <Modal isOpen={isPurchaseModalOpen} onClose={() => setIsPurchaseModalOpen(false)} title="Register Purchase Bill" maxWidth="max-w-4xl">
+      <Modal isOpen={isPurchaseModalOpen} onClose={() => setIsPurchaseModalOpen(false)} title="Register Purchase Bill" maxWidth="max-w-6xl">
         <BillForm onSubmit={() => { setIsPurchaseModalOpen(false); loadData(); }} onCancel={() => setIsPurchaseModalOpen(false)} />
       </Modal>
 
-      <Modal isOpen={isSalesModalOpen} onClose={() => setIsSalesModalOpen(false)} title="Generate Sales Invoice" maxWidth="max-w-4xl">
+      <Modal isOpen={isSalesModalOpen} onClose={() => setIsSalesModalOpen(false)} title="Generate Sales Invoice" maxWidth="max-w-6xl">
         <SalesInvoiceForm onSubmit={() => { setIsSalesModalOpen(false); loadData(); }} onCancel={() => setIsSalesModalOpen(false)} />
       </Modal>
 
@@ -118,16 +135,16 @@ const Dashboard = () => {
         {[
           { label: 'TOTAL SALES', value: stats.totalSales, icon: TrendingUp, color: 'text-emerald-600' },
           { label: 'TOTAL PURCHASES', value: stats.totalPurchases, icon: TrendingDown, color: 'text-rose-600' },
-          { label: 'CASH INFLOW', value: stats.cashIn, icon: Wallet, color: 'text-emerald-600' },
-          { label: 'CASH OUTFLOW', value: stats.cashOut, icon: Wallet, color: 'text-rose-600' },
-          { label: 'NET PROFIT', value: stats.netProfit, icon: TrendingUp, color: stats.netProfit >= 0 ? 'text-blue-600' : 'text-rose-600' },
+          { label: 'PAYABLES', value: stats.payables, icon: Clock, color: 'text-amber-600' },
+          { label: 'RECEIVABLES', value: stats.receivables, icon: Wallet, color: 'text-link' },
+          { label: 'GST PAID', value: stats.gstPaid, icon: Receipt, color: 'text-slate-600' },
         ].map((stat, i) => (
-          <div key={i} className="bg-white border border-slate-200 rounded-md p-5 flex flex-col">
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] text-slate-500 font-normal uppercase tracking-tight block">{stat.label}</span>
-                <stat.icon className={`w-3.5 h-3.5 ${stat.color}`} />
+          <div key={i} className="bg-white border border-slate-200 rounded-md p-5 flex flex-col h-full justify-between">
+            <div className="flex items-center justify-between mb-3">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">{stat.label}</span>
+                <stat.icon className={`w-4 h-4 ${stat.color} opacity-70`} />
             </div>
-            <span className={`text-[24px] font-normal leading-none font-mono ${stat.color}`}>
+            <span className={`text-[22px] font-semibold leading-none font-mono ${stat.color}`}>
                 {stat.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </span>
           </div>

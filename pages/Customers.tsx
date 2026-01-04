@@ -4,7 +4,7 @@ import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark,
 import Modal from '../components/Modal';
 import CustomerForm from '../components/CustomerForm';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { formatCurrency, formatDate, getActiveCompanyId } from '../utils/helpers';
+import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 
 const StatCard = ({ label, value, colorClass = "text-slate-900" }: { label: string, value: string, colorClass?: string }) => (
@@ -36,12 +36,23 @@ const Customers = () => {
 
     try {
       const { data: partyData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false).order('name');
-      const { data: voucherData } = await supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false).eq('type', 'Sale');
+      const { data: voucherData } = await supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false);
 
-      const customerOnly = (partyData || []).filter(p => p.is_customer === true); 
+      const normalizedInvoices = (voucherData || []).map(normalizeBill).filter(v => v.type === 'Sale');
+      
+      // Extract unique customer names from Sales Invoices to handle missing DB flags
+      const customerNamesFromBills = new Set(normalizedInvoices.map(v => v.vendor_name?.toLowerCase().trim()));
+
+      // Filter robustly: match by flag, type string, or if the name exists in Sales Invoices
+      const customerOnly = (partyData || []).filter(p => {
+          const name = p.name?.toLowerCase().trim();
+          return p.party_type === 'customer' || 
+                 p.is_customer === true || 
+                 customerNamesFromBills.has(name);
+      });
 
       setCustomers(customerOnly);
-      setInvoices(voucherData || []);
+      setInvoices(normalizedInvoices);
       
       if (newIdToSelect) {
         setSelectedCustomerId(String(newIdToSelect));
@@ -55,7 +66,6 @@ const Customers = () => {
     }
   };
 
-  // Fixed event listener to handle custom 'appSettingsChanged' event and fix type mismatch by using a wrapper function
   useEffect(() => {
     loadData();
     const handleSync = () => loadData();
@@ -87,8 +97,13 @@ const Customers = () => {
 
   return (
     <div className="space-y-6 h-full flex flex-col animate-in fade-in duration-300">
-      <Modal isOpen={isFormOpen} onClose={() => { setIsFormOpen(false); setEditingCustomer(null); }} title={editingCustomer ? "Edit Customer Ledger" : "Register New Customer"}>
-          <CustomerForm initialData={editingCustomer} onSubmit={() => loadData()} onCancel={() => { setIsFormOpen(false); setEditingCustomer(null); }} />
+      <Modal 
+        isOpen={isFormOpen} 
+        onClose={() => { setIsFormOpen(false); setEditingCustomer(null); }} 
+        title={editingCustomer ? "Edit Customer Ledger" : "Register New Customer"}
+        maxWidth="max-w-4xl"
+      >
+          <CustomerForm initialData={editingCustomer} onSubmit={(saved) => { setIsFormOpen(false); setEditingCustomer(null); loadData(saved.id); }} onCancel={() => { setIsFormOpen(false); setEditingCustomer(null); }} />
       </Modal>
 
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, customer: null })} onConfirm={confirmDeleteCustomer} title="Delete Customer" message={`Delete customer account for "${deleteDialog.customer?.name}"?`} />
@@ -180,7 +195,7 @@ const Customers = () => {
                                     <td className="text-right font-mono text-slate-400">{(inv.total_without_gst || 0).toFixed(2)}</td>
                                     <td className="text-right font-mono text-slate-400">{(inv.total_gst || 0).toFixed(2)}</td>
                                     <td className="text-right font-mono font-bold text-slate-900">{(inv.grand_total || 0).toFixed(2)}</td>
-                                    <td className="text-center"><span className={`text-[9px] font-bold px-3 py-0.5 rounded-full uppercase ${inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>{inv.status}</span></td>
+                                    <td className="text-center"><span className={`text-[9px] font-bold px-3 py-0.5 rounded-full uppercase ${inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>{inv.status}</span></td>
                                 </tr>
                             ))}
                             {stats.transactions.length === 0 && (

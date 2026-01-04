@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Loader2, Edit, Trash2, Plus, ReceiptText } from 'lucide-react';
-import { formatDate, getActiveCompanyId } from '../utils/helpers';
+import { formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import SalesInvoiceForm from '../components/SalesInvoiceForm';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -27,29 +27,24 @@ const Sales = () => {
     if (!cid) return;
     
     try {
-      // First, attempt standard query
-      let query = supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false).eq('type', 'Sale');
+      // Fetch records for the company and filter client-side to handle missing 'type' column in DB
+      let query = supabase.from('bills')
+        .select('*')
+        .eq('company_id', cid)
+        .eq('is_deleted', false);
+
       if (dateRange.startDate && dateRange.endDate) {
         query = query.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
       }
       const { data, error } = await query.order('date', { ascending: false });
       
-      if (error) {
-        // Fallback: If 'type' column doesn't exist, fetch all and filter in memory
-        if (error.message.includes('column') && error.message.includes('not exist')) {
-            let fallbackQuery = supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false);
-            if (dateRange.startDate && dateRange.endDate) {
-                fallbackQuery = fallbackQuery.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
-            }
-            const { data: fallbackData, error: fallbackError } = await fallbackQuery.order('date', { ascending: false });
-            if (fallbackError) throw fallbackError;
-            setInvoices((fallbackData || []).filter(b => b.type === 'Sale'));
-        } else {
-            throw error;
-        }
-      } else {
-        setInvoices(data || []);
-      }
+      if (error) throw error;
+      
+      const normalizedData = (data || [])
+        .map(normalizeBill)
+        .filter(i => i.type === 'Sale'); // Filter for Sale only
+
+      setInvoices(normalizedData);
     } catch (err: any) {
       console.error("Error loading sales:", err.message || err);
     } finally {
@@ -77,7 +72,7 @@ const Sales = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingInvoice ? "Update Sale Invoice" : "Generate Sale Invoice"} maxWidth="max-w-4xl">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingInvoice ? "Update Sale Invoice" : "Generate Sale Invoice"} maxWidth="max-w-6xl">
         <SalesInvoiceForm initialData={editingInvoice} onSubmit={() => { setIsModalOpen(false); loadData(); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>
 

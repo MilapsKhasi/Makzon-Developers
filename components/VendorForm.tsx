@@ -15,14 +15,15 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, prefilledName, onS
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<any>({
     name: prefilledName || '', email: '', phone: '', gstin: '', pan: '', state: '',
-    account_number: '', account_name: '', ifsc_code: '', address: '', balance: 0
+    account_number: '', account_name: '', ifsc_code: '', address: '', balance: 0,
+    party_type: 'vendor'
   });
 
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialData) {
-      setFormData({ ...initialData });
+      setFormData({ ...initialData, party_type: 'vendor' });
     } else if (prefilledName) {
       setFormData((prev: any) => ({ ...prev, name: prefilledName }));
     }
@@ -46,7 +47,9 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, prefilledName, onS
             ...formData, 
             company_id: cid, 
             user_id: user.id, 
-            is_deleted: false 
+            is_deleted: false,
+            party_type: 'vendor',
+            is_customer: false
         };
         
         const result = await safeSupabaseSave('vendors', payload, initialData?.id);
@@ -59,7 +62,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, prefilledName, onS
   }
 
   return (
-    <div className="bg-white w-full max-w-[800px] flex flex-col max-h-[90vh] overflow-hidden rounded-md border border-slate-300">
+    <div className="bg-white w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden rounded-md border border-slate-300">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
         <h2 className="text-[18px] font-normal text-slate-900">Vendor Entry</h2>

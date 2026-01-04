@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Edit, Trash2, Filter, ChevronDown, Loader2, Info } from 'lucide-react';
-import { formatCurrency, formatDate, getActiveCompanyId } from '../utils/helpers';
+import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -26,17 +26,27 @@ const Purchases = () => {
     const cid = getActiveCompanyId();
     if (!cid) return;
 
-    // Filter to exclude 'Sale' types so only Purchases show here
-    const { data } = await supabase
-      .from('bills')
-      .select('*')
-      .eq('company_id', cid)
-      .eq('is_deleted', false)
-      .neq('type', 'Sale')
-      .order('date', { ascending: false });
+    try {
+      // Use client-side filtering to avoid query errors on non-existent columns
+      const { data, error } = await supabase
+        .from('bills')
+        .select('*')
+        .eq('company_id', cid)
+        .eq('is_deleted', false)
+        .order('date', { ascending: false });
 
-    setBills(data || []);
-    setLoading(false);
+      if (error) throw error;
+
+      const purchaseOnly = (data || [])
+        .map(normalizeBill)
+        .filter(b => b.type === 'Purchase');
+
+      setBills(purchaseOnly);
+    } catch (err: any) {
+      console.error("Error loading purchases:", err.message || err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -170,7 +180,7 @@ const Purchases = () => {
                     <td className="py-5 px-8 border-r border-slate-200 text-right text-slate-600 font-medium">{formatCurrency(b.total_without_gst)}</td>
                     <td className="py-5 px-8 border-r border-slate-200 text-right font-bold text-slate-900">{formatCurrency(b.grand_total)}</td>
                     <td className="py-5 px-8 border-r border-slate-200 text-center">
-                        <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border ${b.status === 'Paid' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>{b.status}</span>
+                        <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border ${b.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>{b.status}</span>
                     </td>
                     <td className="py-5 px-8 text-center">
                       <div className="flex justify-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">

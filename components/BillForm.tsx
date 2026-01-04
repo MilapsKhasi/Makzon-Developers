@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Trash2, Loader2, X, ChevronDown, UserPlus, UserRoundPen } from 'lucide-react';
-import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, normalizeBill } from '../utils/helpers';
+import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen } from 'lucide-react';
+import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
 import VendorForm from './VendorForm';
@@ -11,8 +11,6 @@ interface BillFormProps {
   onSubmit: (bill: any) => void;
   onCancel: () => void;
 }
-
-const TAX_RATES = [0, 5, 12, 18, 28];
 
 const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) => {
   const cid = getActiveCompanyId();
@@ -25,7 +23,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     date: today, 
     displayDate: formatDate(today), 
     gst_type: 'Intra-State',
-    items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: 1, unit: 'PCS', rate: 0, tax_rate: 0, amount: 0, taxableAmount: 0 }],
+    items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', kgPerBag: '', unit: 'PCS', rate: '', tax_rate: 0, amount: 0, taxableAmount: 0 }],
     total_without_gst: 0, 
     total_cgst: 0,
     total_sgst: 0,
@@ -35,7 +33,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     round_off: 0, 
     grand_total: 0, 
     status: 'Pending',
-    type: 'Purchase'
+    type: 'Purchase',
+    transaction_type: 'purchase'
   });
 
   const [loading, setLoading] = useState(false);
@@ -53,19 +52,26 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     [formData.vendor_name, vendors]
   );
 
-  const recalculate = (state: any) => {
-    let taxable = 0;
-    let gst = 0;
-    const updatedItems = (state.items || []).map((item: any) => {
-      const q = parseFloat(item.qty) || 0;
-      const r = parseFloat(item.rate) || 0;
-      const t = parseFloat(item.tax_rate) || 0;
-      const tamt = q * r;
-      const gamt = tamt * (t / 100);
-      taxable += tamt;
-      gst += gamt;
-      return { ...item, taxableAmount: tamt, amount: tamt + gamt };
-    });
+  const recalculate = (state: any, sourceField?: string) => {
+    let taxable = parseFloat(state.total_without_gst) || 0;
+    let gst = parseFloat(state.total_gst) || 0;
+
+    // Only recalculate totals from line items if we didn't manually edit the total fields
+    if (sourceField !== 'total_without_gst' && sourceField !== 'total_gst') {
+      taxable = 0;
+      gst = 0;
+      const updatedItems = (state.items || []).map((item: any) => {
+        const q = parseFloat(item.qty) || 0;
+        const r = parseFloat(item.rate) || 0;
+        const t = parseFloat(item.tax_rate) || 0;
+        const tamt = q * r;
+        const gamt = tamt * (t / 100);
+        taxable += tamt;
+        gst += gamt;
+        return { ...item, taxableAmount: tamt, amount: tamt + gamt };
+      });
+      state.items = updatedItems;
+    }
 
     const cgst = state.gst_type === 'Intra-State' ? gst / 2 : 0;
     const sgst = state.gst_type === 'Intra-State' ? gst / 2 : 0;
@@ -89,7 +95,6 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
     return {
       ...state,
-      items: updatedItems,
       total_without_gst: taxable,
       total_cgst: cgst,
       total_sgst: sgst,
@@ -105,7 +110,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     if (!cid) return;
     const { data: vendorData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false);
     const { data: stockData } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
-    setVendors(vendorData || []);
+    setVendors((vendorData || []).filter(v => v.party_type === 'vendor' || !v.is_customer));
     setStockItems(stockData || []);
     
     const { data: allDuties } = await supabase.from('duties_taxes').select('*').eq('company_id', cid).eq('is_deleted', false);
@@ -125,18 +130,18 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
   useEffect(() => { loadDependencies(); }, [initialData, cid]);
 
-  const updateField = (idx: number, field: string, val: any) => {
+  const updateItemRow = (idx: number, field: string, val: any) => {
     const newItems = [...formData.items];
     newItems[idx] = { ...newItems[idx], [field]: val };
     
-    // AUTO-FILL logic: If Item Master matches, populate HSN, Rate, and Tax
+    // Auto-fill metadata if item exists in master
     if (field === 'itemName') {
-        const selected = stockItems.find(s => s.name.toLowerCase() === val.toLowerCase());
+        const selected = stockItems.find(s => s.name.toLowerCase().trim() === val.toLowerCase().trim());
         if (selected) {
             newItems[idx] = { 
                 ...newItems[idx], 
                 hsnCode: selected.hsn || '', 
-                rate: selected.rate || 0, 
+                rate: selected.rate || '',
                 tax_rate: selected.tax_rate || 0,
                 unit: selected.unit || 'PCS'
             };
@@ -159,7 +164,6 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User session not found.");
 
-      // PACK METADATA into JSONB to avoid DB column errors if schema isn't updated
       const payload: any = {
           company_id: cid,
           user_id: user.id,
@@ -174,6 +178,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
           items: {
               line_items: formData.items,
               type: 'Purchase',
+              transaction_type: 'purchase',
               gst_type: formData.gst_type,
               round_off: formData.round_off,
               duties_and_taxes: formData.duties_and_taxes,
@@ -181,8 +186,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
               total_sgst: formData.total_sgst,
               total_igst: formData.total_igst
           },
-          // Send columns directly too (Supabase will strip them silently if safeSupabaseSave is used)
           type: 'Purchase',
+          transaction_type: 'purchase',
           gst_type: formData.gst_type,
           round_off: formData.round_off,
           total_cgst: Number(formData.total_cgst) || 0,
@@ -192,10 +197,11 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       
       const savedRes = await safeSupabaseSave('bills', payload, initialData?.id);
       
-      // AUTO-REGISTER NEW ITEMS IN STOCK MASTER
+      // Auto-update/create stock items from the bill lines
       await ensureStockItems(formData.items, cid, user.id);
+      // Auto-update/create vendor
+      await ensureParty(formData.vendor_name, 'vendor', cid, user.id);
 
-      // SYNC TO CASHBOOK: Only for Paid transactions
       if (payload.status === 'Paid' && savedRes.data) {
         await syncTransactionToCashbook(savedRes.data[0]);
       }
@@ -211,7 +217,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         isOpen={vendorModal.isOpen} 
         onClose={() => setVendorModal({ ...vendorModal, isOpen: false })} 
         title={vendorModal.initialData ? "Edit Vendor Profile" : "Register New Vendor"}
-        maxWidth="max-w-[800px]"
+        maxWidth="max-w-4xl"
       >
         <VendorForm 
           initialData={vendorModal.initialData} 
@@ -259,31 +265,29 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                 <datalist id="vlist">{vendors.map(v => <option key={v.id} value={v.name} />)}</datalist>
             </div>
 
-            <div className="border border-slate-200 rounded-md overflow-hidden mt-6">
-                <table className="w-full text-[13px] border-collapse">
+            <div className="border border-slate-200 rounded-md overflow-x-auto mt-6">
+                <table className="w-full text-[13px] border-collapse min-w-[800px]">
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-500">
                         <tr>
-                            <th className="p-3 text-left font-normal border-r border-slate-200">Item Description</th>
+                            <th className="p-3 text-left font-normal border-r border-slate-200 min-w-[200px]">Item Description</th>
                             <th className="p-3 text-left font-normal w-24 border-r border-slate-200">HSN</th>
-                            <th className="p-3 text-center font-normal w-20 border-r border-slate-200">Qty</th>
-                            <th className="p-3 text-right font-normal w-24 border-r border-slate-200">Rate</th>
-                            <th className="p-3 text-center font-normal w-20 border-r border-slate-200">GST %</th>
-                            <th className="p-3 text-right font-normal w-32">Total</th>
+                            <th className="p-3 text-center font-normal w-24 border-r border-slate-200">QTY (KG)</th>
+                            <th className="p-3 text-center font-normal w-24 border-r border-slate-200">KG PER BAG</th>
+                            <th className="p-3 text-right font-normal w-32 border-r border-slate-200">Rate per KG</th>
+                            <th className="p-3 text-right font-normal w-32">Amount</th>
                             <th className="w-10"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {formData.items.map((it: any, idx: number) => (
                             <tr key={it.id}>
-                                <td className="p-0 border-r border-slate-100"><input list="itemslist" value={it.itemName} onChange={e => updateField(idx, 'itemName', e.target.value)} className="w-full h-9 px-3 outline-none bg-transparent" placeholder="Start typing item..." /></td>
-                                <td className="p-0 border-r border-slate-100"><input value={it.hsnCode} onChange={e => updateField(idx, 'hsnCode', e.target.value)} className="w-full h-9 px-3 outline-none bg-transparent font-mono" /></td>
-                                <td className="p-0 border-r border-slate-100"><input type="number" value={it.qty} onChange={e => updateField(idx, 'qty', e.target.value)} className="w-full h-9 px-2 text-center outline-none bg-transparent" /></td>
-                                <td className="p-0 border-r border-slate-100"><input type="number" value={it.rate} onChange={e => updateField(idx, 'rate', e.target.value)} className="w-full h-9 px-2 text-right outline-none bg-transparent" /></td>
                                 <td className="p-0 border-r border-slate-100">
-                                    <select value={it.tax_rate} onChange={e => updateField(idx, 'tax_rate', e.target.value)} className="w-full h-9 px-1 outline-none bg-transparent appearance-none text-center">
-                                        {TAX_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
-                                    </select>
+                                    <input list="itemslist" value={it.itemName} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-9 px-3 outline-none bg-transparent" placeholder="Start typing item..." />
                                 </td>
+                                <td className="p-0 border-r border-slate-100"><input value={it.hsnCode} onChange={e => updateItemRow(idx, 'hsnCode', e.target.value)} className="w-full h-9 px-3 outline-none bg-transparent font-mono" /></td>
+                                <td className="p-0 border-r border-slate-100"><input type="number" step="any" value={it.qty} onChange={e => updateItemRow(idx, 'qty', e.target.value)} className="w-full h-9 px-2 text-center outline-none bg-transparent" placeholder="QTY" /></td>
+                                <td className="p-0 border-r border-slate-100"><input type="number" step="any" value={it.kgPerBag} onChange={e => updateItemRow(idx, 'kgPerBag', e.target.value)} className="w-full h-9 px-2 text-center outline-none bg-transparent" placeholder="Adapts..." /></td>
+                                <td className="p-0 border-r border-slate-100"><input type="number" step="any" value={it.rate} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-9 px-2 text-right outline-none bg-transparent" placeholder="Rate / KG" /></td>
                                 <td className="p-3 text-right font-medium text-slate-900">{(Number(it.taxableAmount) || 0).toFixed(2)}</td>
                                 <td className="text-center p-2"><button type="button" onClick={() => setFormData(recalculate({...formData, items: formData.items.filter((_: any, i: number) => i !== idx)}))} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button></td>
                             </tr>
@@ -291,7 +295,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                     </tbody>
                 </table>
                 <datalist id="itemslist">{stockItems.map(s => <option key={s.id} value={s.name} />)}</datalist>
-                <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: 1, unit: 'PCS', rate: 0, tax_rate: 0, amount: 0, taxableAmount: 0 }]}))} className="w-full py-2 bg-slate-50 text-[11px] font-normal text-slate-400 uppercase tracking-widest hover:bg-slate-100 border-t border-slate-200">
+                <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', kgPerBag: '', unit: 'PCS', rate: '', tax_rate: 0, amount: 0, taxableAmount: 0 }]}))} className="w-full py-2 bg-slate-50 text-[11px] font-normal text-slate-400 uppercase tracking-widest hover:bg-slate-100 border-t border-slate-200">
                     + Add New Particular
                 </button>
             </div>
@@ -299,11 +303,23 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
             <div className="flex flex-col items-center justify-center space-y-3 py-6 border-t border-slate-100">
                 <div className="flex items-center justify-between w-72 text-[14px]">
                     <span className="text-slate-500">Taxable Amount</span>
-                    <span className="font-bold text-slate-900">{formData.total_without_gst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <input 
+                      type="number" 
+                      step="any"
+                      value={formData.total_without_gst} 
+                      onChange={e => setFormData(recalculate({...formData, total_without_gst: e.target.value}, 'total_without_gst'))}
+                      className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link" 
+                    />
                 </div>
                 <div className="flex items-center justify-between w-72 text-[14px]">
                     <span className="text-slate-500">GST Total</span>
-                    <span className="font-bold text-slate-900">{formData.total_gst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <input 
+                      type="number" 
+                      step="any"
+                      value={formData.total_gst} 
+                      onChange={e => setFormData(recalculate({...formData, total_gst: e.target.value}, 'total_gst'))}
+                      className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link" 
+                    />
                 </div>
                 {formData.duties_and_taxes.map((d: any) => (
                     <div key={d.id} className="flex items-center justify-between w-72 text-[14px]">

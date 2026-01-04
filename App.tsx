@@ -35,12 +35,31 @@ const App = () => {
       }, 700);
     }, 3000);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    const initSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+           if (error.message.includes('Refresh Token Not Found')) {
+             await supabase.auth.signOut();
+             localStorage.clear();
+             setSession(null);
+           }
+        } else {
+          setSession(session);
+        }
+      } catch (err) {
+        console.error("Session recovery failed:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    initSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        localStorage.clear();
+      }
       setSession(session);
     });
 

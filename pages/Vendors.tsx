@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark, CreditCard, ShieldCheck, Plus, ExternalLink, Phone, Mail, MapPin } from 'lucide-react';
 import Modal from '../components/Modal';
 import VendorForm from '../components/VendorForm';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { formatCurrency, formatDate, getActiveCompanyId } from '../utils/helpers';
+import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 
 const StatCard = ({ label, value, colorClass = "text-slate-900" }: { label: string, value: string, colorClass?: string }) => (
@@ -34,7 +35,7 @@ const Vendors = () => {
     if (!cid) return;
 
     try {
-      const { data: vendorData, error: vErr } = await supabase
+      const { data: partyData, error: vErr } = await supabase
         .from('vendors')
         .select('*')
         .eq('company_id', cid)
@@ -47,12 +48,18 @@ const Vendors = () => {
         .eq('is_deleted', false);
       if (vErr) throw vErr;
       if (bErr) throw bErr;
-      setVendors(vendorData || []);
-      setBills(billData || []);
+
+      // Filter vendors robustly
+      const vendorOnly = (partyData || []).filter(p => p.party_type === 'vendor' || (!p.party_type && p.is_customer !== true));
+      const normalizedBills = (billData || []).map(normalizeBill);
+
+      setVendors(vendorOnly);
+      setBills(normalizedBills);
+      
       if (newIdToSelect) {
         setSelectedVendorId(String(newIdToSelect));
-      } else if (vendorData && vendorData.length > 0 && !selectedVendorId) {
-        setSelectedVendorId(String(vendorData[0].id));
+      } else if (vendorOnly.length > 0 && !selectedVendorId) {
+        setSelectedVendorId(String(vendorOnly[0].id));
       }
     } catch (error: any) {
       console.error("Error loading vendor data:", error);
@@ -98,7 +105,7 @@ const Vendors = () => {
   const stats = useMemo(() => {
     if (!selectedVendor) return { transactions: [], totalPurchased: 0, totalPaid: 0, balance: 0 };
     const transactions = bills.filter(b => 
-      b.vendor_name?.toLowerCase() === selectedVendor.name?.toLowerCase()
+      b.vendor_name?.toLowerCase() === selectedVendor.name?.toLowerCase() && b.type === 'Purchase'
     );
     const totalPurchased = transactions.reduce((acc, b) => acc + Number(b.grand_total || 0), 0);
     const totalPaid = transactions

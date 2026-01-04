@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Package, ShieldCheck, Tag, Box, Hash } from 'lucide-react';
+import { Save, Package, Tag, Box, Hash, Scale, X } from 'lucide-react';
 import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES } from '../utils/helpers';
 
 interface StockFormProps {
@@ -13,7 +13,7 @@ const TAX_RATES = [0, 5, 12, 18, 28];
 
 const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState<any>({
-      name: '', sku: '', unit: 'PCS', hsn: '', rate: 0, in_stock: 0, description: '', tax_rate: 18
+      name: '', sku: '', unit: 'PCS', hsn: '', rate: 0, in_stock: 0, description: '', tax_rate: 18, kg_per_bag: 0
   });
 
   const currencySymbol = CURRENCIES[getAppSettings().currency as keyof typeof CURRENCIES]?.symbol || '₹';
@@ -29,93 +29,138 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
         rate: toDisplayValue(initialData.rate),
         in_stock: toDisplayValue(initialData.in_stock),
         description: initialData.description || '',
-        tax_rate: initialData.tax_rate || 18
+        tax_rate: initialData.tax_rate || 18,
+        kg_per_bag: toDisplayValue(initialData.kg_per_bag)
       });
     }
     setTimeout(() => firstInputRef.current?.focus(), 100);
   }, [initialData]);
 
-  const handleInputChange = (field: string, value: any) => { setFormData({ ...formData, [field]: value }); };
+  const handleInputChange = (field: string, value: any) => { 
+    setFormData({ ...formData, [field]: value }); 
+  };
 
-  const handleSubmit = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
       if (!formData.name.trim()) return alert("Item name is mandatory.");
-      const storageData = { ...formData, rate: toStorageValue(formData.rate), in_stock: toStorageValue(formData.in_stock) };
+      const storageData = { 
+        ...formData, 
+        name: formData.name.trim(),
+        rate: toStorageValue(formData.rate), 
+        in_stock: toStorageValue(formData.in_stock),
+        kg_per_bag: toStorageValue(formData.kg_per_bag)
+      };
       onSubmit(storageData);
   }
 
   return (
-    <div className="space-y-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-            <div className="col-span-2 space-y-2">
-                <label className="text-sm font-bold text-slate-500 capitalize">Product / Item Master Name</label>
-                <div className="relative">
-                    <Package className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-300" />
-                    <input ref={firstInputRef} type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} className="w-full h-16 pl-14 pr-6 border border-slate-200 rounded-xl text-xl font-bold text-slate-900 outline-none focus:border-slate-400 shadow-sm" placeholder="e.g. UltraTech Cement 50kg Grade-A" />
+    <div className="bg-white flex flex-col max-h-[90vh] overflow-hidden">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-8 bg-white custom-scrollbar">
+            <div className="space-y-6">
+                <div className="space-y-1.5">
+                    <label className="text-[14px] font-normal text-slate-900">Item / Product Name</label>
+                    <input 
+                        ref={firstInputRef} 
+                        type="text" 
+                        required
+                        value={formData.name} 
+                        onChange={(e) => handleInputChange('name', e.target.value)} 
+                        className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-base font-bold text-slate-900 focus:border-slate-400 uppercase" 
+                        placeholder="e.g. PREMIUM RICE" 
+                    />
                 </div>
-            </div>
 
-            <div className="space-y-8">
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-500 capitalize">Stock Keeping Unit (SKU)</label>
-                    <div className="relative">
-                      <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                      <input type="text" value={formData.sku} onChange={(e) => handleInputChange('sku', e.target.value)} className="w-full h-12 pl-12 pr-5 border border-slate-200 rounded-lg text-base font-mono font-bold text-slate-700 outline-none focus:border-slate-400" placeholder="SKU-1001" />
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-1.5">
+                        <label className="text-[14px] font-normal text-slate-900">SKU Code</label>
+                        <input 
+                            type="text" 
+                            value={formData.sku} 
+                            onChange={(e) => handleInputChange('sku', e.target.value)} 
+                            className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-sm font-mono focus:border-slate-400" 
+                            placeholder="Optional" 
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[14px] font-normal text-slate-900">HSN Code</label>
+                        <input 
+                            type="text" 
+                            value={formData.hsn} 
+                            onChange={(e) => handleInputChange('hsn', e.target.value)} 
+                            className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-sm font-mono focus:border-slate-400" 
+                            placeholder="Optional" 
+                        />
                     </div>
                 </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-500 capitalize">Unit Of Measure</label>
-                    <div className="relative">
-                      <Box className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                      <select value={formData.unit} onChange={(e) => handleInputChange('unit', e.target.value)} className="w-full h-12 pl-12 pr-5 border border-slate-200 rounded-lg text-base font-bold outline-none focus:border-slate-400 bg-white shadow-sm appearance-none">
-                          {['PCS', 'NOS', 'KGS', 'LTR', 'BAGS', 'BOX'].map(u => <option key={u} value={u}>{u}</option>)}
-                      </select>
-                    </div>
-                </div>
-            </div>
 
-            <div className="space-y-8">
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-500 capitalize">HSN / SAC Code</label>
-                    <div className="relative">
-                      <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                      <input type="text" value={formData.hsn} onChange={(e) => handleInputChange('hsn', e.target.value)} className="w-full h-12 pl-12 pr-5 border border-slate-200 rounded-lg text-base font-mono font-bold text-slate-700 outline-none focus:border-slate-400" placeholder="HSN-8451" />
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-1.5">
+                        <label className="text-[14px] font-normal text-slate-900">Unit</label>
+                        <div className="relative">
+                            <select 
+                                value={formData.unit} 
+                                onChange={(e) => handleInputChange('unit', e.target.value)} 
+                                className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-sm bg-white appearance-none focus:border-slate-400"
+                            >
+                                {['PCS', 'NOS', 'KGS', 'LTR', 'BAGS', 'BOX', 'DRUMS', 'PACKS'].map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                            <Box className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        </div>
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[14px] font-normal text-slate-900">Opening Stock</label>
+                        <input 
+                            type="number" 
+                            step="any" 
+                            value={formData.in_stock} 
+                            onChange={(e) => handleInputChange('in_stock', e.target.value)} 
+                            className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-sm font-mono font-bold focus:border-slate-400" 
+                        />
                     </div>
                 </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-500 capitalize">Applied GST Rate</label>
-                    <div className="relative">
-                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
-                        <select value={formData.tax_rate} onChange={(e) => handleInputChange('tax_rate', Number(e.target.value))} className="w-full h-12 pl-12 pr-5 border border-slate-200 rounded-lg text-base font-bold outline-none focus:border-slate-400 bg-white shadow-sm appearance-none">
+
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-inner">
+                    <div className="space-y-1.5">
+                        <label className="text-[14px] font-normal text-slate-700">Valuation Rate ({currencySymbol})</label>
+                        <input 
+                            type="number" 
+                            step="any" 
+                            value={formData.rate} 
+                            onChange={(e) => handleInputChange('rate', e.target.value)} 
+                            className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-lg font-bold text-slate-900 bg-white" 
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[14px] font-normal text-slate-700">Default GST %</label>
+                        <select 
+                            value={formData.tax_rate} 
+                            onChange={(e) => handleInputChange('tax_rate', Number(e.target.value))} 
+                            className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-lg font-bold text-slate-900 bg-white appearance-none"
+                        >
                             {TAX_RATES.map(r => <option key={r} value={r}>{r}% GST</option>)}
                         </select>
                     </div>
                 </div>
-            </div>
 
-            <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-10 p-10 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-600 capitalize">Purchase Valuation Rate</label>
-                    <div className="relative">
-                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 text-lg font-bold">{currencySymbol}</span>
-                        <input type="number" value={formData.rate} onChange={(e) => handleInputChange('rate', parseFloat(e.target.value) || 0)} className="w-full h-16 pl-12 pr-6 border border-slate-200 rounded-xl text-2xl font-bold text-slate-900 outline-none focus:border-slate-400 font-mono shadow-sm" />
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-600 capitalize">Available Opening Stock</label>
-                    <div className="relative">
-                      <Box className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
-                      <input type="number" value={formData.in_stock} onChange={(e) => handleInputChange('in_stock', parseFloat(e.target.value) || 0)} className="w-full h-16 pl-14 pr-6 border border-slate-200 rounded-xl text-2xl font-bold text-slate-900 outline-none focus:border-slate-400 font-mono shadow-sm" />
-                    </div>
+                <div className="space-y-1.5">
+                    <label className="text-[14px] font-normal text-slate-900">Item Description</label>
+                    <textarea 
+                        rows={3} 
+                        value={formData.description} 
+                        onChange={(e) => handleInputChange('description', e.target.value)} 
+                        className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-sm focus:border-slate-400 resize-none" 
+                        placeholder="Optional remarks..." 
+                    />
                 </div>
             </div>
-        </div>
 
-        <div className="pt-10 border-t border-slate-100 flex justify-end space-x-6">
-            <button onClick={onCancel} className="px-10 py-4 text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors">Discard</button>
-            <button onClick={handleSubmit} className="h-16 w-16 bg-primary text-slate-900 rounded-none border border-primary hover:bg-primary-dark transition-all flex items-center justify-center">
-                <Save className="w-6 h-6" />
-            </button>
-        </div>
+            <div className="pt-6 border-t border-slate-100 flex justify-end space-x-6">
+                <button type="button" onClick={onCancel} className="text-[13px] text-slate-400 font-normal hover:text-slate-700 transition-none">Discard Changes</button>
+                <button type="submit" className="bg-primary text-slate-900 px-10 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center">
+                    <Save className="w-4 h-4 mr-2" /> {initialData ? 'Update Record' : 'Create Item'}
+                </button>
+            </div>
+        </form>
     </div>
   );
 };
