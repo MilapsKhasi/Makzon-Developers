@@ -40,13 +40,9 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, prefilledName, onS
       setLoading(true);
       try {
         const cid = getActiveCompanyId();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        
         const payload = { 
             ...formData, 
             company_id: cid, 
-            user_id: user.id, 
             is_deleted: false,
             party_type: 'vendor',
             is_customer: false

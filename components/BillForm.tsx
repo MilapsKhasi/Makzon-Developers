@@ -202,7 +202,6 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
       const payload: any = {
           company_id: cid,
-          user_id: user.id,
           vendor_name: formData.vendor_name,
           bill_number: formData.bill_number,
           date: formData.date,

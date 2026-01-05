@@ -175,7 +175,6 @@ export const ensureStockItems = async (items: any[], company_id: string, user_id
       unit: item.unit || 'PCS',
       kg_per_bag: Number(item.kgPerBag) || 0,
       company_id,
-      user_id,
       is_deleted: false
     };
 
@@ -209,7 +208,6 @@ export const ensureParty = async (name: string, type: 'customer' | 'vendor', com
       party_type: type,
       is_customer: type === 'customer',
       company_id,
-      user_id,
       is_deleted: false,
       balance: 0
     };
@@ -300,8 +298,7 @@ export const syncTransactionToCashbook = async (transaction: any) => {
     if (cashbookId) {
       await supabase.from('cashbooks').update(payload).eq('id', cashbookId);
     } else {
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from('cashbooks').insert([{ ...payload, user_id: user?.id }]);
+      await supabase.from('cashbooks').insert([payload]);
     }
   } catch (err) {
     console.error("Cashbook Sync Error:", err);

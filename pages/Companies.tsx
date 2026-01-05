@@ -21,8 +21,15 @@ const Companies = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return navigate('/setup');
     setUserEmail(user.email || null);
-    const { data } = await supabase.from('companies').select('*').eq('user_id', user.id).eq('is_deleted', false).order('created_at', { ascending: false });
-    setCompanies(data || []);
+    
+    // Fetch companies through the junction table to support multi-user access
+    const { data, error } = await supabase
+      .from('companies_users')
+      .select('company_id, companies (*)')
+      .eq('user_id', user.id);
+    
+    const companyList = data?.map(item => item.companies).filter(c => c && !c.is_deleted) || [];
+    setCompanies(companyList);
     setLoading(false);
   };
 
@@ -34,15 +41,26 @@ const Companies = () => {
     setCreating(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from('companies').insert([{ 
+      if (!user) throw new Error("Authentication session lost.");
+
+      // 1. Create the company
+      const { data: companyData, error: companyError } = await supabase.from('companies').insert([{ 
         ...newCompany, 
         name: newCompany.name.trim().toUpperCase(),
         gstin: newCompany.gstin.trim().toUpperCase(),
-        state: newCompany.state.trim().toUpperCase(),
-        user_id: user?.id 
-      }]).select();
+        state: newCompany.state.trim().toUpperCase()
+      }]).select().single();
       
-      if (error) throw error;
+      if (companyError) throw companyError;
+
+      // 2. Link the current user to the company in the junction table
+      const { error: junctionError } = await supabase.from('companies_users').insert([{
+        user_id: user.id,
+        company_id: companyData.id
+      }]);
+
+      if (junctionError) throw junctionError;
+
       setNewCompany({ name: '', gstin: '', address: '', state: '' });
       setIsModalOpen(false);
       await loadData();

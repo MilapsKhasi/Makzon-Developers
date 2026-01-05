@@ -207,7 +207,6 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
 
       const payload: any = {
         company_id: cid,
-        user_id: user.id,
         vendor_name: formData.customer_name,
         bill_number: formData.invoice_number,
         date: formData.date,

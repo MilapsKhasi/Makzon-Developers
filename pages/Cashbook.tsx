@@ -71,7 +71,7 @@ const Cashbook = () => {
     const cid = getActiveCompanyId();
     if (!cid || entries.length === 0) return;
 
-    setExporting(true);
+    exporting(true);
     try {
       const { data: company } = await supabase.from('companies').select('*').eq('id', cid).single();
       
@@ -111,11 +111,9 @@ const Cashbook = () => {
 
     setLoading(true);
     const cid = getActiveCompanyId();
-    const { data: { user } } = await supabase.auth.getUser();
     
     const payload = { 
       company_id: cid, 
-      user_id: user?.id, 
       date: data.date, 
       income_total: data.incomeTotal, 
       expense_total: data.expenseTotal, 

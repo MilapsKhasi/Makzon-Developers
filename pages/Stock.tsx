@@ -75,9 +75,8 @@ const Stock = () => {
 
   const handleSaveItem = async (itemData: any) => {
     const cid = getActiveCompanyId();
-    const { data: { user } } = await supabase.auth.getUser();
     if (editingItem) await supabase.from('stock_items').update({ ...itemData }).eq('id', editingItem.id);
-    else await supabase.from('stock_items').insert([{ ...itemData, company_id: cid, user_id: user?.id }]);
+    else await supabase.from('stock_items').insert([{ ...itemData, company_id: cid }]);
     loadData(); setIsModalOpen(false); setEditingItem(null);
   };
 

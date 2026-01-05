@@ -67,12 +67,10 @@ const DutiesTaxes = () => {
     
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       const payload = { 
         ...formData, 
         name: formData.name.trim(), 
         company_id: cid, 
-        user_id: user?.id,
         is_deleted: false 
       };
       

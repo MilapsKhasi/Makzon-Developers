@@ -40,13 +40,9 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
       setLoading(true);
       try {
         const cid = getActiveCompanyId();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        
         const payload = { 
             ...formData, 
             company_id: cid, 
-            user_id: user.id, 
             is_deleted: false,
             is_customer: true,
             party_type: 'customer'
