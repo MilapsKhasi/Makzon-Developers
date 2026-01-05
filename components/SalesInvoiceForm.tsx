@@ -32,7 +32,8 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     status: 'Pending',
     type: 'Sale',
     transaction_type: 'sale',
-    round_off: 0
+    round_off: 0,
+    description: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -41,17 +42,51 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [customerModal, setCustomerModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
 
-  const recalculate = (state: any, sourceField?: string, sourceDutyId?: string, sourceVal?: any) => {
-    let taxableTotal = parseFloat(state.total_without_gst) || 0;
-    let gstTotal = parseFloat(state.total_gst) || 0;
+  const formatCurrency = (val: number, includeSymbol = true) => {
+    const formatted = new Intl.NumberFormat('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(val);
+    return includeSymbol ? `₹ ${formatted}` : formatted;
+  };
 
-    // Only recalculate from items if not a manual override of totals
-    if (sourceField !== 'total_without_gst' && sourceField !== 'total_gst' && !sourceDutyId) {
+  const parseNumber = (val: string) => {
+    if (!val) return 0;
+    const clean = val.toString().replace(/[^0-9.-]/g, '');
+    const num = parseFloat(clean);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const formatWhileTyping = (val: string) => {
+    if (val === '') return '';
+    const isNegative = val.startsWith('-');
+    const clean = val.replace(/[^0-9.]/g, '');
+    if (clean === '') return isNegative ? '-' : '';
+    
+    const parts = clean.split('.');
+    let formatted = new Intl.NumberFormat('en-IN').format(parseFloat(parts[0]));
+    
+    let result = formatted;
+    if (parts.length > 1) {
+        result += `.${parts[1].slice(0, 2)}`;
+    }
+    return isNegative ? `-${result}` : result;
+  };
+
+  const recalculate = (state: any, sourceField?: string, sourceDutyId?: string, sourceVal?: any) => {
+    let taxableTotal = state.total_without_gst;
+    let gstTotal = state.total_gst;
+
+    if (sourceField === 'total_without_gst') {
+      taxableTotal = parseNumber(sourceVal);
+    } else if (sourceField === 'total_gst') {
+      gstTotal = parseNumber(sourceVal);
+    } else if (!sourceDutyId) {
       taxableTotal = 0;
       gstTotal = 0;
       const items = (state.items || []).map((item: any) => {
-        const q = parseFloat(item.qty) || 0;
-        const r = parseFloat(item.rate) || 0;
+        const q = parseNumber(item.qty.toString());
+        const r = parseNumber(item.rate.toString());
         const t = parseFloat(item.tax_rate) || 0;
         const taxable = q * r;
         const gst = taxable * (t / 100);
@@ -60,17 +95,13 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         return { ...item, taxableAmount: taxable, amount: taxable + gst };
       });
       state.items = items;
-    } else if (sourceField === 'total_without_gst') {
-      taxableTotal = parseFloat(sourceVal) || 0;
-    } else if (sourceField === 'total_gst') {
-      gstTotal = parseFloat(sourceVal) || 0;
     }
 
     let runningTotal = taxableTotal + gstTotal;
     const updatedDuties = (state.duties_and_taxes || []).map((d: any) => {
       let calcAmt = 0;
       if (sourceDutyId === d.id) {
-        calcAmt = Math.abs(parseFloat(sourceVal) || 0);
+        calcAmt = parseNumber(sourceVal);
       } else {
         const base = d.apply_on === 'Net Total' ? (taxableTotal + gstTotal) : taxableTotal;
         const rate = parseFloat(d.bill_rate !== undefined ? d.bill_rate : d.rate) || 0;
@@ -78,7 +109,8 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         if (d.calc_method === 'Percentage') calcAmt = base * (rate / 100);
         else calcAmt = fixed;
       }
-      const finalAmt = d.type === 'Deduction' ? -Math.abs(calcAmt) : Math.abs(calcAmt);
+      
+      const finalAmt = calcAmt;
       runningTotal += finalAmt;
       return { ...d, amount: finalAmt };
     });
@@ -103,7 +135,6 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     setCustomers((v || []).filter(p => p.party_type === 'customer' || p.is_customer === true));
     setStockItems(s || []);
     
-    // Fetch duty ledgers
     const { data: allDuties } = await supabase.from('duties_taxes').select('*').eq('company_id', cid).eq('is_deleted', false);
     const selectedIds = getSelectedLedgerIds();
     const activeDuties = (allDuties || []).filter(d => d.is_default || selectedIds.includes(d.id));
@@ -118,6 +149,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       setFormData(recalculate({
         ...getInitialState(),
         ...normalized,
+        description: normalized.description || '',
         customer_name: normalized.vendor_name || '',
         invoice_number: normalized.bill_number || '',
         displayDate: formatDate(normalized.date),
@@ -128,9 +160,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
 
   useEffect(() => {
     loadData();
-    setTimeout(() => {
-        firstInputRef.current?.focus();
-    }, 100);
+    setTimeout(() => { firstInputRef.current?.focus(); }, 100);
   }, [initialData, cid]);
 
   const updateItemRow = (idx: number, field: string, val: any) => {
@@ -143,13 +173,12 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
             items[idx] = { 
                 ...items[idx], 
                 hsnCode: selected.hsn || '',
-                rate: selected.rate || '',
+                rate: selected.rate?.toString() || '',
                 tax_rate: selected.tax_rate || 0,
                 unit: selected.unit || 'PCS'
             };
         }
     }
-
     setFormData(recalculate({ ...formData, items }));
   };
 
@@ -166,6 +195,10 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.customer_name || !formData.invoice_number) return alert("Required: Customer and Invoice Number");
+    if (formData.grand_total < 0) {
+      alert("Error: Invoice cannot be generated with a negative value. Please adjust the other ledger fields to be greater than or equal to the taxable value.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -183,6 +216,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         grand_total: formData.grand_total,
         status: formData.status,
         is_deleted: false,
+        description: formData.description,
         items: {
             line_items: formData.items,
             type: 'Sale',
@@ -231,23 +265,16 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
             <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                     <label className="text-[14px] font-normal text-slate-900">Invoice Date</label>
-                    <input 
-                        ref={firstInputRef}
-                        required 
-                        value={formData.displayDate} 
-                        onChange={e => setFormData({...formData, displayDate: e.target.value})} 
-                        onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} 
-                        className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-medium bg-white" 
-                    />
+                    <input ref={firstInputRef} required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-medium bg-white focus:border-slate-400" />
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-[14px] font-normal text-slate-900">Invoice No</label>
-                    <input required value={formData.invoice_number} onChange={e => setFormData({...formData, invoice_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-mono font-bold bg-white" />
+                    <input required value={formData.invoice_number} onChange={e => setFormData({...formData, invoice_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-mono bg-white font-bold focus:border-slate-400" />
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-[14px] font-normal text-slate-900">Status</label>
                     <div className="relative">
-                        <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] bg-white appearance-none">
+                        <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] bg-white appearance-none focus:border-slate-400">
                             <option value="Pending">Unpaid (Credit)</option>
                             <option value="Paid">Received (Paid)</option>
                         </select>
@@ -259,7 +286,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
             <div className="space-y-1.5">
                 <label className="text-[14px] font-normal text-slate-900">Customer Name</label>
                 <div className="flex gap-3">
-                    <input required list="custlist" value={formData.customer_name} onChange={e => handleCustomerChange(e.target.value)} className="flex-1 px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-bold uppercase bg-white" placeholder="Search Customer..." />
+                    <input required list="custlist" value={formData.customer_name} onChange={e => handleCustomerChange(e.target.value)} className="flex-1 px-4 py-2 border border-slate-200 rounded outline-none text-[14px] uppercase bg-white font-bold focus:border-slate-400" placeholder="" />
                     <button type="button" onClick={() => setCustomerModal({ isOpen: true, initialData: matchedCustomer || null, prefilledName: matchedCustomer ? '' : formData.customer_name })} className={`h-10 w-10 flex items-center justify-center rounded border transition-all shrink-0 ${matchedCustomer ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-primary/20 text-slate-700 border-slate-200'}`}>
                       {matchedCustomer ? <UserRoundPen className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
                     </button>
@@ -269,14 +296,14 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
 
             <div className="border border-slate-200 rounded-md overflow-x-auto bg-white">
                 <table className="w-full text-[13px] border-collapse min-w-[800px]">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[11px] font-bold">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
                         <tr>
-                            <th className="p-3 text-left border-r border-slate-200 min-w-[200px]">Particulars (Item)</th>
-                            <th className="p-3 text-left w-24 border-r border-slate-200">HSN</th>
-                            <th className="p-3 text-center w-24 border-r border-slate-200">QTY</th>
-                            <th className="p-3 text-center w-24 border-r border-slate-200">KG PER BAG</th>
-                            <th className="p-3 text-right w-32 border-r border-slate-200">Rate per KG</th>
-                            <th className="p-3 text-right w-32">Amount</th>
+                            <th className="p-3 text-left border-r border-slate-200 min-w-[200px] font-normal">Particulars (Item)</th>
+                            <th className="p-3 text-left w-24 border-r border-slate-200 font-normal">HSN</th>
+                            <th className="p-3 text-center w-28 border-r border-slate-200 font-normal">QTY</th>
+                            <th className="p-3 text-center w-28 border-r border-slate-200 font-normal">KG PER BAG</th>
+                            <th className="p-3 text-right w-36 border-r border-slate-200 font-normal">Rate per KG</th>
+                            <th className="p-3 text-right w-32 font-normal">Amount</th>
                             <th className="w-10"></th>
                         </tr>
                     </thead>
@@ -284,13 +311,13 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                         {formData.items.map((it: any, idx: number) => (
                             <tr key={it.id}>
                                 <td className="p-0 border-r border-slate-100">
-                                    <input list="itemslist" value={it.itemName} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-9 px-3 outline-none font-medium bg-transparent" placeholder="Start typing item..." />
+                                    <input list="itemslist" value={it.itemName} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-9 px-3 outline-none font-medium bg-transparent" />
                                 </td>
-                                <td className="p-0 border-r border-slate-100"><input value={it.hsnCode} onChange={e => updateItemRow(idx, 'hsnCode', e.target.value)} className="w-full h-9 px-3 outline-none bg-transparent font-mono" /></td>
-                                <td className="p-0 border-r border-slate-100"><input type="number" step="any" value={it.qty} onChange={e => updateItemRow(idx, 'qty', e.target.value)} className="w-full h-9 px-2 text-center outline-none bg-transparent font-bold" placeholder="QTY" /></td>
-                                <td className="p-0 border-r border-slate-100"><input type="number" step="any" value={it.kgPerBag} onChange={e => updateItemRow(idx, 'kgPerBag', e.target.value)} className="w-full h-9 px-2 text-center outline-none bg-transparent" placeholder="Adapts..." /></td>
-                                <td className="p-0 border-r border-slate-100"><input type="number" step="any" value={it.rate} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-9 px-2 text-right outline-none bg-transparent font-mono" placeholder="Rate / KG" /></td>
-                                <td className="p-3 text-right font-bold text-slate-900 font-mono">{(it.taxableAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                <td className="p-0 border-r border-slate-100"><input value={it.hsnCode} onChange={e => updateItemRow(idx, 'hsnCode', e.target.value)} className="w-full h-9 px-3 outline-none bg-transparent font-mono text-slate-400" /></td>
+                                <td className="p-0 border-r border-slate-100"><input type="text" value={it.qty} onChange={e => updateItemRow(idx, 'qty', e.target.value)} className="w-full h-9 px-2 text-center outline-none bg-transparent font-mono font-bold" /></td>
+                                <td className="p-0 border-r border-slate-100"><input type="text" value={it.kgPerBag} onChange={e => updateItemRow(idx, 'kgPerBag', e.target.value)} className="w-full h-9 px-2 text-center outline-none bg-transparent font-mono" /></td>
+                                <td className="p-0 border-r border-slate-100"><input type="text" value={it.rate} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-9 px-2 text-right outline-none bg-transparent font-mono font-bold" /></td>
+                                <td className="p-3 text-right font-bold text-slate-900 font-mono">{formatCurrency(it.taxableAmount, false)}</td>
                                 <td className="p-2 text-center"><button type="button" onClick={() => setFormData(recalculate({...formData, items: formData.items.filter((_: any, i: number) => i !== idx)}))} className="text-slate-300 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button></td>
                             </tr>
                         ))}
@@ -300,32 +327,60 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                 <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', kgPerBag: '', unit: 'PCS', rate: '', tax_rate: 0, taxableAmount: 0, amount: 0 }]}))} className="w-full py-3 bg-slate-50 text-[11px] font-bold text-slate-400 uppercase hover:bg-slate-100 transition-colors border-t border-slate-200">+ Add New Line</button>
             </div>
 
-            <div className="flex flex-col items-center justify-center space-y-3 py-6 border-t border-slate-100">
-                <div className="flex items-center justify-between w-72 text-[14px]">
-                    <span className="text-slate-500 font-normal">Total Taxable</span>
-                    <input 
-                      type="number" 
-                      step="any"
-                      value={formData.total_without_gst} 
-                      onChange={e => setFormData(recalculate({...formData}, 'total_without_gst', undefined, e.target.value))}
-                      className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link bg-transparent" 
+            <div className="flex justify-between items-start pt-8 border-t border-slate-100 bg-white">
+                <div className="w-1/2 pr-12">
+                    <label className="text-[14px] font-normal text-slate-900 mb-2 block">Remark</label>
+                    <textarea 
+                        value={formData.description} 
+                        onChange={e => setFormData({...formData, description: e.target.value})}
+                        className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-[13px] resize-none h-36 bg-slate-50/30 focus:bg-white focus:border-slate-300 transition-all"
+                        placeholder="Public or private notes..."
                     />
                 </div>
-                {formData.duties_and_taxes.map((d: any) => (
-                    <div key={d.id} className="flex items-center justify-between w-72 text-[14px]">
-                        <span className="text-slate-500">{d.name}</span>
+
+                <div className="flex flex-col items-end space-y-4 w-1/2">
+                    <div className="flex items-center justify-between w-full max-w-sm text-[14px]">
+                        <span className="text-slate-500 font-normal text-right pr-4">Total Taxable</span>
                         <input 
-                            type="number" 
-                            step="any"
-                            value={Math.abs(d.amount)} 
-                            onChange={e => setFormData(recalculate({...formData}, undefined, d.id, e.target.value))}
-                            className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link bg-transparent" 
+                          type="text" 
+                          value={formatWhileTyping(formData.total_without_gst.toString())} 
+                          onFocus={(e) => { 
+                              e.target.value = formData.total_without_gst.toString();
+                              e.target.select();
+                          }}
+                          onBlur={(e) => { e.target.value = formatWhileTyping(formData.total_without_gst.toString()) }}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setFormData(recalculate({...formData}, 'total_without_gst', undefined, val));
+                          }}
+                          className="px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-mono font-bold text-slate-900 text-right w-48 bg-white focus:border-slate-400" 
                         />
                     </div>
-                ))}
-                <div className="flex items-center justify-between w-72 pt-3 border-t border-slate-100">
-                    <span className="text-slate-900 font-normal">Grand Total</span>
-                    <span className="text-[18px] font-bold text-link">₹{formData.grand_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    {formData.duties_and_taxes.map((d: any) => (
+                        <div key={d.id} className="flex items-center justify-between w-full max-w-sm text-[14px]">
+                            <span className="text-slate-500 font-normal text-right pr-4">{d.name}</span>
+                            <input 
+                                type="text" 
+                                value={formatWhileTyping(d.amount.toString())} 
+                                onFocus={(e) => { 
+                                    e.target.value = d.amount.toString();
+                                    e.target.select();
+                                }}
+                                onBlur={(e) => { e.target.value = formatWhileTyping(d.amount.toString()) }}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    setFormData(recalculate({...formData}, undefined, d.id, val));
+                                }}
+                                className="px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-mono font-bold text-slate-900 text-right w-48 bg-white focus:border-slate-400" 
+                            />
+                        </div>
+                    ))}
+                    <div className="flex items-center justify-between w-full max-w-sm pt-5 border-t border-slate-100">
+                        <span className="text-slate-900 font-bold uppercase tracking-tight text-right pr-4">Grand Total</span>
+                        <span className={`font-mono font-bold text-[22px] tracking-tight ${formData.grand_total < 0 ? 'text-red-500 animate-pulse' : 'text-link'}`}>
+                          {formatCurrency(formData.grand_total, true)}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -335,7 +390,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
             <button 
                 type="submit" 
                 disabled={loading} 
-                className="bg-link text-white px-10 py-2.5 rounded font-normal text-[14px] hover:bg-link/90 transition-none flex items-center shadow-lg shadow-link/10"
+                className="bg-link text-white px-10 py-3 rounded font-bold text-[14px] hover:bg-link/90 transition-none flex items-center shadow-lg shadow-link/10 active:scale-95"
             >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                 {initialData ? 'Update Invoice' : 'Generate Invoice'}
