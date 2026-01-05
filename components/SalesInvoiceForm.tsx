@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Save, Trash2, Loader2, UserPlus, UserRoundPen, ChevronDown } from 'lucide-react';
 import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
@@ -15,6 +15,7 @@ interface SalesInvoiceFormProps {
 const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubmit, onCancel }) => {
   const cid = getActiveCompanyId();
   const today = new Date().toISOString().split('T')[0];
+  const firstInputRef = useRef<HTMLInputElement>(null);
   
   const getInitialState = () => ({
     customer_name: '', 
@@ -57,6 +58,10 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         displayDate: formatDate(normalized.date),
       });
     }
+    // Auto-focus the first field on mount
+    setTimeout(() => {
+        firstInputRef.current?.focus();
+    }, 100);
   }, [initialData, cid]);
 
   const recalculate = (state: any, sourceField?: string) => {
@@ -184,7 +189,14 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
             <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                     <label className="text-[14px] font-normal text-slate-900">Invoice Date</label>
-                    <input required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-medium bg-white" />
+                    <input 
+                        ref={firstInputRef}
+                        required 
+                        value={formData.displayDate} 
+                        onChange={e => setFormData({...formData, displayDate: e.target.value})} 
+                        onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} 
+                        className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-medium bg-white" 
+                    />
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-[14px] font-normal text-slate-900">Invoice No</label>

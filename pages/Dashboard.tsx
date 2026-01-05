@@ -28,6 +28,7 @@ const Dashboard = () => {
   const [headerFocusIdx, setHeaderFocusIdx] = useState<number | null>(null);
   const [selectedRowIdx, setSelectedRowIdx] = useState<number | null>(null);
   const [editingVoucher, setEditingVoucher] = useState<any>(null);
+  const [lastShiftNTime, setLastShiftNTime] = useState<number>(0);
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; voucher: any | null }>({
     isOpen: false,
     voucher: null
@@ -111,8 +112,7 @@ const Dashboard = () => {
       }
 
       // Context Check: Are we in an input? (Unless it's our own search bar)
-      const isFocusedInInput = document.activeElement?.tagName === 'INPUT' && document.activeElement !== searchInputRef.current;
-      const isFocusedInSelect = document.activeElement?.tagName === 'SELECT';
+      const isFocusedInInput = (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'SELECT' || document.activeElement?.tagName === 'TEXTAREA') && document.activeElement !== searchInputRef.current;
       if (isFocusedInInput) return;
 
       // Table Navigation: Up/Down arrow keys move selection ONLY if a row is already selected
@@ -127,6 +127,20 @@ const Dashboard = () => {
       }
 
       if (e.shiftKey) {
+        // Shift + N sequence detection
+        if (e.key === 'N' || e.key === 'n') {
+            setLastShiftNTime(Date.now());
+        }
+        
+        // Shift + N + S sequence
+        if ((e.key === 'S' || e.key === 's') && (Date.now() - lastShiftNTime < 1000)) {
+            e.preventDefault();
+            setEditingVoucher(null);
+            setIsSalesModalOpen(true);
+            setLastShiftNTime(0);
+            return;
+        }
+
         // Shift + Arrows: Header Navigation
         if (e.key === 'ArrowRight') {
           e.preventDefault();
@@ -166,7 +180,7 @@ const Dashboard = () => {
         else if (e.key === 'D' || e.key === 'd') {
           if (selectedRowIdx !== null && filteredVouchers[selectedRowIdx]) {
             e.preventDefault();
-            const voucher = filteredVouchers[selectedRowIdx];
+            const voucher = filteredVouchers[recentVouchers.indexOf(filteredVouchers[selectedRowIdx])];
             if (!deleteDialog.isOpen) {
               setDeleteDialog({ isOpen: true, voucher });
             } else {
@@ -180,7 +194,7 @@ const Dashboard = () => {
 
     window.addEventListener('keydown', handleKeys);
     return () => window.removeEventListener('keydown', handleKeys);
-  }, [filteredVouchers, selectedRowIdx, deleteDialog, headerFocusIdx]);
+  }, [filteredVouchers, selectedRowIdx, deleteDialog, headerFocusIdx, lastShiftNTime]);
 
   const handleConfirmDelete = async () => {
     if (!deleteDialog.voucher) return;

@@ -20,9 +20,22 @@ const Modal: React.FC<ModalProps> = ({
   preventBackdropClose = false
 }) => {
   useEffect(() => {
-    if (isOpen) document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [isOpen]);
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+      
+      window.addEventListener('keydown', handleEsc);
+      return () => {
+        document.body.style.overflow = 'unset';
+        window.removeEventListener('keydown', handleEsc);
+      };
+    }
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
