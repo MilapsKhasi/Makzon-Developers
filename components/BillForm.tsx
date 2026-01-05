@@ -52,12 +52,12 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     [formData.vendor_name, vendors]
   );
 
-  const recalculate = (state: any, sourceField?: string) => {
+  const recalculate = (state: any, sourceField?: string, sourceDutyId?: string, sourceVal?: any) => {
     let taxable = parseFloat(state.total_without_gst) || 0;
     let gst = parseFloat(state.total_gst) || 0;
 
-    // Only recalculate totals from line items if we didn't manually edit the total fields
-    if (sourceField !== 'total_without_gst' && sourceField !== 'total_gst') {
+    // Line item summation
+    if (sourceField !== 'total_without_gst' && sourceField !== 'total_gst' && !sourceDutyId) {
       taxable = 0;
       gst = 0;
       const updatedItems = (state.items || []).map((item: any) => {
@@ -71,6 +71,10 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         return { ...item, taxableAmount: tamt, amount: tamt + gamt };
       });
       state.items = updatedItems;
+    } else if (sourceField === 'total_without_gst') {
+      taxable = parseFloat(sourceVal) || 0;
+    } else if (sourceField === 'total_gst') {
+      gst = parseFloat(sourceVal) || 0;
     }
 
     const cgst = state.gst_type === 'Intra-State' ? gst / 2 : 0;
@@ -80,14 +84,18 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     let runningTotal = taxable + gst;
     const updatedDuties = (state.duties_and_taxes || []).map((d: any) => {
       let calcAmt = 0;
-      const base = d.apply_on === 'Net Total' ? runningTotal : taxable;
-      const rate = parseFloat(d.bill_rate !== undefined ? d.bill_rate : d.rate) || 0;
-      const fixed = parseFloat(d.bill_fixed_amount !== undefined ? d.bill_fixed_amount : d.fixed_amount) || 0;
-      if (d.calc_method === 'Percentage') calcAmt = base * (rate / 100);
-      else calcAmt = fixed;
+      if (sourceDutyId === d.id) {
+        calcAmt = Math.abs(parseFloat(sourceVal) || 0);
+      } else {
+        const base = d.apply_on === 'Net Total' ? (taxable + gst) : taxable;
+        const rate = parseFloat(d.bill_rate !== undefined ? d.bill_rate : d.rate) || 0;
+        const fixed = parseFloat(d.bill_fixed_amount !== undefined ? d.bill_fixed_amount : d.fixed_amount) || 0;
+        if (d.calc_method === 'Percentage') calcAmt = base * (rate / 100);
+        else calcAmt = fixed;
+      }
       const finalAmt = d.type === 'Deduction' ? -Math.abs(calcAmt) : Math.abs(calcAmt);
       runningTotal += finalAmt;
-      return { ...d, amount: finalAmt, bill_rate: rate, bill_fixed_amount: fixed };
+      return { ...d, amount: finalAmt };
     });
 
     const rounded = Math.round(runningTotal);
@@ -134,7 +142,6 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     const newItems = [...formData.items];
     newItems[idx] = { ...newItems[idx], [field]: val };
     
-    // Auto-fill metadata if item exists in master
     if (field === 'itemName') {
         const selected = stockItems.find(s => s.name.toLowerCase().trim() === val.toLowerCase().trim());
         if (selected) {
@@ -196,10 +203,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       };
       
       const savedRes = await safeSupabaseSave('bills', payload, initialData?.id);
-      
-      // Auto-update/create stock items from the bill lines
       await ensureStockItems(formData.items, cid, user.id);
-      // Auto-update/create vendor
       await ensureParty(formData.vendor_name, 'vendor', cid, user.id);
 
       if (payload.status === 'Paid' && savedRes.data) {
@@ -307,24 +311,20 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                       type="number" 
                       step="any"
                       value={formData.total_without_gst} 
-                      onChange={e => setFormData(recalculate({...formData, total_without_gst: e.target.value}, 'total_without_gst'))}
-                      className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link" 
-                    />
-                </div>
-                <div className="flex items-center justify-between w-72 text-[14px]">
-                    <span className="text-slate-500">GST Total</span>
-                    <input 
-                      type="number" 
-                      step="any"
-                      value={formData.total_gst} 
-                      onChange={e => setFormData(recalculate({...formData, total_gst: e.target.value}, 'total_gst'))}
+                      onChange={e => setFormData(recalculate({...formData}, 'total_without_gst', undefined, e.target.value))}
                       className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link" 
                     />
                 </div>
                 {formData.duties_and_taxes.map((d: any) => (
                     <div key={d.id} className="flex items-center justify-between w-72 text-[14px]">
                         <span className="text-slate-500">{d.name}</span>
-                        <span className="font-bold text-slate-900">{d.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <input 
+                            type="number" 
+                            step="any"
+                            value={Math.abs(d.amount)} 
+                            onChange={e => setFormData(recalculate({...formData}, undefined, d.id, e.target.value))}
+                            className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link bg-transparent" 
+                        />
                     </div>
                 ))}
                 <div className="flex items-center justify-between w-72 text-[14px] border-t border-slate-100 pt-3">

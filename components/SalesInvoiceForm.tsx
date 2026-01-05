@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Save, Trash2, Loader2, UserPlus, UserRoundPen, ChevronDown } from 'lucide-react';
-import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill } from '../utils/helpers';
+import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getSelectedLedgerIds } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
 import CustomerForm from './CustomerForm';
@@ -27,10 +27,12 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', kgPerBag: '', unit: 'PCS', rate: '', tax_rate: 0, taxableAmount: 0, amount: 0 }],
     total_without_gst: 0, 
     total_gst: 0, 
+    duties_and_taxes: [],
     grand_total: 0, 
     status: 'Pending',
     type: 'Sale',
-    transaction_type: 'sale'
+    transaction_type: 'sale',
+    round_off: 0
   });
 
   const [loading, setLoading] = useState(false);
@@ -39,37 +41,12 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [customerModal, setCustomerModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
 
-  const loadData = async () => {
-    if (!cid) return;
-    const { data: v } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false);
-    const { data: s } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
-    setCustomers((v || []).filter(p => p.party_type === 'customer' || p.is_customer === true));
-    setStockItems(s || []);
-  };
-
-  useEffect(() => {
-    loadData();
-    if (initialData) {
-      const normalized = normalizeBill(initialData);
-      setFormData({
-        ...normalized,
-        customer_name: normalized.vendor_name || '',
-        invoice_number: normalized.bill_number || '',
-        displayDate: formatDate(normalized.date),
-      });
-    }
-    // Auto-focus the first field on mount
-    setTimeout(() => {
-        firstInputRef.current?.focus();
-    }, 100);
-  }, [initialData, cid]);
-
-  const recalculate = (state: any, sourceField?: string) => {
+  const recalculate = (state: any, sourceField?: string, sourceDutyId?: string, sourceVal?: any) => {
     let taxableTotal = parseFloat(state.total_without_gst) || 0;
     let gstTotal = parseFloat(state.total_gst) || 0;
 
     // Only recalculate from items if not a manual override of totals
-    if (sourceField !== 'total_without_gst' && sourceField !== 'total_gst') {
+    if (sourceField !== 'total_without_gst' && sourceField !== 'total_gst' && !sourceDutyId) {
       taxableTotal = 0;
       gstTotal = 0;
       const items = (state.items || []).map((item: any) => {
@@ -83,11 +60,78 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         return { ...item, taxableAmount: taxable, amount: taxable + gst };
       });
       state.items = items;
+    } else if (sourceField === 'total_without_gst') {
+      taxableTotal = parseFloat(sourceVal) || 0;
+    } else if (sourceField === 'total_gst') {
+      gstTotal = parseFloat(sourceVal) || 0;
     }
 
-    const total = Math.round(taxableTotal + gstTotal);
-    return { ...state, total_without_gst: taxableTotal, total_gst: gstTotal, grand_total: total };
+    let runningTotal = taxableTotal + gstTotal;
+    const updatedDuties = (state.duties_and_taxes || []).map((d: any) => {
+      let calcAmt = 0;
+      if (sourceDutyId === d.id) {
+        calcAmt = Math.abs(parseFloat(sourceVal) || 0);
+      } else {
+        const base = d.apply_on === 'Net Total' ? (taxableTotal + gstTotal) : taxableTotal;
+        const rate = parseFloat(d.bill_rate !== undefined ? d.bill_rate : d.rate) || 0;
+        const fixed = parseFloat(d.bill_fixed_amount !== undefined ? d.bill_fixed_amount : d.fixed_amount) || 0;
+        if (d.calc_method === 'Percentage') calcAmt = base * (rate / 100);
+        else calcAmt = fixed;
+      }
+      const finalAmt = d.type === 'Deduction' ? -Math.abs(calcAmt) : Math.abs(calcAmt);
+      runningTotal += finalAmt;
+      return { ...d, amount: finalAmt };
+    });
+
+    const total = Math.round(runningTotal);
+    const ro = parseFloat((total - runningTotal).toFixed(2));
+
+    return { 
+      ...state, 
+      total_without_gst: taxableTotal, 
+      total_gst: gstTotal, 
+      duties_and_taxes: updatedDuties,
+      round_off: ro,
+      grand_total: total 
+    };
   };
+
+  const loadData = async () => {
+    if (!cid) return;
+    const { data: v } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false);
+    const { data: s } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
+    setCustomers((v || []).filter(p => p.party_type === 'customer' || p.is_customer === true));
+    setStockItems(s || []);
+    
+    // Fetch duty ledgers
+    const { data: allDuties } = await supabase.from('duties_taxes').select('*').eq('company_id', cid).eq('is_deleted', false);
+    const selectedIds = getSelectedLedgerIds();
+    const activeDuties = (allDuties || []).filter(d => d.is_default || selectedIds.includes(d.id));
+
+    if (!initialData) {
+      setFormData(prev => {
+        if (prev.duties_and_taxes.length > 0) return prev;
+        return recalculate({ ...prev, duties_and_taxes: activeDuties.map(d => ({ ...d, bill_rate: d.rate, bill_fixed_amount: d.fixed_amount, amount: 0 }))});
+      });
+    } else {
+      const normalized = normalizeBill(initialData);
+      setFormData(recalculate({
+        ...getInitialState(),
+        ...normalized,
+        customer_name: normalized.vendor_name || '',
+        invoice_number: normalized.bill_number || '',
+        displayDate: formatDate(normalized.date),
+        duties_and_taxes: normalized.duties_and_taxes || activeDuties.map(d => ({ ...d, bill_rate: d.rate, bill_fixed_amount: d.fixed_amount, amount: 0 }))
+      }));
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    setTimeout(() => {
+        firstInputRef.current?.focus();
+    }, 100);
+  }, [initialData, cid]);
 
   const updateItemRow = (idx: number, field: string, val: any) => {
     const items = [...formData.items];
@@ -144,7 +188,8 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
             type: 'Sale',
             transaction_type: 'sale',
             gst_type: formData.gst_type,
-            round_off: Number(formData.round_off) || 0
+            round_off: Number(formData.round_off) || 0,
+            duties_and_taxes: formData.duties_and_taxes
         },
         type: 'Sale',
         transaction_type: 'sale',
@@ -153,10 +198,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       };
 
       const savedRes = await safeSupabaseSave('bills', payload, initialData?.id);
-      
-      // Auto-update master items
       await ensureStockItems(formData.items, cid, user.id);
-      // Auto-update master customer
       await ensureParty(formData.customer_name, 'customer', cid, user.id);
 
       if (payload.status === 'Paid' && savedRes.data) {
@@ -265,20 +307,22 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                       type="number" 
                       step="any"
                       value={formData.total_without_gst} 
-                      onChange={e => setFormData(recalculate({...formData, total_without_gst: e.target.value}, 'total_without_gst'))}
-                      className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link" 
+                      onChange={e => setFormData(recalculate({...formData}, 'total_without_gst', undefined, e.target.value))}
+                      className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link bg-transparent" 
                     />
                 </div>
-                <div className="flex items-center justify-between w-72 text-[14px]">
-                    <span className="text-slate-500 font-normal">GST Total</span>
-                    <input 
-                      type="number" 
-                      step="any"
-                      value={formData.total_gst} 
-                      onChange={e => setFormData(recalculate({...formData, total_gst: e.target.value}, 'total_gst'))}
-                      className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link" 
-                    />
-                </div>
+                {formData.duties_and_taxes.map((d: any) => (
+                    <div key={d.id} className="flex items-center justify-between w-72 text-[14px]">
+                        <span className="text-slate-500">{d.name}</span>
+                        <input 
+                            type="number" 
+                            step="any"
+                            value={Math.abs(d.amount)} 
+                            onChange={e => setFormData(recalculate({...formData}, undefined, d.id, e.target.value))}
+                            className="font-bold text-slate-900 text-right w-32 border-b border-dashed border-slate-200 outline-none focus:border-link bg-transparent" 
+                        />
+                    </div>
+                ))}
                 <div className="flex items-center justify-between w-72 pt-3 border-t border-slate-100">
                     <span className="text-slate-900 font-normal">Grand Total</span>
                     <span className="text-[18px] font-bold text-link">₹{formData.grand_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
