@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, Edit, Trash2, Plus, ReceiptText } from 'lucide-react';
+import { Search, Loader2, Edit, Trash2, Plus } from 'lucide-react';
 import { formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import SalesInvoiceForm from '../components/SalesInvoiceForm';
@@ -16,8 +16,8 @@ const Sales = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
   
-  // Selection / Shortcut states
-  const [headerFocusIdx, setHeaderFocusIdx] = useState<number | null>(null);
+  // Navigation & Shortcut states
+  const [headerFocusIdx, setHeaderFocusIdx] = useState<number | null>(0); // Default to first dropdown
   const [selectedRowIdx, setSelectedRowIdx] = useState<number | null>(null);
   const [lastShiftNTime, setLastShiftNTime] = useState<number>(0);
 
@@ -67,6 +67,18 @@ const Sales = () => {
     return () => window.removeEventListener('appSettingsChanged', handleRefresh);
   }, [dateRange]);
 
+  const filtered = invoices.filter(i => {
+    const search = searchQuery.toLowerCase();
+    return i.bill_number?.toLowerCase().includes(search) || i.vendor_name?.toLowerCase().includes(search);
+  });
+
+  // Handle header cycle focus
+  useEffect(() => {
+    if (headerFocusIdx === 0) dateFilterRef.current?.focusYear();
+    if (headerFocusIdx === 1) dateFilterRef.current?.focusMonth();
+    if (headerFocusIdx === 2) newSaleBtnRef.current?.focus();
+  }, [headerFocusIdx]);
+
   const confirmDelete = async () => {
     if (!deleteDialog.invoice) return;
     const { error } = await supabase.from('bills').update({ is_deleted: true }).eq('id', deleteDialog.invoice.id);
@@ -77,28 +89,9 @@ const Sales = () => {
     setDeleteDialog({ isOpen: false, invoice: null });
   };
 
-  const filtered = invoices.filter(i => {
-    const search = searchQuery.toLowerCase();
-    return i.bill_number?.toLowerCase().includes(search) || i.vendor_name?.toLowerCase().includes(search);
-  });
-
-  // Automatically focus the first dropdown on mount
-  useEffect(() => {
-    if (loading === false && headerFocusIdx === null) {
-      setHeaderFocusIdx(0);
-    }
-  }, [loading]);
-
-  // Handle programmatic focus based on headerFocusIdx
-  useEffect(() => {
-    if (headerFocusIdx === 0) dateFilterRef.current?.focusYear();
-    if (headerFocusIdx === 1) dateFilterRef.current?.focusMonth();
-    if (headerFocusIdx === 2) newSaleBtnRef.current?.focus();
-  }, [headerFocusIdx]);
-
   useEffect(() => {
     const handleKeys = (e: KeyboardEvent) => {
-      // 1. ESC Handling
+      // 1. ESC Handling (Cancel current context)
       if (e.key === 'Escape') {
         if (deleteDialog.isOpen) {
           e.preventDefault();
@@ -113,12 +106,12 @@ const Sales = () => {
         return;
       }
 
-      // Context Check: Are we in a deep input?
+      // Context Check: Are we in a sub-input or form?
       const activeEl = document.activeElement;
       const isFocusedInInput = (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.tagName === 'SELECT') && activeEl !== searchInputRef.current;
       if (isFocusedInInput || isModalOpen) return;
 
-      // 2. Table Navigation (ArrowUp/Down) - Only if row is selected
+      // 2. Table Navigation (ArrowUp/Down) - Only if row is highlighted
       if (selectedRowIdx !== null) {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
@@ -129,23 +122,21 @@ const Sales = () => {
         }
       }
 
-      // 3. Shift Key Shortcuts
+      // 3. Shift Key Combinations
       if (e.shiftKey) {
-        // Shift + N sequence detection
+        // Shift + N + S flow
         if (e.key === 'N' || e.key === 'n') {
-            setLastShiftNTime(Date.now());
+          setLastShiftNTime(Date.now());
         }
-        
-        // Shift + N + S sequence
         if ((e.key === 'S' || e.key === 's') && (Date.now() - lastShiftNTime < 1000)) {
-            e.preventDefault();
-            setEditingInvoice(null);
-            setIsModalOpen(true);
-            setLastShiftNTime(0);
-            return;
+          e.preventDefault();
+          setEditingInvoice(null);
+          setIsModalOpen(true);
+          setLastShiftNTime(0);
+          return;
         }
 
-        // Shift + Arrows: Header Navigation
+        // Shift + Arrows: Header cycle
         if (e.key === 'ArrowRight') {
           e.preventDefault();
           setHeaderFocusIdx(prev => (prev === null ? 0 : (prev + 1) % 3));
@@ -155,7 +146,7 @@ const Sales = () => {
           setHeaderFocusIdx(prev => (prev === null ? 2 : (prev - 1 + 3) % 3));
           setSelectedRowIdx(null);
         } 
-        // Shift + Enter: Context Cycle (Header/Input -> Table)
+        // Shift + Enter: Context Switching
         else if (e.key === 'Enter') {
           e.preventDefault();
           if (activeEl !== searchInputRef.current) {
@@ -169,7 +160,7 @@ const Sales = () => {
             }
           }
         } 
-        // Shift + E: Edit Entry
+        // Shift + E: Edit Selected
         else if (e.key === 'E' || e.key === 'e') {
           if (selectedRowIdx !== null && filtered[selectedRowIdx]) {
             e.preventDefault();
@@ -177,7 +168,7 @@ const Sales = () => {
             setIsModalOpen(true);
           }
         } 
-        // Shift + D: Delete Entry (Double press flow)
+        // Shift + D: Delete Selected
         else if (e.key === 'D' || e.key === 'd') {
           if (selectedRowIdx !== null && filtered[selectedRowIdx]) {
             e.preventDefault();

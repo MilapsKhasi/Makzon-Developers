@@ -16,6 +16,20 @@ const Sidebar = () => {
     { name: 'Reports', path: '/reports', icon: BarChart3, shortcut: 'R' },
   ];
 
+  const renderLabel = (text: string, shortcut: string) => {
+    const char = shortcut.toLowerCase();
+    const index = text.toLowerCase().indexOf(char);
+    if (index === -1) return text;
+
+    return (
+      <>
+        {text.slice(0, index)}
+        <span className="underline decoration-1 underline-offset-2">{text[index]}</span>
+        {text.slice(index + 1)}
+      </>
+    );
+  };
+
   return (
     <aside className="w-64 border-r border-slate-200 h-full py-4 flex flex-col shrink-0 bg-white z-10 overflow-y-auto transition-none">
       <nav className="space-y-1">
@@ -26,18 +40,18 @@ const Sidebar = () => {
             className={({ isActive }) =>
               `flex items-center justify-between px-6 py-3 text-[14px] font-normal transition-none ${
                 isActive
-                  ? 'bg-primary text-slate-900 border-r-4 border-slate-900'
+                  ? 'bg-primary text-slate-900 border-r-4 border-slate-900 font-semibold'
                   : 'text-slate-600 hover:bg-slate-50'
               }`
             }
           >
-            <div className="flex items-center space-x-4 min-w-0">
-              <item.icon className="w-4 h-4 shrink-0 opacity-70" />
-              <span className="truncate">{item.name}</span>
-            </div>
-            <span className="text-[9px] font-bold text-slate-400 opacity-50 ml-2 border border-slate-200 px-1 rounded bg-slate-50">
-              Alt+{item.shortcut}
-            </span>
+            {/* Fix: Wrap children in a function to access the 'isActive' state provided by NavLink */}
+            {({ isActive }) => (
+              <div className="flex items-center space-x-4 min-w-0">
+                <item.icon className={`w-4 h-4 shrink-0 ${isActive ? 'opacity-100' : 'opacity-70'}`} />
+                <span className="truncate">{renderLabel(item.name, item.shortcut)}</span>
+              </div>
+            )}
           </NavLink>
         ))}
       </nav>
