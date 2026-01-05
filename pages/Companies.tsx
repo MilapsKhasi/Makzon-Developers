@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Plus, Search, Loader2, Check, Globe, LogOut, Save, User, ArrowRight } from 'lucide-react';
+import { Building2, Plus, Search, Loader2, Check, Globe, LogOut, Save, User, ArrowRight, X } from 'lucide-react';
 import Modal from '../components/Modal';
 import Logo from '../components/Logo';
 import { supabase } from '../lib/supabase';
@@ -34,7 +34,14 @@ const Companies = () => {
     setCreating(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from('companies').insert([{ ...newCompany, user_id: user?.id }]).select();
+      const { error } = await supabase.from('companies').insert([{ 
+        ...newCompany, 
+        name: newCompany.name.trim().toUpperCase(),
+        gstin: newCompany.gstin.trim().toUpperCase(),
+        state: newCompany.state.trim().toUpperCase(),
+        user_id: user?.id 
+      }]).select();
+      
       if (error) throw error;
       setNewCompany({ name: '', gstin: '', address: '', state: '' });
       setIsModalOpen(false);
@@ -66,7 +73,6 @@ const Companies = () => {
 
   return (
     <div className="flex flex-col h-screen bg-white overflow-hidden font-sans">
-      {/* Replicated Main App Top Bar */}
       <header className="h-16 border-b border-slate-200 flex items-center justify-between px-4 shrink-0 z-[100] bg-white">
         <div className="flex items-center space-x-2">
           <Logo size={32} />
@@ -165,33 +171,71 @@ const Companies = () => {
         </div>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Register Business Workspace">
-        <form onSubmit={handleCreateCompany} className="space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Legal Workspace Name</label>
-              <input required type="text" value={newCompany.name} onChange={(e) => setNewCompany({...newCompany, name: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 uppercase font-medium" placeholder="ACME SOLUTIONS PVT LTD" />
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Register Business Workspace" maxWidth="max-w-4xl">
+        <form onSubmit={handleCreateCompany} className="p-8 space-y-6">
+          <div className="border border-slate-200 rounded-md p-8 space-y-6 bg-white">
+            <div className="space-y-1.5">
+              <label className="text-[14px] font-normal text-slate-900">Legal Workspace Name</label>
+              <input 
+                required 
+                type="text" 
+                value={newCompany.name} 
+                onChange={(e) => setNewCompany({...newCompany, name: e.target.value})} 
+                className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 uppercase bg-white font-medium" 
+                placeholder="e.g. ACME SOLUTIONS PVT LTD" 
+              />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">GSTIN Number (Optional)</label>
-                <input type="text" value={newCompany.gstin} onChange={(e) => setNewCompany({...newCompany, gstin: e.target.value.toUpperCase()})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm font-mono outline-none focus:border-slate-400" placeholder="27AAAAA0000A1Z5" />
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-1.5">
+                <label className="text-[14px] font-normal text-slate-900">GSTIN (Optional)</label>
+                <input 
+                  type="text" 
+                  value={newCompany.gstin} 
+                  onChange={(e) => setNewCompany({...newCompany, gstin: e.target.value.toUpperCase()})} 
+                  className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-mono focus:border-slate-400 bg-white" 
+                  placeholder="27AAAAA0000A1Z5" 
+                />
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Operating State</label>
-                <input required type="text" value={newCompany.state} onChange={(e) => setNewCompany({...newCompany, state: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400 uppercase" placeholder="MAHARASHTRA" />
+              <div className="space-y-1.5">
+                <label className="text-[14px] font-normal text-slate-900">Operating State</label>
+                <input 
+                  required 
+                  type="text" 
+                  value={newCompany.state} 
+                  onChange={(e) => setNewCompany({...newCompany, state: e.target.value})} 
+                  className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 uppercase bg-white font-medium" 
+                  placeholder="e.g. MAHARASHTRA" 
+                />
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Registered Business Address</label>
-              <textarea value={newCompany.address} onChange={(e) => setNewCompany({...newCompany, address: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none h-24 resize-none focus:border-slate-400" placeholder="Complete address for records..." />
+            <div className="space-y-1.5">
+              <label className="text-[14px] font-normal text-slate-900">Registered Business Address</label>
+              <textarea 
+                value={newCompany.address} 
+                onChange={(e) => setNewCompany({...newCompany, address: e.target.value})} 
+                rows={3}
+                className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 resize-none bg-white/30 focus:bg-white transition-all" 
+                placeholder="Enter complete office address for records..." 
+              />
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-slate-100">
-            <button type="submit" disabled={creating} className="bg-primary text-slate-900 px-8 py-2 rounded-md font-normal text-sm hover:bg-primary-dark transition-none">
+          <div className="flex items-center justify-end space-x-6">
+            <button 
+              type="button" 
+              onClick={() => setIsModalOpen(false)} 
+              className="text-[13px] text-slate-500 hover:text-slate-800 transition-none font-normal"
+            >
+              Discard
+            </button>
+            <button 
+              type="submit" 
+              disabled={creating} 
+              className="bg-primary text-slate-900 px-10 py-3 rounded font-bold text-[14px] hover:bg-primary-dark transition-none flex items-center shadow-lg shadow-primary/5 active:scale-95"
+            >
+              {creating && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               {creating ? 'REGISTERING...' : 'SAVE WORKSPACE'}
             </button>
           </div>
