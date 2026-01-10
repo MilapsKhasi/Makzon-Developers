@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
@@ -28,12 +27,32 @@ const Layout = () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       setUser(authUser);
       if (!authUser) return;
-      const { data, error } = await supabase.from('companies').select('*').eq('user_id', authUser.id).eq('is_deleted', false).order('created_at', { ascending: false });
+
+      /**
+       * NEW SCHEMA LOGIC: Fetch directly from 'companies'.
+       * Ownership is managed via backend triggers/policies.
+       */
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('is_deleted', false)
+        .order('name');
+      
       if (error) throw error;
-      setWorkspaces(data || []);
+      
+      const companyList = data || [];
+      setWorkspaces(companyList);
+      
       const activeId = getActiveCompanyId();
-      const current = data?.find(w => String(w.id) === String(activeId));
-      setActiveWorkspace(current || null);
+      const current = companyList.find(w => String(w.id) === String(activeId));
+      
+      if (current) {
+        setActiveWorkspace(current);
+      } else if (companyList.length > 0) {
+        switchWorkspace(companyList[0]);
+      } else {
+        navigate('/companies');
+      }
     } catch (err: any) {
       console.error("Layout load error:", err);
     }
@@ -43,33 +62,23 @@ const Layout = () => {
     loadWorkspaces();
     window.addEventListener('appSettingsChanged', loadWorkspaces);
     return () => window.removeEventListener('appSettingsChanged', loadWorkspaces);
-  }, [navigate]);
+  }, []);
 
-  // Global Keyboard Shortcuts for Navigation using Alt as modifier
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Check if Alt is pressed
       if (e.altKey) {
         const key = e.key.toLowerCase();
         const routes: Record<string, string> = {
-          'd': '/',
-          'i': '/sales',
-          'c': '/customers',
-          'b': '/bills',
-          'v': '/vendors',
-          's': '/stock',
-          'k': '/cashbook',
-          't': '/duties-taxes',
-          'r': '/reports'
+          'd': '/', 'i': '/sales', 'c': '/customers', 'b': '/bills',
+          'v': '/vendors', 's': '/stock', 'k': '/cashbook',
+          't': '/duties-taxes', 'r': '/reports'
         };
-
         if (routes[key]) {
           e.preventDefault();
           navigate(routes[key]);
         }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [navigate]);
@@ -79,7 +88,7 @@ const Layout = () => {
     localStorage.setItem('activeCompanyName', ws.name);
     window.dispatchEvent(new Event('appSettingsChanged'));
     setIsAccountMenuOpen(false);
-    navigate('/');
+    setActiveWorkspace(ws);
   };
 
   const handleLogout = async () => {
@@ -137,6 +146,9 @@ const Layout = () => {
                       {String(activeWorkspace?.id) === String(ws.id) && <Check className="w-3 h-3 text-slate-900" />}
                     </button>
                   ))}
+                  <button onClick={() => { setIsAccountMenuOpen(false); navigate('/companies'); }} className="w-full text-left px-4 py-2 text-xs text-link font-bold hover:bg-slate-50 flex items-center border-t border-slate-100 mt-1">
+                    <Plus className="w-3 h-3 mr-2" /> Manage Workspaces
+                  </button>
                 </div>
                 <div className="border-t border-slate-100 mt-1 pt-1">
                    <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 flex items-center"><LogOut className="w-3 h-3 mr-2" /> Sign Out</button>

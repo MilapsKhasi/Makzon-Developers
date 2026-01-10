@@ -71,7 +71,8 @@ const Cashbook = () => {
     const cid = getActiveCompanyId();
     if (!cid || entries.length === 0) return;
 
-    exporting(true);
+    // Fix: Call setExporting setter function instead of trying to call the boolean state value
+    setExporting(true);
     try {
       const { data: company } = await supabase.from('companies').select('*').eq('id', cid).single();
       

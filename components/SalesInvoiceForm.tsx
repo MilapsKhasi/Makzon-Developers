@@ -99,20 +99,24 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
 
     let runningTotal = taxableTotal + gstTotal;
     const updatedDuties = (state.duties_and_taxes || []).map((d: any) => {
-      let calcAmt = 0;
+      let calcAmt = d.amount || 0;
+      
       if (sourceDutyId === d.id) {
         calcAmt = parseNumber(sourceVal);
-      } else {
+      } else if (!sourceDutyId || sourceField === 'total_without_gst') {
         const base = d.apply_on === 'Net Total' ? (taxableTotal + gstTotal) : taxableTotal;
         const rate = parseFloat(d.bill_rate !== undefined ? d.bill_rate : d.rate) || 0;
         const fixed = parseFloat(d.bill_fixed_amount !== undefined ? d.bill_fixed_amount : d.fixed_amount) || 0;
-        if (d.calc_method === 'Percentage') calcAmt = base * (rate / 100);
-        else calcAmt = fixed;
+        
+        if (d.calc_method === 'Percentage') {
+            calcAmt = base * (rate / 100);
+        } else {
+            calcAmt = fixed;
+        }
       }
       
-      const finalAmt = calcAmt;
-      runningTotal += finalAmt;
-      return { ...d, amount: finalAmt };
+      runningTotal += calcAmt;
+      return { ...d, amount: calcAmt };
     });
 
     const total = Math.round(runningTotal);
@@ -195,16 +199,10 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.customer_name || !formData.invoice_number) return alert("Required: Customer and Invoice Number");
-    if (formData.grand_total < 0) {
-      alert("Error: Invoice cannot be generated with a negative value. Please adjust the other ledger fields to be greater than or equal to the taxable value.");
-      return;
-    }
-
+    
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
       const payload: any = {
         company_id: cid,
         vendor_name: formData.customer_name,
@@ -231,8 +229,9 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       };
 
       const savedRes = await safeSupabaseSave('bills', payload, initialData?.id);
-      await ensureStockItems(formData.items, cid, user.id);
-      await ensureParty(formData.customer_name, 'customer', cid, user.id);
+      // Fix: Call ensureStockItems and ensureParty with the correct number of arguments as defined in utils/helpers.ts
+      await ensureStockItems(formData.items, cid);
+      await ensureParty(formData.customer_name, 'customer', cid);
 
       if (payload.status === 'Paid' && savedRes.data) {
         await syncTransactionToCashbook(savedRes.data[0]);
@@ -294,7 +293,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
             </div>
 
             <div className="border border-slate-200 rounded-md overflow-x-auto bg-white">
-                <table className="w-full text-[13px] border-collapse min-w-[800px]">
+                <table className="clean-table w-full text-[13px] border-collapse min-w-[800px]">
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold">
                         <tr>
                             <th className="p-3 text-left border-r border-slate-200 min-w-[200px] font-normal">Particulars (Item)</th>

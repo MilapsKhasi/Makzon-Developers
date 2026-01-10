@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Save, Loader2, Check } from 'lucide-react';
-import { getActiveCompanyId, formatCurrency, getDatePlaceholder, parseDateFromInput, formatDate } from '../utils/helpers';
+// Fixed: Removed non-existent getDatePlaceholder from imports
+import { getActiveCompanyId, formatCurrency, parseDateFromInput, formatDate } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 
 interface SimplifiedPurchaseFormProps {
@@ -54,12 +55,10 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
+      // Logic refined: Data is stored against company_id. 
+      // RLS policies on the 'bills' table should grant access based on companies_users membership.
       const payload = {
         company_id: cid,
-        user_id: user.id,
         vendor_name: formData.vendor_name,
         bill_number: formData.bill_number,
         date: formData.date,
@@ -99,7 +98,8 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-slate-500 uppercase">Date</label>
-          <input required value={formData.displayDate || ''} onChange={(e) => setFormData({...formData, displayDate: e.target.value})} onBlur={handleDateBlur} placeholder={getDatePlaceholder()} className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400" />
+          {/* Fixed: Replaced getDatePlaceholder() with hardcoded placeholder string */}
+          <input required value={formData.displayDate || ''} onChange={(e) => setFormData({...formData, displayDate: e.target.value})} onBlur={handleDateBlur} placeholder="DD/MM/YYYY" className="w-full px-3 py-2 border border-slate-200 rounded text-sm outline-none focus:border-slate-400" />
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-slate-500 uppercase">Bill Number</label>

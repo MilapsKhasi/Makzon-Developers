@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronDown, Loader2, Save, ArrowLeft, Trash2, FileSpreadsheet } from 'lucide-react';
 import { exportCashbookEntryToExcel } from '../utils/exportHelper';
-import { formatDateShort, parseDateFromInput } from '../utils/helpers';
+// Fixed: Replaced non-existent formatDateShort with formatDate
+import { formatDate, parseDateFromInput } from '../utils/helpers';
 
 interface CashbookRow {
   id: string;
@@ -50,7 +51,8 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     if (initialData) {
       const isoDate = initialData.date || '';
       setReportDate(isoDate);
-      setDisplayDate(formatDateShort(isoDate));
+      // Fixed: Replaced formatDateShort with formatDate
+      setDisplayDate(formatDate(isoDate));
       
       const raw = initialData.raw_data || {};
       const inc = Array.isArray(raw.incomeRows) ? [...raw.incomeRows] : [];
@@ -65,7 +67,8 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     } else {
       const todayIso = new Date().toISOString().split('T')[0];
       setReportDate(todayIso);
-      setDisplayDate(formatDateShort(todayIso));
+      // Fixed: Replaced formatDateShort with formatDate
+      setDisplayDate(formatDate(todayIso));
       setIncomeRows(Array(15).fill(null).map(createEmptyRow));
       setExpenseRows(Array(15).fill(null).map(createEmptyRow));
       findPreviousBalance(todayIso);
@@ -83,10 +86,12 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     const iso = parseDateFromInput(displayDate);
     if (iso) {
       setReportDate(iso);
-      setDisplayDate(formatDateShort(iso));
+      // Fixed: Replaced formatDateShort with formatDate
+      setDisplayDate(formatDate(iso));
     } else {
       // Revert to last valid ISO date if user typed gibberish
-      setDisplayDate(formatDateShort(reportDate));
+      // Fixed: Replaced formatDateShort with formatDate
+      setDisplayDate(formatDate(reportDate));
     }
   };
 
