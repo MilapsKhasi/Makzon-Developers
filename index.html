@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Findesk Prime | Your Digital Finance Desk</title>
-    <meta name="description" content="Cloud-synced purchase and stock management system." />
+    <meta name="description" content="Simple cloud-synced purchase and stock management system." />
     
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2215%22 fill=%22%23ffea79%22/><text x=%2250%%22 y=%2252%%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 fill=%22%230F172A%22 style=%22font-size:52px;font-weight:800;font-family:sans-serif%22>F</text><path d=%22M25 65C35 80 65 80 75 65L82 72L84 55L68 58L75 65Z%22 fill=%22%23EF4444%22/></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2215%22 fill=%22%23ffea79%22/><text x=%2250%%22 y=%2252%%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 fill=%22%230F172A%22 style=%22font-size:52px;font-weight:800;font-family:sans-serif%22>F</text></svg>">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -36,11 +36,10 @@
             },
             borderRadius: {
               'none': '0',
-              'sm': '2px',
-              'md': '4px',
-              'lg': '6px',
-              'xl': '8px',
-              'slim': '10px',
+              'sm': '1px',
+              'md': '2px',
+              'lg': '4px',
+              'xl': '6px'
             }
           }
         }
@@ -53,16 +52,17 @@
     <style>
       body { 
         font-family: 'Poppins', sans-serif; 
-        background-color: #ffffff;
+        background-color: #f8fafc;
         color: #334155;
         font-size: 13px;
         -webkit-font-smoothing: antialiased;
       }
       * {
         font-family: 'Poppins', sans-serif !important;
-        transition: none !important; 
         box-shadow: none !important;
+        transition: none !important;
       }
+      
       ::-webkit-scrollbar {
         width: 4px;
         height: 4px;
@@ -71,7 +71,8 @@
         background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: #E2E8F0;
+        background: #CBD5E1;
+        border-radius: 10px;
       }
       
       html, body, #root {
@@ -83,25 +84,31 @@
       .clean-table {
         width: 100%;
         border-collapse: collapse;
+        background: white;
       }
       .clean-table th {
-        background-color: #f9f9f9;
-        color: #64748B;
-        font-weight: 500;
+        background-color: #f1f5f9;
+        color: #475569;
+        font-weight: 600;
         font-size: 11px;
         text-transform: uppercase;
-        padding: 12px 16px;
-        border-top: 1px solid #E2E8F0;
-        border-bottom: 1px solid #E2E8F0;
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
         text-align: left;
       }
       .clean-table td {
-        padding: 12px 16px;
-        border-bottom: 1px solid #F1F5F9;
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
         color: #334155;
       }
+      .clean-table tr:hover td {
+        background-color: #f8fafc;
+      }
 
-      /* Print Optimization */
+      input, select, textarea {
+        border-radius: 2px !important;
+      }
+
       @media print {
         @page {
           size: A4 landscape;
@@ -115,19 +122,12 @@
           margin: 0 !important;
           width: 100% !important;
         }
-        #root {
-          display: block !important;
-          height: auto !important;
-        }
         .clean-table {
           font-size: 9pt !important;
-          width: 100% !important;
-          border: 1px solid #E2E8F0 !important;
+          border: 1px solid #000 !important;
         }
-        .clean-table th {
-          background-color: #f9f9f9 !important;
-          color: #000 !important;
-          -webkit-print-color-adjust: exact;
+        .clean-table td, .clean-table th {
+          border: 1px solid #000 !important;
         }
       }
     </style>

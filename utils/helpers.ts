@@ -1,4 +1,3 @@
-
 import { supabase } from '../lib/supabase';
 
 export const CURRENCIES = {
@@ -13,24 +12,33 @@ export const getActiveCompanyId = () => {
 
 export const getAppSettings = () => {
   const cid = getActiveCompanyId();
-  if (!cid) return { currency: 'INR', dateFormat: 'DD/MM/YYYY' };
+  if (!cid) return { currency: 'INR', borderStyle: 'rounded', dateFormat: 'DD/MM/YYYY' };
   const s = localStorage.getItem(`appSettings_${cid}`);
   try {
-    return s ? JSON.parse(s) : { currency: 'INR', dateFormat: 'DD/MM/YYYY' };
+    return s ? JSON.parse(s) : { currency: 'INR', borderStyle: 'rounded', dateFormat: 'DD/MM/YYYY' };
   } catch (e) {
-    return { currency: 'INR', dateFormat: 'DD/MM/YYYY' };
+    return { currency: 'INR', borderStyle: 'rounded', dateFormat: 'DD/MM/YYYY' };
   }
 };
 
-export const formatCurrency = (amount: number | undefined | null) => {
+export const formatCurrency = (amount: number | undefined | null, includeSymbol: boolean = true) => {
   if (amount === undefined || amount === null || isNaN(amount)) return '';
   const { currency } = getAppSettings();
   const config = CURRENCIES[currency as keyof typeof CURRENCIES] || CURRENCIES.INR;
-  return new Intl.NumberFormat(config.locale, {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 2
-  }).format(amount);
+  
+  const options: any = {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  };
+  
+  if (includeSymbol) {
+    options.style = 'currency';
+    options.currency = currency;
+  } else {
+    options.style = 'decimal';
+  }
+  
+  return new Intl.NumberFormat(config.locale, options).format(amount);
 };
 
 export const formatDate = (iso: any) => {
@@ -57,59 +65,105 @@ export const parseDateFromInput = (input: string): string | null => {
   return iso;
 };
 
-export const toDisplayValue = (value: any) => {
-  const num = parseFloat(value);
+export const toDisplayValue = (val: any) => {
+  return val === null || val === undefined ? '' : val;
+};
+
+export const toStorageValue = (val: any) => {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  const num = parseFloat(String(val).replace(/[^0-9.-]/g, ''));
   return isNaN(num) ? 0 : num;
 };
 
-export const toStorageValue = (value: any) => {
-  const num = parseFloat(value);
-  return isNaN(num) ? 0 : num;
-};
-
+/**
+ * STRICT SAVING LOGIC:
+ * Implements Virtual Mapping by stripping non-SQL columns before save.
+ */
 export const safeSupabaseSave = async (table: string, payload: any, id?: string): Promise<any> => {
   const cid = getActiveCompanyId();
-  if (!cid && table !== 'companies') throw new Error("No active workspace context.");
+  if (!cid && table !== 'companies') {
+    throw new Error("No active workspace context.");
+  }
+
+  let cleanPayload: any = { ...payload };
+  if (table !== 'companies') {
+    cleanPayload.company_id = cid;
+  }
+
+  // GHOST COLUMN FILTER: Strictly remove fields that are UI-only or Virtual
+  const ghostColumns = [
+    'type',           // Derivable via normalizeBill
+    'gst_type',       // Stored inside JSONB 'items'
+    'transaction_type', 
+    'user_id', 
+    'items_raw', 
+    'displayDate'
+  ];
   
-  const finalPayload = table === 'companies' ? payload : { ...payload, company_id: cid };
-  const { user_id, ...cleanPayload } = finalPayload; 
-  
-  const operation = id 
+  ghostColumns.forEach(col => delete cleanPayload[col]);
+
+  const operation = id
     ? supabase.from(table).update(cleanPayload).eq('id', id).select()
     : supabase.from(table).insert([cleanPayload]).select();
-  
+
   const res = await operation;
   if (res.error) throw res.error;
   return res;
 };
 
-export const normalizeBill = (bill: any) => {
-    const itemsData = bill.items;
-    let type = bill.transaction_type || bill.type;
-    let gst_type = bill.gst_type;
-    let round_off = bill.round_off;
-    let line_items = Array.isArray(itemsData) ? itemsData : [];
+/**
+ * VIRTUAL MAPPING ENGINE:
+ * Manually injects 'type' and 'gst_type' from document structure or JSONB container.
+ */
+export const normalizeBill = (data: any) => {
+  if (!data) return null;
 
-    if (itemsData && !Array.isArray(itemsData) && itemsData.line_items) {
-        line_items = itemsData.line_items;
-        type = type || itemsData.transaction_type || itemsData.type;
-        gst_type = gst_type || itemsData.gst_type;
-        round_off = round_off || itemsData.round_off;
-    }
+  // 1. VIRTUAL TYPE DETECTION: Identifies Sales vs Purchase based on identifier columns
+  const isSale = data.customer_name !== undefined || data.invoice_number !== undefined;
+  
+  // 2. Uniform Accessors for UI compatibility
+  const partyName = data.customer_name || data.vendor_name || 'Unknown';
+  const docNumber = data.invoice_number || data.bill_number || 'N/A';
+  
+  // 3. JSONB EXTRACTION: Unpacks virtual fields stored in the JSONB blob
+  const itemsRaw = data.items || {};
+  let line_items = [];
+  let gstType = 'Intra-State';
 
-    const normalizedTypeStr = type?.toLowerCase();
-    if (normalizedTypeStr === 'sale' || normalizedTypeStr === 'sales') type = 'Sale';
-    else if (normalizedTypeStr === 'purchase' || normalizedTypeStr === 'purchases') type = 'Purchase';
-    else type = 'Purchase'; 
+  if (Array.isArray(itemsRaw)) {
+    line_items = itemsRaw;
+  } else if (typeof itemsRaw === 'object') {
+    line_items = itemsRaw.line_items || [];
+    gstType = itemsRaw.gst_type || 'Intra-State'; 
+  }
 
-    return {
-        ...bill,
-        type: type, 
-        transaction_type: type.toLowerCase(),
-        gst_type: gst_type || 'Intra-State',
-        round_off: Number(round_off) || 0,
-        items: line_items
-    };
+  return {
+    ...data,
+    type: isSale ? 'Sale' : 'Purchase', // Manually added for UI
+    vendor_name: partyName, 
+    customer_name: partyName, 
+    bill_number: docNumber, 
+    invoice_number: docNumber,
+    gst_type: gstType,                   // Manually extracted from JSONB
+    items: line_items,
+    items_raw: itemsRaw                  
+  };
+};
+
+export const getSelectedLedgerIds = () => {
+  const cid = getActiveCompanyId();
+  if (!cid) return [];
+  try { return JSON.parse(localStorage.getItem(`selectedLedgers_${cid}`) || '[]'); } catch { return []; }
+};
+
+export const toggleSelectedLedgerId = (ledgerId: string) => {
+  const cid = getActiveCompanyId();
+  if (!cid) return [];
+  const current = getSelectedLedgerIds();
+  const next = current.includes(ledgerId) ? current.filter((id: string) => id !== ledgerId) : [...current, ledgerId];
+  localStorage.setItem(`selectedLedgers_${cid}`, JSON.stringify(next));
+  return next;
 };
 
 export const ensureStockItems = async (items: any[], company_id: string) => {
@@ -150,6 +204,7 @@ export const ensureParty = async (name: string, type: 'customer' | 'vendor', com
 
 export const syncTransactionToCashbook = async (transaction: any) => {
   const bill = normalizeBill(transaction);
+  if (!bill) return;
   const { company_id, date, vendor_name, bill_number, grand_total, type, status } = bill;
   if (status !== 'Paid') return;
   try {
@@ -164,7 +219,7 @@ export const syncTransactionToCashbook = async (transaction: any) => {
       incomeRows = Array.isArray(raw.incomeRows) ? raw.incomeRows : [];
       expenseRows = Array.isArray(raw.expenseRows) ? raw.expenseRows : [];
       const alreadyIn = [...incomeRows, ...expenseRows].some(r => r.particulars?.includes(`Bill ${bill_number}`));
-      if (alreadyIn) return; 
+      if (alreadyIn) return;
     }
     const newRow = { id: Math.random().toString(36).substr(2, 9), particulars: entryLabel, amount: amount.toString() };
     if (isSale) incomeRows.push(newRow); else expenseRows.push(newRow);
@@ -172,26 +227,11 @@ export const syncTransactionToCashbook = async (transaction: any) => {
       company_id, date,
       income_total: incomeRows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0),
       expense_total: expenseRows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0),
-      balance: incomeRows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0) - expenseRows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0), 
+      balance: incomeRows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0) - expenseRows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0),
       raw_data: { incomeRows, expenseRows, date },
       is_deleted: false
     };
     if (cashbookId) await supabase.from('cashbooks').update(payload).eq('id', cashbookId);
     else await supabase.from('cashbooks').insert([payload]);
   } catch (err) { console.error("Cashbook Sync Error:", err); }
-};
-
-export const getSelectedLedgerIds = () => {
-    const cid = getActiveCompanyId();
-    if (!cid) return [];
-    try { return JSON.parse(localStorage.getItem(`selectedLedgers_${cid}`) || '[]'); } catch { return []; }
-};
-
-export const toggleSelectedLedgerId = (ledgerId: string) => {
-    const cid = getActiveCompanyId();
-    if (!cid) return [];
-    const current = getSelectedLedgerIds();
-    const next = current.includes(ledgerId) ? current.filter((id: string) => id !== ledgerId) : [...current, ledgerId];
-    localStorage.setItem(`selectedLedgers_${cid}`, JSON.stringify(next));
-    return next;
 };

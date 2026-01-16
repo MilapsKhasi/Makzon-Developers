@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark, CreditCard, ShieldCheck, Plus, ExternalLink, Phone, Mail, MapPin } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -115,7 +114,7 @@ const Vendors = () => {
       transactions: transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
       totalPurchased,
       totalPaid,
-      balance: (selectedVendor.balance || 0) + totalPurchased - totalPaid
+      balance: (Number(selectedVendor.balance) || 0) + totalPurchased - totalPaid
     };
   }, [selectedVendor, bills]);
 
@@ -169,7 +168,7 @@ const Vendors = () => {
                     <h3 className={`text-xs font-bold uppercase truncate mb-1 ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>{vendor.name}</h3>
                     <div className="flex justify-between items-center text-[10px] font-medium text-slate-400">
                       <span className={isSelected ? 'text-slate-900/60' : ''}>{vendor.gstin || 'NO GSTIN'}</span>
-                      <span className={isSelected ? 'text-slate-900 font-bold' : 'text-slate-900'}>₹{(vendor.balance || 0).toFixed(0)}</span>
+                      <span className={isSelected ? 'text-slate-900 font-bold' : 'text-slate-900'}>₹{(Number(vendor.balance) || 0).toFixed(0)}</span>
                     </div>
                   </div>
                 );
@@ -241,7 +240,7 @@ const Vendors = () => {
                       <thead><tr><th>DATE</th><th>BILL NO</th><th className="text-right">WITHOUT GST</th><th className="text-right">TAX</th><th className="text-right">TOTAL</th><th className="text-center">STATUS</th></tr></thead>
                       <tbody>
                         {stats.transactions.map((bill) => (
-                          <tr key={bill.id} className="hover:bg-slate-50 transition-none group"><td className="text-slate-500 font-medium">{formatDate(bill.date)}</td><td className="font-mono font-bold text-slate-900">{bill.bill_number}</td><td className="text-right font-mono text-slate-500">{(bill.total_without_gst || 0).toFixed(2)}</td><td className="text-right font-mono text-slate-500">{(bill.total_gst || 0).toFixed(2)}</td><td className="text-right font-mono font-bold text-slate-900">{(bill.grand_total || 0).toFixed(2)}</td><td className="text-center"><span className={`text-[10px] font-bold px-2 py-0.5 rounded-sm uppercase ${bill.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>{bill.status}</span></td></tr>
+                          <tr key={bill.id} className="hover:bg-slate-50 transition-none group"><td className="text-slate-500 font-medium">{formatDate(bill.date)}</td><td className="font-mono font-bold text-slate-900">{bill.bill_number}</td><td className="text-right font-mono text-slate-500">{(Number(bill.total_without_gst) || 0).toFixed(2)}</td><td className="text-right font-mono text-slate-500">{(Number(bill.total_gst) || 0).toFixed(2)}</td><td className="text-right font-mono font-bold text-slate-900">{(Number(bill.grand_total) || 0).toFixed(2)}</td><td className="text-center"><span className={`text-[10px] font-bold px-2 py-0.5 rounded-sm uppercase ${bill.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>{bill.status}</span></td></tr>
                         ))}
                       </tbody>
                     </table>

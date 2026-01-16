@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, Edit, Trash2, Filter, ChevronDown, Loader2, Info } from 'lucide-react';
 import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
@@ -27,7 +26,6 @@ const Purchases = () => {
     if (!cid) return;
 
     try {
-      // Use client-side filtering to avoid query errors on non-existent columns
       const { data, error } = await supabase
         .from('bills')
         .select('*')
@@ -57,18 +55,9 @@ const Purchases = () => {
 
   const confirmDelete = async () => {
     if (!deleteDialog.bill) return;
-    
-    const { error } = await supabase
-      .from('bills')
-      .update({ is_deleted: true })
-      .eq('id', deleteDialog.bill.id);
-    
-    if (error) {
-      alert('Error deleting entry: ' + error.message);
-    } else {
-      loadData();
-      window.dispatchEvent(new Event('appSettingsChanged'));
-    }
+    const { error } = await supabase.from('bills').update({ is_deleted: true }).eq('id', deleteDialog.bill.id);
+    if (error) alert('Error deleting: ' + error.message);
+    else loadData();
   };
 
   const filtered = bills.filter(b => {
@@ -79,8 +68,8 @@ const Purchases = () => {
   });
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Purchase Voucher" maxWidth="max-w-full">
+    <div className="space-y-6">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Purchase Bill">
         <BillForm initialData={editingBill} onSubmit={() => { setIsModalOpen(false); loadData(); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>
 
@@ -88,116 +77,102 @@ const Purchases = () => {
         isOpen={deleteDialog.isOpen}
         onClose={() => setDeleteDialog({ isOpen: false, bill: null })}
         onConfirm={confirmDelete}
-        title="Delete Purchase"
-        message={`Move purchase entry ${deleteDialog.bill?.bill_number} to trash?`}
+        title="Archive Entry"
+        message={`Delete purchase entry ${deleteDialog.bill?.bill_number}?`}
       />
 
-      <div className="flex justify-between items-center mb-10">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-none mb-2">Purchase Transactions</h1>
-          <p className="text-slate-500 font-medium text-sm">Detailed ledger of all verified purchase entries and acquisitions.</p>
+          <h1 className="text-xl font-bold text-slate-900 uppercase">Purchase Register</h1>
+          <p className="text-slate-500 text-xs mt-1">Manage and track all vendor purchase invoices.</p>
         </div>
-        <div className="flex items-center space-x-4">
-          <div className="relative">
+        <div className="flex items-center space-x-2">
+           <div className="relative">
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="flex items-center space-x-2 px-6 py-3 bg-white border border-slate-200 rounded-lg shadow-sm text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+              className="flex items-center space-x-2 px-4 py-2 bg-white border border-slate-200 rounded text-xs font-bold text-slate-600 hover:bg-slate-50"
             >
-              <Filter className="w-4 h-4 text-slate-400" />
-              <span>{statusFilter}</span>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <span>Status: {statusFilter}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
             {isMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)}></div>
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-lg shadow-xl z-50 py-2 overflow-hidden min-w-[150px] ring-1 ring-black/5">
-                  {['All', 'Paid', 'Pending'].map(opt => (
-                    <button key={opt} onClick={() => { setStatusFilter(opt); setIsMenuOpen(false); }} className={`w-full text-left px-5 py-3 text-sm font-bold transition-colors ${statusFilter === opt ? 'bg-primary text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}>{opt}</button>
-                  ))}
-                </div>
-              </>
+              <div className="absolute top-full right-0 mt-1 bg-white border border-slate-200 rounded shadow-lg z-50 py-1 min-w-[120px]">
+                {['All', 'Paid', 'Pending'].map(opt => (
+                  <button key={opt} onClick={() => { setStatusFilter(opt); setIsMenuOpen(false); }} className={`w-full text-left px-4 py-2 text-xs font-medium hover:bg-slate-50 ${statusFilter === opt ? 'bg-primary/10 font-bold' : ''}`}>{opt}</button>
+                ))}
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      <div className="flex items-stretch gap-6">
-        <div className="bg-white p-8 border border-slate-200 rounded-2xl w-fit min-w-[250px] boxy-shadow flex flex-col justify-center">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Net Volume ({statusFilter})</p>
-          <h2 className="text-3xl font-bold text-slate-900 tracking-tight leading-none">{formatCurrency(filtered.reduce((acc, b) => acc + Number(b.grand_total || 0), 0))}</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white border border-slate-200 p-4 rounded">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Gross Purchase</span>
+          <span className="text-xl font-bold text-slate-900">{formatCurrency(filtered.reduce((acc, b) => acc + Number(b.grand_total || 0), 0))}</span>
         </div>
-        
-        <div className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl p-6 flex items-start gap-4 shadow-inner">
-          <div className="p-2.5 bg-blue-50 text-blue-500 rounded-lg shrink-0">
-             <Info className="w-6 h-6" />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-slate-900 uppercase tracking-tight mb-1">Synchronization Notice</h4>
-            <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                This register is an automated view of your <span className="text-slate-900 font-bold">Purchase Bills</span>. Entries here are derived from the detailed invoices processed in the Bills module.
-            </p>
+        <div className="bg-white border border-slate-200 p-4 rounded md:col-span-2">
+          <div className="flex items-start space-x-3">
+             <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+             <p className="text-xs text-slate-500 leading-relaxed">
+               This view displays all finalized purchase transactions. You can edit individual bills to update line items or tax configurations.
+             </p>
           </div>
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="relative">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
           <input 
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search entries by bill number or party..." 
-            className="w-full pl-14 pr-6 py-4 border border-slate-200 rounded-xl outline-none text-base focus:border-slate-400 bg-white shadow-sm transition-all font-medium" 
+            placeholder="Search invoice or vendor..." 
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded text-xs outline-none focus:border-slate-300 bg-white" 
           />
         </div>
         
-        <div className="border border-slate-200 rounded-2xl overflow-hidden boxy-shadow bg-white">
-          {loading ? (
-            <div className="py-40 flex flex-col items-center justify-center">
-              <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-              <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Filtering Entries...</p>
-            </div>
-          ) : (
-            <table className="w-full text-left text-base border-collapse">
-              <thead className="bg-slate-50/80 border-b border-slate-200">
-                <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                  <th className="py-5 px-8 border-r border-slate-200">Voucher Date</th>
-                  <th className="py-5 px-8 border-r border-slate-200 font-mono">Invoice No</th>
-                  <th className="py-5 px-8 border-r border-slate-200">Vendor / Party</th>
-                  <th className="py-5 px-8 border-r border-slate-200 text-right">Taxable</th>
-                  <th className="py-5 px-8 border-r border-slate-200 text-right font-bold">Total Payable</th>
-                  <th className="py-5 px-8 border-r border-slate-200 text-center">Status</th>
-                  <th className="py-5 px-8 text-center">Actions</th>
+        <div className="border border-slate-200 rounded overflow-hidden">
+          <table className="clean-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Bill No</th>
+                <th>Vendor Name</th>
+                <th className="text-right">Taxable</th>
+                <th className="text-right">Grand Total</th>
+                <th className="text-center">Status</th>
+                <th className="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={7} className="text-center py-20 text-slate-400 uppercase text-[10px] font-bold">Fetching Records...</td></tr>
+              ) : filtered.map(b => (
+                <tr key={b.id}>
+                  <td className="text-slate-500">{formatDate(b.date)}</td>
+                  <td className="font-mono font-bold text-slate-900">{b.bill_number}</td>
+                  <td className="uppercase font-medium text-slate-700">{b.vendor_name}</td>
+                  <td className="text-right font-mono text-slate-500">{formatCurrency(b.total_without_gst, false)}</td>
+                  <td className="text-right font-mono font-bold text-slate-900">{formatCurrency(b.grand_total, false)}</td>
+                  <td className="text-center">
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-sm ${b.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>{b.status}</span>
+                  </td>
+                  <td className="text-right">
+                    <div className="flex justify-end space-x-2">
+                      <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900"><Edit className="w-4 h-4" /></button>
+                      <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="p-1.5 text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map(b => (
-                  <tr key={b.id} className="hover:bg-slate-50 group transition-all duration-200">
-                    <td className="py-5 px-8 border-r border-slate-200 font-bold text-slate-600">{formatDate(b.date)}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 font-mono text-[13px] font-bold text-slate-900">{b.bill_number}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 font-bold text-slate-900 uppercase truncate max-w-[200px]">{b.vendor_name}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 text-right text-slate-600 font-medium">{formatCurrency(b.total_without_gst)}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 text-right font-bold text-slate-900">{formatCurrency(b.grand_total)}</td>
-                    <td className="py-5 px-8 border-r border-slate-200 text-center">
-                        <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded-full border ${b.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>{b.status}</span>
-                    </td>
-                    <td className="py-5 px-8 text-center">
-                      <div className="flex justify-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white rounded-lg transition-all shadow-sm border border-transparent hover:border-slate-200"><Edit className="w-5 h-5" /></button>
-                        <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg transition-all shadow-sm border border-transparent hover:border-slate-200"><Trash2 className="w-5 h-5" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-40 text-center text-slate-300 italic font-medium">No purchase records found matching your current filters.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
+              ))}
+              {!loading && filtered.length === 0 && (
+                <tr><td colSpan={7} className="py-20 text-center text-slate-300 italic">No purchase entries found matching filters.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

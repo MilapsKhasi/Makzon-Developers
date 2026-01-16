@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen } from 'lucide-react';
 import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
@@ -15,26 +14,21 @@ interface BillFormProps {
 const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) => {
   const cid = getActiveCompanyId();
   const today = new Date().toISOString().split('T')[0];
-  
-  // Track which duties have been manually edited by the user to prevent auto-reset
   const manualOverrides = useRef<Set<string>>(new Set());
 
   const getInitialState = () => ({
     vendor_name: '', 
-    gstin: '', 
     bill_number: '', 
     date: today, 
     displayDate: formatDate(today), 
     gst_type: 'Intra-State',
-    items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', kgPerBag: '', unit: 'PCS', rate: '', tax_rate: 0, amount: 0, taxableAmount: 0 }],
+    items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', rate: '', tax_rate: 0, taxableAmount: 0 }],
     total_without_gst: 0, 
     total_gst: 0, 
     duties_and_taxes: [], 
     round_off: 0, 
     grand_total: 0, 
     status: 'Pending',
-    type: 'Purchase',
-    transaction_type: 'purchase',
     description: ''
   });
 
@@ -45,10 +39,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   const [vendorModal, setVendorModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
 
   const formatCurrency = (val: number, includeSymbol = true) => {
-    const formatted = new Intl.NumberFormat('en-IN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(val);
+    const formatted = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
     return includeSymbol ? `₹ ${formatted}` : formatted;
   };
 
@@ -61,22 +52,19 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
   const formatWhileTyping = (val: string) => {
     if (val === '') return '';
-    const isNegative = val.startsWith('-');
     const clean = val.replace(/[^0-9.]/g, '');
-    if (clean === '') return isNegative ? '-' : '';
+    if (clean === '') return '';
     const parts = clean.split('.');
     let formatted = new Intl.NumberFormat('en-IN').format(parseFloat(parts[0]));
     if (parts.length > 1) formatted += `.${parts[1].slice(0, 2)}`;
-    return isNegative ? `-${formatted}` : formatted;
+    return val.startsWith('-') ? `-${formatted}` : formatted;
   };
 
   const recalculate = (state: any, sourceField?: string, sourceDutyId?: string, sourceVal?: any) => {
     let taxable = state.total_without_gst;
     let gst = state.total_gst;
 
-    if (sourceDutyId) {
-      manualOverrides.current.add(sourceDutyId);
-    }
+    if (sourceDutyId) manualOverrides.current.add(sourceDutyId);
 
     if (sourceField === 'total_without_gst') {
       taxable = parseNumber(sourceVal);
@@ -93,7 +81,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         const gamt = tamt * (t / 100);
         taxable += tamt;
         gst += gamt;
-        return { ...item, taxableAmount: tamt, amount: tamt + gamt };
+        return { ...item, taxableAmount: tamt };
       });
       state.items = updatedItems;
     }
@@ -101,17 +89,14 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     let runningTotal = taxable + gst;
     const updatedDuties = (state.duties_and_taxes || []).map((d: any) => {
       let calcAmt = d.amount || 0;
-      
       if (sourceDutyId === d.id) {
         calcAmt = parseNumber(sourceVal);
       } else if (!manualOverrides.current.has(d.id)) {
-        // Only auto-recalculate if NOT manual
         const base = d.apply_on === 'Net Total' ? (taxable + gst) : taxable;
         const rate = parseFloat(d.bill_rate !== undefined ? d.bill_rate : d.rate) || 0;
         const fixed = parseFloat(d.bill_fixed_amount !== undefined ? d.bill_fixed_amount : d.fixed_amount) || 0;
         calcAmt = d.calc_method === 'Percentage' ? base * (rate / 100) : fixed;
       }
-      
       runningTotal += calcAmt;
       return { ...d, amount: calcAmt };
     });
@@ -124,8 +109,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
   const loadDependencies = async () => {
     if (!cid) return;
-    const { data: vendorData } = await supabase.rpc('get_company_parties', { p_company_id: cid, p_is_customer: false });
-    const { data: stockData } = await supabase.rpc('get_company_stock', { p_company_id: cid });
+    const { data: vendorData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('party_type', 'vendor').eq('is_deleted', false);
+    const { data: stockData } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
     setVendors(vendorData || []);
     setStockItems(stockData || []);
     
@@ -140,9 +125,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       });
     } else {
         const normalized = normalizeBill(initialData);
-        // On edit, mark existing non-zero duties as manual to preserve them
-        normalized.duties_and_taxes?.forEach((d:any) => { if(d.amount !== 0) manualOverrides.current.add(d.id); });
-        setFormData(recalculate({ ...getInitialState(), ...normalized, description: normalized.description || '', displayDate: formatDate(normalized.date) }));
+        normalized.items_raw?.duties_and_taxes?.forEach((d:any) => { if(d.amount !== 0) manualOverrides.current.add(d.id); });
+        setFormData(recalculate({ ...getInitialState(), ...normalized, description: normalized.description || '', displayDate: formatDate(normalized.date), duties_and_taxes: (normalized.items_raw?.duties_and_taxes || []) }));
     }
   };
 
@@ -154,7 +138,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     if (field === 'itemName') {
         const selected = stockItems.find(s => s.name.toLowerCase().trim() === val.toLowerCase().trim());
         if (selected) {
-            newItems[idx] = { ...newItems[idx], hsnCode: selected.hsn || '', rate: selected.rate?.toString() || '', tax_rate: selected.tax_rate || 0, unit: selected.unit || 'PCS' };
+            newItems[idx] = { ...newItems[idx], hsnCode: selected.hsn || '', rate: selected.rate?.toString() || '', tax_rate: selected.tax_rate || 0 };
         }
     }
     setFormData(recalculate({ ...formData, items: newItems }));
@@ -165,8 +149,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     if (!formData.vendor_name || !formData.bill_number) return alert("Required: Vendor and Bill No");
     setLoading(true);
     try {
+      // VIRTUAL MAPPING IMPLEMENTATION: payload strictly matching SQL columns
       const payload: any = {
-          company_id: cid,
           vendor_name: formData.vendor_name,
           bill_number: formData.bill_number,
           date: formData.date,
@@ -176,16 +160,12 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
           status: formData.status,
           is_deleted: false,
           description: formData.description,
+          round_off: formData.round_off,
           items: {
               line_items: formData.items,
-              type: 'Purchase',
-              gst_type: formData.gst_type,
-              round_off: formData.round_off,
-              duties_and_taxes: formData.duties_and_taxes
-          },
-          type: 'Purchase',
-          gst_type: formData.gst_type,
-          round_off: formData.round_off
+              duties_and_taxes: formData.duties_and_taxes,
+              gst_type: formData.gst_type // VIRTUAL: stored in JSONB
+          }
       };
       
       const savedRes = await safeSupabaseSave('bills', payload, initialData?.id);

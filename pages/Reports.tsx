@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, ChevronDown, FileText, Loader2 } from 'lucide-react';
 import DateFilter from '../components/DateFilter';
 import ExportModal from '../components/ExportModal';
-import { getActiveCompanyId, formatDate } from '../utils/helpers';
+import { getActiveCompanyId, formatDate, normalizeBill } from '../utils/helpers';
 import { exportToExcel, exportToCSV, triggerPrint } from '../utils/exportHelper';
 import { supabase } from '../lib/supabase';
 
@@ -29,17 +28,16 @@ const Reports = () => {
     const { data: company } = await supabase.from('companies').select('*').eq('id', cid).single();
     setCompanyInfo(company);
 
-    const { data: vouchers, error } = await supabase
-      .from('bills')
-      .select('*')
-      .eq('company_id', cid)
-      .eq('is_deleted', false);
+    // Fetch from both tables
+    const [{ data: purchaseData }, { data: saleData }] = await Promise.all([
+      supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false),
+      supabase.from('sales_invoices').select('*').eq('company_id', cid).eq('is_deleted', false)
+    ]);
     
-    if (error) {
-      console.error("Error loading reports data:", error);
-      setLoading(false);
-      return;
-    }
+    const combined = [
+      ...(purchaseData || []).map(normalizeBill),
+      ...(saleData || []).map(normalizeBill)
+    ];
 
     const filterFn = (item: any) => {
         if (dateRange.startDate && dateRange.endDate) {
@@ -51,13 +49,14 @@ const Reports = () => {
 
         const typeFilter = activeTab === 'Purchases' || activeTab === 'Vendors Summary' ? 'Purchase' : 'Sale';
         if (activeTab === 'GST Summary') return true;
-        if (item.type !== typeFilter && !(typeFilter === 'Purchase' && !item.type)) return false;
+        if (item.type !== typeFilter) return false;
         
         const search = searchQuery.toLowerCase();
-        return (item.bill_number)?.toLowerCase().includes(search) || (item.vendor_name)?.toLowerCase().includes(search);
+        const partyName = item.vendor_name || item.customer_name || '';
+        return (item.bill_number || item.invoice_number)?.toLowerCase().includes(search) || partyName.toLowerCase().includes(search);
     };
 
-    setBills((vouchers || []).filter(filterFn));
+    setBills(combined.filter(filterFn));
     setLoading(false);
   };
 
@@ -73,11 +72,11 @@ const Reports = () => {
     if (activeTab === 'Purchases' || activeTab === 'Sales Register') {
       return bills.map(doc => ({
         "DATE": formatDate(doc.date),
-        "DOC NO": doc.bill_number,
-        "PARTY": doc.vendor_name,
-        "TAXABLE": (doc.total_without_gst || 0).toFixed(2),
-        "GST": (doc.total_gst || 0).toFixed(2),
-        "NET TOTAL": (doc.grand_total || 0).toFixed(2),
+        "DOC NO": doc.bill_number || doc.invoice_number,
+        "PARTY": doc.vendor_name || doc.customer_name,
+        "TAXABLE": (Number(doc.total_without_gst) || 0).toFixed(2),
+        "GST": (Number(doc.total_gst) || 0).toFixed(2),
+        "NET TOTAL": (Number(doc.grand_total) || 0).toFixed(2),
         "STATUS": doc.status || 'Pending'
       }));
     }
@@ -85,7 +84,7 @@ const Reports = () => {
     if (activeTab === 'Vendors Summary' || activeTab === 'Customers Summary') {
       const grouped: Record<string, any> = {};
       bills.forEach(bill => {
-        const name = bill.vendor_name || 'Unknown';
+        const name = bill.vendor_name || bill.customer_name || 'Unknown';
         if (!grouped[name]) {
           grouped[name] = { "PARTY NAME": name, "GSTIN": bill.gstin || 'N/A', "DOC COUNT": 0, "TAXABLE": 0, "GST": 0, "GRAND TOTAL": 0 };
         }
@@ -96,9 +95,9 @@ const Reports = () => {
       });
       return Object.values(grouped).map(v => ({
         ...v,
-        "TAXABLE": v["TAXABLE"].toFixed(2),
-        "GST": v["GST"].toFixed(2),
-        "GRAND TOTAL": v["GRAND TOTAL"].toFixed(2)
+        "TAXABLE": Number(v["TAXABLE"]).toFixed(2),
+        "GST": Number(v["GST"]).toFixed(2),
+        "GRAND TOTAL": Number(v["GRAND TOTAL"]).toFixed(2)
       }));
     }
 

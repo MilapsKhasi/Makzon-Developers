@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Loader2, Calendar, Trash2, Edit, Eye, ArrowLeft, FileDown } from 'lucide-react';
+import { Plus, Search, Loader2, Calendar, Trash2, Edit, Eye, ArrowLeft, FileDown, AlertCircle } from 'lucide-react';
 import { getActiveCompanyId, formatDate } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import CashbookSheet from '../components/CashbookSheet';
@@ -15,14 +14,25 @@ const Cashbook = () => {
   const [dbError, setDbError] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  // activeCompanyId is derived from local storage/helpers
+  const activeCompanyId = getActiveCompanyId();
+
   const loadData = async () => {
-    setLoading(true);
+    // Only fetch if we have a valid company context
     const cid = getActiveCompanyId();
+    
+    // Debug log as requested
+    console.log('Current Company ID being used:', cid);
+
     if (!cid) {
       setLoading(false);
+      setEntries([]);
       return;
     }
+
+    setLoading(true);
     try {
+      // Fetching with strict filtering
       const { data, error } = await supabase
         .from('cashbooks')
         .select('*')
@@ -30,23 +40,33 @@ const Cashbook = () => {
         .eq('is_deleted', false)
         .order('date', { ascending: false });
       
+      // Debug log raw response as requested
+      console.log('Supabase Raw Response:', { data, error });
+
       if (error) {
+        // Detailed error logging
+        console.error("Cashbook API Fetch Failed:", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+
         if (error.message.includes('schema cache') || error.message.includes('not found') || error.message.includes('does not exist')) {
-           throw new Error("SCHEMA_MISSING");
+           setDbError(true);
         }
         throw error;
       }
+
       setEntries(data || []);
       setDbError(false);
     } catch (e: any) {
+      console.warn("Cashbook module falling back to local storage cache for ID:", cid);
       const localData = localStorage.getItem(`local_cashbook_${cid}`);
       if (localData) {
         setEntries(JSON.parse(localData));
       } else {
         setEntries([]);
-      }
-      if (e.message === "SCHEMA_MISSING") {
-        setDbError(true);
       }
     } finally {
       setLoading(false);
@@ -54,10 +74,29 @@ const Cashbook = () => {
   };
 
   useEffect(() => {
+    // Check if activeCompanyId exists before fetching
+    if (!activeCompanyId) {
+      setEntries([]);
+      setLoading(false);
+      return;
+    }
+
+    // Load data immediately on page mount / company change
     loadData();
-    window.addEventListener('appSettingsChanged', loadData);
-    return () => window.removeEventListener('appSettingsChanged', loadData);
-  }, []);
+
+    const handleSettingsChange = () => {
+      loadData();
+    };
+    
+    window.addEventListener('appSettingsChanged', handleSettingsChange);
+    
+    // Cleanup function: release listeners and clear state to prevent "old data" flickers
+    return () => {
+      window.removeEventListener('appSettingsChanged', handleSettingsChange);
+      setEntries([]); 
+      setLoading(true);
+    };
+  }, [activeCompanyId]); // Dependency array includes activeCompanyId for navigation/switch refreshes
 
   const stats = useMemo(() => {
     return entries.reduce((acc, entry) => ({
@@ -71,7 +110,6 @@ const Cashbook = () => {
     const cid = getActiveCompanyId();
     if (!cid || entries.length === 0) return;
 
-    // Fix: Call setExporting setter function instead of trying to call the boolean state value
     setExporting(true);
     try {
       const { data: company } = await supabase.from('companies').select('*').eq('id', cid).single();
@@ -123,20 +161,32 @@ const Cashbook = () => {
       is_deleted: false
     };
 
+    // Log the Payload before sending
+    console.log('Sending this to Supabase:', payload);
+
     try {
+      let queryResult;
       if (data.id && typeof data.id === 'string' && !data.id.startsWith('local_')) {
-        const { error } = await supabase.from('cashbooks').update(payload).eq('id', data.id);
-        if (error) throw error;
+        queryResult = await supabase.from('cashbooks').update(payload).eq('id', data.id).select();
       } else {
-        const { error } = await supabase.from('cashbooks').insert([{ ...payload, created_at: new Date().toISOString() }]);
-        if (error) throw error;
+        // Including created_at as it is now part of the schema
+        queryResult = await supabase.from('cashbooks').insert([{ ...payload, created_at: new Date().toISOString() }]).select();
       }
       
-      // Successfully saved to DB, now reload
+      const { data: responseData, error: responseError } = queryResult;
+
+      // Report the Truth to the console
+      console.log('Supabase Save Response:', { data: responseData, error: responseError });
+
+      if (responseError) {
+        // Alert on Failure
+        alert('Save Failed: ' + responseError.message);
+        throw responseError;
+      }
+      
       await loadData();
     } catch (e: any) {
-      console.warn("Falling back to local storage due to:", e.message);
-      // Fallback to local storage if DB fails
+      console.warn("Sync failed, updating local copy:", e.message);
       const localKey = `local_cashbook_${cid}`;
       const existing = JSON.parse(localStorage.getItem(localKey) || '[]');
       
@@ -184,6 +234,19 @@ const Cashbook = () => {
         setLoading(false);
       }
   };
+
+  // UI Fallback if no workspace is selected
+  if (!activeCompanyId) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-10 bg-white border border-slate-200 rounded-md">
+        <AlertCircle className="w-16 h-16 text-amber-500 mb-4" />
+        <h2 className="text-xl font-bold text-slate-900 mb-2">Workspace Required</h2>
+        <p className="text-slate-500 text-center max-w-md">
+          Please select a workspace first from the top menu or the workspaces directory to view and manage the cashbook.
+        </p>
+      </div>
+    );
+  }
 
   const filteredEntries = entries.filter(e => String(e.date).includes(searchQuery));
 

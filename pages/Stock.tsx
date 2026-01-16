@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, History, Trash2, Edit, Package, Maximize2, Minimize2, Plus, TrendingUp, TrendingDown, Layers, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { getActiveCompanyId, formatDate, normalizeBill } from '../utils/helpers';
@@ -34,13 +33,15 @@ const Stock = () => {
         .eq('is_deleted', false)
         .order('name', { ascending: true });
       
-      const { data: voucherData } = await supabase
-        .from('bills')
-        .select('*')
-        .eq('company_id', cid)
-        .eq('is_deleted', false);
+      const [{ data: purchaseData }, { data: saleData }] = await Promise.all([
+        supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false),
+        supabase.from('sales_invoices').select('*').eq('company_id', cid).eq('is_deleted', false)
+      ]);
       
-      const normalizedVouchers = (voucherData || []).map(normalizeBill);
+      const normalizedVouchers = [
+        ...(purchaseData || []).map(normalizeBill),
+        ...(saleData || []).map(normalizeBill)
+      ];
 
       setItems(stockItems || []);
       setVouchers(normalizedVouchers);
@@ -89,8 +90,8 @@ const Stock = () => {
           const qty = Number(it.qty || 0);
           transactions.push({ 
             date: v.date, 
-            docNo: v.bill_number, 
-            party: v.vendor_name, 
+            docNo: v.bill_number || v.invoice_number, 
+            party: v.vendor_name || v.customer_name, 
             qty: qty, 
             type: v.type 
           });
