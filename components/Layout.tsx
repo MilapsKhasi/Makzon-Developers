@@ -112,10 +112,10 @@ const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: BadgeIndianRupee, label: 'Sales/Invoices', path: '/sales' },
     { icon: ShoppingCart, label: 'Purchase Bills', path: '/bills' },
+    { icon: Wallet, label: 'Prime Ledger', path: '/ledger' }, // New Name & Path
     { icon: UserSquare2, label: 'Customers', path: '/customers' },
     { icon: Users, label: 'Vendors', path: '/vendors' },
     { icon: Package, label: 'Inventory', path: '/stock' },
-    // Cashbook link removed from here 
     { icon: BarChart3, label: 'Reports', path: '/reports' },
     { icon: Percent, label: 'Duties & Taxes', path: '/taxes' },
     { icon: SettingsIcon, label: 'Settings', path: '/settings' },
