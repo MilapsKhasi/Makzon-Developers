@@ -166,15 +166,129 @@ const handleSubmit = async (e: React.FormEvent) => {
         </table>
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New Transaction">
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <input required type="number" placeholder="Amount" className="w-full p-3 bg-slate-100 rounded-lg outline-none" onChange={e => setFormData({...formData, amount: e.target.value})} />
-          <input required type="text" placeholder="Particulars" className="w-full p-3 bg-slate-100 rounded-lg outline-none uppercase" onChange={e => setFormData({...formData, particulars: e.target.value})} />
-          <button type="submit" className="w-full bg-primary py-3 rounded-lg font-bold text-xs uppercase shadow-lg">Save Entry</button>
-        </form>
-      </Modal>
+<Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Cashbook Entry" maxWidth="max-w-6xl">
+  <div className="p-6 bg-white space-y-4">
+    {/* Top Bar: Date & Balance */}
+    <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200">
+      <div className="flex items-center gap-4">
+        <label className="text-xs font-bold text-slate-500">Date</label>
+        <input 
+          type="date" 
+          value={formData.date}
+          onChange={(e) => setFormData({...formData, date: e.target.value})}
+          className="px-3 py-1.5 border border-slate-300 rounded text-sm outline-none focus:ring-1 focus:ring-primary"
+        />
+        <div className="ml-4">
+          <span className="text-sm font-medium text-slate-600">Closing Balance: </span>
+          <span className="text-sm font-bold text-blue-600">{formatCurrency(totalIn - totalOut)}</span>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <select className="text-[10px] border border-slate-300 rounded px-2 py-1 bg-white outline-none">
+          <option>Page Size</option>
+        </select>
+        <select className="text-[10px] border border-slate-300 rounded px-2 py-1 bg-white outline-none">
+          <option>Export</option>
+        </select>
+      </div>
     </div>
-  );
-};
 
-export default Ledger;
+    {/* Dual Entry Table Container */}
+    <div className="grid grid-cols-2 border border-slate-300 rounded-lg overflow-hidden">
+      {/* Income Side (Left) */}
+      <div className="border-r border-slate-300">
+        <div className="flex justify-between items-center bg-slate-50 px-4 py-2 border-b border-green-500 border-b-2">
+          <span className="text-sm font-bold text-slate-700">Income</span>
+          <span className="text-sm font-bold text-green-600">Total Income: {formatCurrency(totalIn)}</span>
+        </div>
+        <table className="w-full text-[11px]">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr className="divide-x divide-slate-200 text-slate-500 uppercase">
+              <th className="w-12 py-2">Sr No</th>
+              <th className="text-left px-4">Particulars</th>
+              <th className="w-24 text-right px-4">Amount</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 min-h-[300px]">
+            {/* We map the actual data here, filling empty rows to match your UI */}
+            {entries.filter(e => e.type === 'IN').map((e, idx) => (
+              <tr key={e.id} className="divide-x divide-slate-100 h-8">
+                <td className="text-center text-slate-400">{idx + 1}</td>
+                <td className="px-4 font-medium uppercase">{e.particulars}</td>
+                <td className="px-4 text-right font-bold text-green-600">{e.amount.toFixed(2)}</td>
+              </tr>
+            ))}
+            {/* Filler rows to match your image style */}
+            {[...Array(Math.max(0, 10 - entries.filter(e => e.type === 'IN').length))].map((_, i) => (
+              <tr key={`fill-in-${i}`} className="divide-x divide-slate-100 h-8">
+                <td></td><td></td><td></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Expense Side (Right) */}
+      <div>
+        <div className="flex justify-between items-center bg-slate-50 px-4 py-2 border-b border-red-500 border-b-2">
+          <span className="text-sm font-bold text-slate-700">Expense</span>
+          <span className="text-sm font-bold text-red-600">Total Expense: {formatCurrency(totalOut)}</span>
+        </div>
+        <table className="w-full text-[11px]">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr className="divide-x divide-slate-200 text-slate-500 uppercase">
+              <th className="w-12 py-2">Sr No</th>
+              <th className="text-left px-4">Particulars</th>
+              <th className="w-24 text-right px-4">Amount</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {entries.filter(e => e.type === 'OUT').map((e, idx) => (
+              <tr key={e.id} className="divide-x divide-slate-100 h-8">
+                <td className="text-center text-slate-400">{idx + 1}</td>
+                <td className="px-4 font-medium uppercase">{e.particulars}</td>
+                <td className="px-4 text-right font-bold text-red-600">{e.amount.toFixed(2)}</td>
+              </tr>
+            ))}
+            {[...Array(Math.max(0, 10 - entries.filter(e => e.type === 'OUT').length))].map((_, i) => (
+              <tr key={`fill-out-${i}`} className="divide-x divide-slate-100 h-8">
+                <td></td><td></td><td></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {/* Bottom Totals Summary */}
+    <div className="flex justify-center">
+        <div className="w-64 space-y-1 py-4">
+            <div className="flex justify-between text-sm font-bold">
+                <span className="text-slate-500">Total Income</span>
+                <span className="text-green-600">{formatCurrency(totalIn)}</span>
+            </div>
+            <div className="flex justify-between text-sm font-bold">
+                <span className="text-slate-500">Total Expense</span>
+                <span className="text-red-600">{formatCurrency(totalOut)}</span>
+            </div>
+            <div className="h-[1px] bg-slate-200 my-1" />
+            <div className="flex justify-between text-sm font-black uppercase tracking-tighter">
+                <span className="text-slate-900">Balance</span>
+                <span className="text-blue-600">{formatCurrency(totalIn - totalOut)}</span>
+            </div>
+        </div>
+    </div>
+
+    {/* Footer Actions */}
+    <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+      <button onClick={() => setIsModalOpen(false)} className="px-6 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 uppercase">Discard</button>
+      <button 
+        onClick={handleSubmit}
+        disabled={loading}
+        className="bg-[#FCD34D] text-slate-900 px-8 py-2 rounded font-bold text-xs uppercase shadow-sm hover:bg-[#FBBF24] transition-all"
+      >
+        {loading ? 'Processing...' : 'Create Statement'}
+      </button>
+    </div>
+  </div>
+</Modal>
