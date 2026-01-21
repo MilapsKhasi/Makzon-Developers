@@ -15,7 +15,7 @@ import Vendors from './pages/Vendors';
 import Stock from './pages/Stock';
 import Ledger from './pages/Ledger'; // New Prime Ledger
 import Reports from './pages/Reports';
-import Taxes from './pages/Taxes';
+import Taxes from './pages/Taxes'; // import Taxes from './pages/Taxes';
 import Settings from './pages/Settings';
 import Auth from './pages/Auth';
 import Companies from './pages/Companies';
@@ -69,7 +69,7 @@ function App() {
               <Route path="vendors" element={<Vendors />} />
               <Route path="stock" element={<Stock />} />
               <Route path="reports" element={<Reports />} />
-              <Route path="taxes" element={<Taxes />} />
+              <Route path="taxes" element={<Taxes />} /> 
               <Route path="settings" element={<Settings />} />
             </Route>
           </>
