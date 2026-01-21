@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Loader2, ShoppingCart, Package, Users, Receipt, Clock, BadgeIndianRupee } from 'lucide-react';
+import { Wallet, TrendingUp, Users, ShoppingCart } from 'lucide-react';
 import { getActiveCompanyId, formatDate, normalizeBill, formatCurrency } from '../utils/helpers';
 import DateFilter from '../components/DateFilter';
 import Modal from '../components/Modal';
