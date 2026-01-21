@@ -1,13 +1,14 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, 
   Package, Database, BarChart3, Settings as SettingsIcon, 
   ShoppingCart, Percent, ChevronDown, Building2, 
   Menu, UserCircle, LogOut, UserCog, SwitchCamera, Mail, User as UserIcon, 
-  Loader2, Plus, ChevronLeft, 
-  Wallet // <--- ADD THIS LINE HERE
+  Loader2, Plus, ChevronLeft, Wallet 
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { getActiveCompanyId } from '../utils/helpers';
+import { getActiveCompanyId, formatCurrency } from '../utils/helpers';
 import Logo from './Logo';
 import Modal from './Modal';
 
@@ -16,7 +17,7 @@ const Layout = () => {
   const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [activeWorkspace, setActiveWorkspace] = useState<any>(null);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const [menuView, setMenuView] = useState<'main' | 'switch'>('main'); // Toggle between main menu and workspace list
+  const [menuView, setMenuView] = useState<'main' | 'switch'>('main');
   const [user, setUser] = useState<any>(null);
   
   // Edit Account State
@@ -104,15 +105,14 @@ const Layout = () => {
     setMenuView('main');
     window.dispatchEvent(new Event('appSettingsChanged'));
     navigate('/', { replace: true });
-    // Force a small delay then refresh to ensure all components grab the new ID
     setTimeout(() => window.location.reload(), 100);
   };
 
-const menuItems = [
+  const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: BadgeIndianRupee, label: 'Sales/Invoices', path: '/sales' },
     { icon: ShoppingCart, label: 'Purchase Bills', path: '/bills' },
-    { icon: Wallet, label: 'Prime Ledger', path: '/ledger' }, // New Name & Path
+    { icon: Wallet, label: 'Prime Ledger', path: '/ledger' },
     { icon: UserSquare2, label: 'Customers', path: '/customers' },
     { icon: Users, label: 'Vendors', path: '/vendors' },
     { icon: Package, label: 'Inventory', path: '/stock' },
@@ -165,7 +165,7 @@ const menuItems = [
             <div className="relative" ref={accountMenuRef}>
               <button 
                 onClick={() => { setShowAccountMenu(!showAccountMenu); setMenuView('main'); }}
-                className="flex items-center space-x-3 p-1.5 pl-3 hover:bg-slate-50 rounded-full border border-slate-200 transition-all active:scale-95 bg-white"
+                className="flex items-center space-x-3 p-1.5 pl-3 hover:bg-slate-50 rounded-full border border-slate-200 transition-all active:scale-95 bg-white shadow-sm"
               >
                 <div className="flex flex-col items-end mr-1">
                   <span className="text-xs font-bold text-slate-900 leading-tight">{user?.user_metadata?.username || 'User'}</span>
@@ -237,7 +237,7 @@ const menuItems = [
                         ))}
                       </div>
                       <div className="mt-2 pt-2 border-t border-slate-100 px-2">
-                        <button onClick={() => { navigate('/companies'); setShowAccountMenu(false); }} className="w-full flex items-center px-3 py-2 text-[11px] font-bold text-link hover:bg-blue-50 rounded-lg uppercase">
+                        <button onClick={() => { navigate('/companies'); setShowAccountMenu(false); }} className="w-full flex items-center px-3 py-2 text-[11px] font-bold text-primary hover:bg-blue-50 rounded-lg uppercase">
                           <Plus className="w-3.5 h-3.5 mr-2" /> Manage Workspaces
                         </button>
                       </div>
