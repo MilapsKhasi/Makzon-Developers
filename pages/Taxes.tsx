@@ -1,134 +1,176 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Percent, ArrowUpRight, ArrowDownLeft, 
-  Download, Filter, Loader2, Landmark 
-} from 'lucide-react';
+import { Plus, Trash2, Loader2, Settings2, CheckSquare, Square } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { getActiveCompanyId, formatCurrency } from '../utils/helpers';
+import { getActiveCompanyId } from '../utils/helpers';
+import Modal from '../components/Modal';
 
 const Taxes = () => {
   const [loading, setLoading] = useState(true);
-  const [taxData, setTaxData] = useState<any[]>([]);
+  const [taxes, setTaxes] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const cid = getActiveCompanyId();
 
-  useEffect(() => {
-    fetchTaxData();
-  }, [cid]);
+  const [formData, setFormData] = useState({
+    particulars: '',
+    type: 'Percentage', // Default
+    value: ''
+  });
 
-  const fetchTaxData = async () => {
+  const fetchTaxes = async () => {
     if (!cid) return;
     setLoading(true);
     try {
-      // In a real app, you'd fetch from invoices. 
-      // For now, we pull Ledger entries categorized as 'Tax'
       const { data, error } = await supabase
-        .from('ledgers')
+        .from('tax_settings') // Make sure this table exists in your Supabase
         .select('*')
         .eq('company_id', cid)
-        .ilike('particulars', '%TAX%') // Finds GST, VAT, Tax entries
-        .eq('is_deleted', false)
-        .order('date', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setTaxData(data || []);
+      setTaxes(data || []);
     } catch (err) {
-      console.error("Tax Fetch Error:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const totalInputTax = taxData.filter(e => e.type === 'OUT').reduce((sum, e) => sum + Number(e.amount), 0);
-  const totalOutputTax = taxData.filter(e => e.type === 'IN').reduce((sum, e) => sum + Number(e.amount), 0);
-  const netPayable = totalOutputTax - totalInputTax;
+  useEffect(() => { fetchTaxes(); }, [cid]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('tax_settings').insert([{
+        company_id: cid,
+        particulars: formData.particulars.toUpperCase(),
+        type: formData.type,
+        value: parseFloat(formData.value),
+        is_selected: false
+      }]);
+      if (error) throw error;
+      setIsModalOpen(false);
+      setFormData({ particulars: '', type: 'Percentage', value: '' });
+      fetchTaxes();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleSelection = async (id: string, currentState: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('tax_settings')
+        .update({ is_selected: !currentState })
+        .eq('id', id);
+      if (error) throw error;
+      setTaxes(taxes.map(t => t.id === id ? { ...t, is_selected: !currentState } : t));
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex justify-between items-center">
+      {/* Header */}
+      <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Duties & Taxes</h1>
-          <p className="text-sm text-slate-500">Monitor your tax liability and GST/VAT filings</p>
+          <p className="text-sm text-slate-500">Configure taxes for Sales & Purchase bills</p>
         </div>
-        <button className="flex items-center px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold uppercase text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
-          <Download className="w-4 h-4 mr-2" /> Export Tax Report
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="bg-primary text-slate-900 px-6 py-2.5 rounded-xl font-bold text-xs uppercase flex items-center shadow-lg hover:scale-105 transition-all"
+        >
+          <Plus size={18} className="mr-2" /> Create New
         </button>
       </div>
 
-      {/* Tax Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Input Tax (ITC)</span>
-            <div className="p-2 bg-blue-50 rounded-lg text-blue-600"><ArrowDownLeft size={16}/></div>
-          </div>
-          <p className="text-2xl font-bold text-slate-900 font-mono">{formatCurrency(totalInputTax)}</p>
-          <p className="text-[10px] text-slate-400 mt-1">Tax paid on purchases</p>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Output Tax</span>
-            <div className="p-2 bg-amber-50 rounded-lg text-amber-600"><ArrowUpRight size={16}/></div>
-          </div>
-          <p className="text-2xl font-bold text-slate-900 font-mono">{formatCurrency(totalOutputTax)}</p>
-          <p className="text-[10px] text-slate-400 mt-1">Tax collected on sales</p>
-        </div>
-
-        <div className="bg-slate-900 p-6 rounded-2xl shadow-xl">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-slate-500">Net Tax Payable</span>
-            <div className="p-2 bg-primary/20 rounded-lg text-primary"><Percent size={16}/></div>
-          </div>
-          <p className={`text-2xl font-bold font-mono ${netPayable >= 0 ? 'text-primary' : 'text-green-400'}`}>
-            {formatCurrency(Math.abs(netPayable))}
-          </p>
-          <p className="text-[10px] text-slate-500 mt-1">
-            {netPayable >= 0 ? 'To be paid to Govt.' : 'Tax Credit Available'}
-          </p>
-        </div>
-      </div>
-
-      {/* Tax Transaction Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-          <h3 className="text-sm font-bold text-slate-800 flex items-center">
-            <Landmark className="w-4 h-4 mr-2 text-slate-400" /> Recent Tax Transactions
-          </h3>
-          <div className="flex gap-2">
-            <button className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 transition-colors"><Filter size={14}/></button>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b border-slate-100">
-              <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4">Particulars</th>
-                <th className="px-6 py-4">Type</th>
-                <th className="px-6 py-4 text-right">Amount</th>
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-slate-300 shadow-xl overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-slate-50 border-b border-slate-200">
+            <tr className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+              <th className="px-6 py-4 w-16">Sr No</th>
+              <th className="px-6 py-4">Particulars</th>
+              <th className="px-6 py-4">Type</th>
+              <th className="px-6 py-4">Value</th>
+              <th className="px-6 py-4 w-24 text-center">Select</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {loading ? (
+              <tr><td colSpan={5} className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></td></tr>
+            ) : taxes.length === 0 ? (
+              <tr><td colSpan={5} className="py-20 text-center text-slate-400 italic">No taxes configured. Click 'Create New' to start.</td></tr>
+            ) : taxes.map((tax, index) => (
+              <tr key={tax.id} className={`hover:bg-slate-50 transition-colors ${tax.is_selected ? 'bg-blue-50/30' : ''}`}>
+                <td className="px-6 py-4 text-xs font-mono text-slate-400">{index + 1}</td>
+                <td className="px-6 py-4 text-sm font-bold text-slate-900 uppercase">{tax.particulars}</td>
+                <td className="px-6 py-4 text-xs font-medium text-slate-500">{tax.type}</td>
+                <td className="px-6 py-4 font-mono font-bold text-slate-800">
+                  {tax.value}{tax.type === 'Percentage' ? '%' : ''}
+                </td>
+                <td className="px-6 py-4 text-center">
+                  <button onClick={() => toggleSelection(tax.id, tax.is_selected)} className="text-primary hover:scale-110 transition-transform">
+                    {tax.is_selected ? <CheckSquare size={20} /> : <Square size={20} className="text-slate-300" />}
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr><td colSpan={4} className="py-20 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" /></td></tr>
-              ) : taxData.length === 0 ? (
-                <tr><td colSpan={4} className="py-20 text-center text-slate-400 italic text-sm">No tax transactions found in Ledger.</td></tr>
-              ) : taxData.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 text-xs font-medium text-slate-600 font-mono">{item.date}</td>
-                  <td className="px-6 py-4 text-sm font-bold text-slate-900 uppercase">{item.particulars}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${item.type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {item.type === 'IN' ? 'Output Tax' : 'Input Tax'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right font-mono font-bold text-slate-900">{formatCurrency(item.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
+
+      {/* Modal Form */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New Duty/Tax">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Particulars Name</label>
+            <input 
+              required 
+              placeholder="E.G. CGST @ 9%" 
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold uppercase focus:border-primary outline-none"
+              value={formData.particulars}
+              onChange={e => setFormData({...formData, particulars: e.target.value})}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Tax Type</label>
+            <select 
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none"
+              value={formData.type}
+              onChange={e => setFormData({...formData, type: e.target.value})}
+            >
+              <option value="Percentage">Percentage (%)</option>
+              <option value="Amount">Amount (₹)</option>
+              <option value="Fixed Value">Fixed Value</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">
+              {formData.type === 'Percentage' ? 'Percentage Rate' : formData.type === 'Amount' ? 'Amount Value' : 'Fixed Value'}
+            </label>
+            <input 
+              required 
+              type="number" 
+              step="0.01"
+              placeholder="0.00"
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold font-mono focus:border-primary outline-none"
+              value={formData.value}
+              onChange={e => setFormData({...formData, value: e.target.value})}
+            />
+          </div>
+
+          <button type="submit" disabled={loading} className="w-full bg-[#FCD34D] py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-[#FBBF24] transition-all">
+            {loading ? 'Saving...' : 'Confirm Tax Setting'}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 };
