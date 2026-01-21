@@ -40,14 +40,14 @@ const Companies = () => {
 
     try {
       // MASTER SCRIPT: No companies_users table. Trigger handles membership.
-      const { data, error } = await supabase
-        .from('companies')
-        .insert([{
-          name: newCompany.name.trim().toUpperCase(),
-          gstin: newCompany.gstin.trim().toUpperCase(),
-          address: newCompany.address.trim()
-        }])
-        .select();
+const { data, error } = await supabase
+  .from('companies')
+  .insert([
+    { 
+      name: companyName, 
+      user_id: (await supabase.auth.getUser()).data.user?.id // <--- Add this line
+    }
+  ]);
 
       if (error) throw error;
 
