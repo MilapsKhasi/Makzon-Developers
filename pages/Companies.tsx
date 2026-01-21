@@ -33,36 +33,39 @@ const Companies = () => {
 
   useEffect(() => { loadData(); }, []);
 
-  const handleCreateCompany = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCompany.name.trim()) return;
-    setCreating(true);
+const handleCreateCompany = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      // MASTER SCRIPT: No companies_users table. Trigger handles membership.
-const { data, error } = await supabase
-  .from('companies')
-  .insert([
-    { 
-      name: companyName, 
-      user_id: (await supabase.auth.getUser()).data.user?.id // <--- Add this line
-    }
-  ]);
+  try {
+    // 1. Get the current logged-in user
+    const { data: { user } } = await supabase.auth.getUser();
 
-      if (error) throw error;
+    if (!user) throw new Error("No active session found");
 
-      if (data && data[0]) {
-        localStorage.setItem('activeCompanyId', data[0].id);
-        localStorage.setItem('activeCompanyName', data[0].name);
-        window.dispatchEvent(new Event('appSettingsChanged'));
-        setTimeout(() => navigate('/', { replace: true }), 500);
-      }
-    } catch (err: any) {
-      alert(`Failed: ${err.message}`);
-    } finally {
-      setCreating(false);
-    }
-  };
+    // 2. Insert company with user_id
+    const { data, error } = await supabase
+      .from('companies')
+      .insert([
+        { 
+          name: formData.name.toUpperCase(),
+          address: formData.address,
+          // ... other fields
+          user_id: user.id // <--- This links the company to the logged-in person
+        }
+      ])
+      .select();
+
+    if (error) throw error;
+    
+    // Refresh list or redirect
+    alert("Company Created Successfully!");
+  } catch (err: any) {
+    alert(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const selectCompany = (ws: any) => {
     localStorage.setItem('activeCompanyId', ws.id);
