@@ -18,7 +18,7 @@ const Taxes = () => {
 
   const fetchTaxes = async () => {
     if (!cid) return;
-    setLoading(true);
+    console.log("Saving for Company ID:", cid); // <--- Check this in your browser console
     try {
       const { data, error } = await supabase
         .from('tax_settings') // Make sure this table exists in your Supabase
