@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, 
   Package, Database, BarChart3, Settings as SettingsIcon, 
   ShoppingCart, Percent, ChevronDown, Building2, 
-  Menu, UserCircle, LogOut, UserCog, SwitchCamera, Mail, User as UserIcon, Loader2, Plus, ChevronLeft
+  Menu, UserCircle, LogOut, UserCog, SwitchCamera, Mail, User as UserIcon, 
+  Loader2, Plus, ChevronLeft, 
+  Wallet // <--- ADD THIS LINE HERE
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getActiveCompanyId } from '../utils/helpers';
