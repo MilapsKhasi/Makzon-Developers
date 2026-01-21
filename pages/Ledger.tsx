@@ -48,26 +48,54 @@ const Ledger = () => {
     fetchLedgerData();
   }, [fetchLedgerData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 1. Validation check
+    if (!cid) return alert("No active company selected!");
+    if (!formData.particulars || !formData.amount) return alert("Please fill required fields!");
+
     setLoading(true);
     try {
-      const { error } = await supabase.from('ledgers').insert([{
-        company_id: cid,
-        ...formData,
+      // 2. Prepare Payload
+      const payload = {
+        company_id: cid, // Ensure this is a valid UUID from helper
+        date: formData.date,
         particulars: formData.particulars.toUpperCase(),
-        amount: parseFloat(formData.amount)
-      }]);
+        category: formData.category,
+        type: formData.type,
+        amount: parseFloat(formData.amount),
+        payment_mode: formData.payment_mode,
+        // The Fix: If reference_no is empty, send NULL instead of ""
+        reference_no: formData.reference_no.trim() === "" ? null : formData.reference_no
+      };
+
+      const { error } = await supabase
+        .from('ledgers')
+        .insert([payload]);
+
       if (error) throw error;
+
+      // 3. Reset and Refresh
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        particulars: '',
+        category: 'General',
+        type: 'IN',
+        amount: '',
+        payment_mode: 'Cash',
+        reference_no: ''
+      });
       setIsModalOpen(false);
-      fetchLedgerData();
+      await fetchLedgerData();
+      
     } catch (err: any) {
-      alert(err.message);
+      console.error("Submission Error:", err);
+      alert(`Error: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
-
   const totalIn = entries.filter(e => e.type === 'IN').reduce((sum, e) => sum + Number(e.amount), 0);
   const totalOut = entries.filter(e => e.type === 'OUT').reduce((sum, e) => sum + Number(e.amount), 0);
 
