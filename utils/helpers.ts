@@ -6,8 +6,7 @@ export const CURRENCIES = {
 };
 
 export const getActiveCompanyId = () => {
-  const id = localStorage.getItem('activeCompanyId');
-  return id && id !== 'undefined' ? id : '';
+  return localStorage.getItem('active_company_id');
 };
 
 export const getAppSettings = () => {
