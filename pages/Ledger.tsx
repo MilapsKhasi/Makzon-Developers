@@ -218,7 +218,11 @@ const Ledger = () => {
                <input type="text" placeholder="OPTIONAL" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs uppercase outline-none" value={formData.reference_no} onChange={e => setFormData({...formData, reference_no: e.target.value})} />
              </div>
           </div>
-          <button type="submit" disabled={loading} className="w-full bg-[#FCD34D] py-4 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all hover:bg-[#FBBF24]">
+<button 
+            type="submit" 
+            disabled={loading} 
+            className="w-full bg-[#FCD34D] py-4 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all hover:bg-[#FBBF24]"
+          >
             {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Confirm Transaction'}
           </button>
         </form>
