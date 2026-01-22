@@ -5,17 +5,11 @@ import { getActiveCompanyId } from '../utils/helpers';
 import Modal from '../components/Modal';
 
 const Taxes = () => {
+  // CID is now a direct reflection of localStorage
+  const [cid, setCid] = useState<string | null>(localStorage.getItem('active_company_id'));
   const [taxes, setTaxes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false); // Start false to avoid initial hang
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // 1. Initialize state immediately from storage
-  const [cid, setCid] = useState<string | null>(() => {
-    return localStorage.getItem('active_company_id');
-  });
-  
-  // Start loading only if we have a CID to fetch for
-  const [loading, setLoading] = useState(!!cid);
 
   const fetchTaxes = useCallback(async (companyId: string | null) => {
     if (!companyId) {
@@ -24,44 +18,41 @@ const Taxes = () => {
     }
 
     setLoading(true);
-    setError(null);
     try {
-      const { data, error: supabaseError } = await supabase
+      const { data, error } = await supabase
         .from('tax_settings')
         .select('*')
         .eq('company_id', companyId)
         .order('created_at', { ascending: true });
 
-      if (supabaseError) throw supabaseError;
+      if (error) throw error;
       setTaxes(data || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Fetch Error:", err);
-      setError(err.message);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // Try to get ID if state missed it
-    const activeId = cid || getActiveCompanyId();
-    if (activeId) {
-      fetchTaxes(activeId);
-    } else {
-      // Safety Hatch: If no ID found, stop loading after 1 second
-      const timer = setTimeout(() => setLoading(false), 1000);
-      return () => clearTimeout(timer);
+    // Immediate Load
+    const currentId = getActiveCompanyId();
+    if (currentId) {
+      setCid(currentId);
+      fetchTaxes(currentId);
     }
 
-    const handleCompanyChange = () => {
-      const newId = getActiveCompanyId();
+    // "The Watcher" - Listens for the Sidebar's shout
+    const handleWorkspaceChange = () => {
+      const newId = localStorage.getItem('active_company_id');
+      console.log("Workspace change detected! New ID:", newId);
       setCid(newId);
       fetchTaxes(newId);
     };
 
-    window.addEventListener('companySelected', handleCompanyChange);
-    return () => window.removeEventListener('companySelected', handleCompanyChange);
-  }, [cid, fetchTaxes]);
+    window.addEventListener('companySelected', handleWorkspaceChange);
+    return () => window.removeEventListener('companySelected', handleWorkspaceChange);
+  }, [fetchTaxes]);
 
   // ... (Keep handleSubmit, toggleSelection, deleteTax from previous version)
   const handleSubmit = async (e: React.FormEvent) => {
