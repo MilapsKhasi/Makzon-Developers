@@ -19,10 +19,16 @@ const Taxes = () => {
   });
 
   // 2. Modified fetch function that accepts an ID directly
-  const fetchTaxes = async (companyId: string | null) => {
-    if (!companyId) {
-      // If no ID yet, keep loading false so we don't show a spinner forever
-      setLoading(false); 
+// ... inside Taxes component ...
+
+  const fetchTaxes = async () => {
+    // 1. Try to get ID directly from storage if state is lagging
+    const currentCid = cid || localStorage.getItem('active_company_id');
+    
+    if (!currentCid) {
+      console.log("No Company ID found yet, waiting...");
+      // If after 3 seconds we still have nothing, stop the spinner so it's not infinite
+      setTimeout(() => setLoading(false), 3000);
       return;
     }
 
@@ -31,22 +37,25 @@ const Taxes = () => {
       const { data, error } = await supabase
         .from('tax_settings')
         .select('*')
-        .eq('company_id', companyId)
+        .eq('company_id', currentCid)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
       setTaxes(data || []);
     } catch (err) {
-      console.error("Tax Fetch Error:", err);
+      console.error("Database Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // 3. Effect to handle initial load and "Listen" for Sidebar updates
+  // 2. This ensures that even if the page reloads, 
+  // we check for the ID as soon as the component mounts.
   useEffect(() => {
-    // Fetch immediately with whatever is in localStorage
-    fetchTaxes(cid);
+    fetchTaxes();
+  }, [cid]); 
+
+  // ... rest of the component ...
 
     // This listener catches the "shout" from the Sidebar
     const handleCompanyChange = () => {
