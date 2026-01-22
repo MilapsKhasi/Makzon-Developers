@@ -14,7 +14,7 @@ const Sidebar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // 1. Fetch Companies and set the initial Active Workspace
-  const fetchCompanies = async () => {
+const fetchCompanies = async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -27,17 +27,27 @@ const Sidebar = () => {
         .order('name', { ascending: true });
 
       if (error) throw error;
-      
       setCompanies(data || []);
       
-      // Auto-select company from localStorage or pick the first one
+      // 1. Get what is ALREADY in storage
       const savedCid = localStorage.getItem('active_company_id');
+      
       if (data && data.length > 0) {
-        const current = data.find(c => c.id === savedCid) || data[0];
-        setActiveCompany(current);
-        localStorage.setItem('active_company_id', current.id);
-        // Broadcast the initial selection
-        window.dispatchEvent(new Event('companySelected'));
+        // 2. Find the company that matches the saved ID
+        const current = data.find(c => c.id === savedCid);
+
+        if (current) {
+          // If already set correctly, just update the UI state WITHOUT a reload/event
+          setActiveCompany(current);
+        } else {
+          // 3. ONLY if nothing is saved OR the saved ID is invalid, select the first one
+          const firstCompany = data[0];
+          setActiveCompany(firstCompany);
+          localStorage.setItem('active_company_id', firstCompany.id);
+          
+          // Only shout if we actually CHANGED the selection
+          window.dispatchEvent(new Event('companySelected'));
+        }
       }
     } catch (err) {
       console.error("Sidebar Load Error:", err);
