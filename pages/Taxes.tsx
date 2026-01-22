@@ -55,30 +55,34 @@ const Taxes = () => {
   }, [fetchTaxes]);
 
   // ... (Keep handleSubmit, toggleSelection, deleteTax from previous version)
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const currentCid = cid || getActiveCompanyId();
-    if (!currentCid) return alert("Please select a company first");
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  const { data: { user } } = await supabase.auth.getUser(); // Get current user
+  
+  if (!user || !cid) return alert("Session expired or No Company Selected");
+
+  setLoading(true);
+  try {
+    const { error } = await supabase.from('tax_settings').insert([{
+      company_id: cid,
+      user_id: user.id, // Direct tagging
+      particulars: formData.particulars.toUpperCase(),
+      type: formData.type,
+      value: parseFloat(formData.value),
+      is_selected: false
+    }]);
     
-    setLoading(true);
-    try {
-      const { error } = await supabase.from('tax_settings').insert([{
-        company_id: currentCid,
-        particulars: formData.particulars.toUpperCase(),
-        type: formData.type,
-        value: parseFloat(formData.value),
-        is_selected: false
-      }]);
-      if (error) throw error;
-      setIsModalOpen(false);
-      setFormData({ particulars: '', type: 'Percentage', value: '' });
-      fetchTaxes(currentCid);
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (error) throw error;
+    
+    setIsModalOpen(false);
+    setFormData({ particulars: '', type: 'Percentage', value: '' });
+    fetchTaxes(cid);
+  } catch (err: any) {
+    alert(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const [formData, setFormData] = useState({ particulars: '', type: 'Percentage', value: '' });
 
