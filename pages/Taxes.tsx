@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Loader2, CheckSquare, Square } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getActiveCompanyId } from '../utils/helpers';
@@ -9,8 +9,8 @@ const Taxes = () => {
   const [taxes, setTaxes] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // 1. Move CID into state so the UI updates when the Sidebar finishes loading
-  const [cid, setCid] = useState<string | null>(getActiveCompanyId());
+  // Use state to track the active company ID
+  const [cid, setCid] = useState<string | null>(localStorage.getItem('active_company_id'));
 
   const [formData, setFormData] = useState({
     particulars: '',
@@ -18,17 +18,13 @@ const Taxes = () => {
     value: ''
   });
 
-  // 2. Modified fetch function that accepts an ID directly
-// ... inside Taxes component ...
-
-  const fetchTaxes = async () => {
-    // 1. Try to get ID directly from storage if state is lagging
-    const currentCid = cid || localStorage.getItem('active_company_id');
-    
-    if (!currentCid) {
-      console.log("No Company ID found yet, waiting...");
-      // If after 3 seconds we still have nothing, stop the spinner so it's not infinite
-      setTimeout(() => setLoading(false), 3000);
+  /**
+   * FIX: Wrapped in useCallback to prevent the 'exhaustive-deps' 
+   * build error and ensure stable reference.
+   */
+  const fetchTaxes = useCallback(async (companyId: string | null) => {
+    if (!companyId) {
+      setLoading(false);
       return;
     }
 
@@ -37,45 +33,51 @@ const Taxes = () => {
       const { data, error } = await supabase
         .from('tax_settings')
         .select('*')
-        .eq('company_id', currentCid)
+        .eq('company_id', companyId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
       setTaxes(data || []);
     } catch (err) {
-      console.error("Database Error:", err);
+      console.error("Fetch Error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // 2. This ensures that even if the page reloads, 
-  // we check for the ID as soon as the component mounts.
+  /**
+   * FIX: The dependency array now correctly includes fetchTaxes.
+   * We also added a safety check for the initial 'cid'.
+   */
   useEffect(() => {
-    fetchTaxes();
-  }, [cid]); 
+    const currentId = cid || getActiveCompanyId();
+    if (currentId) {
+      fetchTaxes(currentId);
+    } else {
+      setLoading(false);
+    }
 
-  // ... rest of the component ...
-
-    // This listener catches the "shout" from the Sidebar
     const handleCompanyChange = () => {
       const newId = getActiveCompanyId();
-      setCid(newId);
-      fetchTaxes(newId);
+      if (newId !== cid) {
+        setCid(newId);
+        fetchTaxes(newId);
+      }
     };
 
     window.addEventListener('companySelected', handleCompanyChange);
     return () => window.removeEventListener('companySelected', handleCompanyChange);
-  }, []);
+  }, [cid, fetchTaxes]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cid) return alert("Please select a company first");
+    const currentCid = cid || getActiveCompanyId();
+    if (!currentCid) return alert("Please select a company first");
     
     setLoading(true);
     try {
       const { error } = await supabase.from('tax_settings').insert([{
-        company_id: cid,
+        company_id: currentCid,
         particulars: formData.particulars.toUpperCase(),
         type: formData.type,
         value: parseFloat(formData.value),
@@ -86,7 +88,7 @@ const Taxes = () => {
       
       setIsModalOpen(false);
       setFormData({ particulars: '', type: 'Percentage', value: '' });
-      fetchTaxes(cid);
+      fetchTaxes(currentCid);
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -101,7 +103,7 @@ const Taxes = () => {
         .update({ is_selected: !currentState })
         .eq('id', id);
       if (error) throw error;
-      setTaxes(taxes.map(t => t.id === id ? { ...t, is_selected: !currentState } : t));
+      setTaxes(prev => prev.map(t => t.id === id ? { ...t, is_selected: !currentState } : t));
     } catch (err: any) {
       alert(err.message);
     }
@@ -112,14 +114,14 @@ const Taxes = () => {
     try {
       const { error } = await supabase.from('tax_settings').delete().eq('id', id);
       if (error) throw error;
-      setTaxes(taxes.filter(t => t.id !== id));
+      setTaxes(prev => prev.filter(t => t.id !== id));
     } catch (err: any) {
       alert(err.message);
     }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 p-4">
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Duties & Taxes</h1>
@@ -134,13 +136,13 @@ const Taxes = () => {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-300 shadow-xl overflow-hidden">
-        <table className="w-full text-left">
+        <table className="w-full text-left border-collapse">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
-              <th className="px-6 py-4 w-16">Sr No</th>
+              <th className="px-6 py-4 w-16 text-center">Sr No</th>
               <th className="px-6 py-4">Particulars</th>
-              <th className="px-6 py-4">Type</th>
-              <th className="px-6 py-4">Value</th>
+              <th className="px-6 py-4 text-center">Type</th>
+              <th className="px-6 py-4 text-center">Value</th>
               <th className="px-6 py-4 w-32 text-center">Actions</th>
             </tr>
           </thead>
@@ -148,22 +150,26 @@ const Taxes = () => {
             {loading ? (
               <tr><td colSpan={5} className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></td></tr>
             ) : taxes.length === 0 ? (
-              <tr><td colSpan={5} className="py-20 text-center text-slate-400 italic">No taxes configured. Click 'Create New' to start.</td></tr>
+              <tr><td colSpan={5} className="py-20 text-center text-slate-400 italic font-medium">No taxes configured. Click 'Create New' to start.</td></tr>
             ) : taxes.map((tax, index) => (
-              <tr key={tax.id} className={`hover:bg-slate-50 transition-colors ${tax.is_selected ? 'bg-blue-50/30' : ''}`}>
-                <td className="px-6 py-4 text-xs font-mono text-slate-400">{index + 1}</td>
-                <td className="px-6 py-4 text-sm font-bold text-slate-900 uppercase">{tax.particulars}</td>
-                <td className="px-6 py-4 text-xs font-medium text-slate-500">{tax.type}</td>
-                <td className="px-6 py-4 font-mono font-bold text-slate-800">
+              <tr key={tax.id} className={`hover:bg-slate-50 transition-colors ${tax.is_selected ? 'bg-amber-50/50' : ''}`}>
+                <td className="px-6 py-4 text-xs font-mono text-slate-400 text-center">{index + 1}</td>
+                <td className="px-6 py-4 text-sm font-bold text-slate-900 uppercase tracking-tight">{tax.particulars}</td>
+                <td className="px-6 py-4 text-xs font-semibold text-slate-500 text-center uppercase tracking-tighter">{tax.type}</td>
+                <td className="px-6 py-4 font-mono font-bold text-slate-800 text-center">
                   {tax.value}{tax.type === 'Percentage' ? '%' : ''}
                 </td>
-                <td className="px-6 py-4 text-center">
-                  <div className="flex items-center justify-center gap-4">
-                    <button onClick={() => toggleSelection(tax.id, tax.is_selected)} title="Select for billing">
-                      {tax.is_selected ? <CheckSquare size={20} className="text-primary" /> : <Square size={20} className="text-slate-300" />}
+                <td className="px-6 py-4">
+                  <div className="flex items-center justify-center gap-6">
+                    <button 
+                      onClick={() => toggleSelection(tax.id, tax.is_selected)} 
+                      title={tax.is_selected ? "Remove from bills" : "Apply to bills"}
+                      className="transition-transform hover:scale-110"
+                    >
+                      {tax.is_selected ? <CheckSquare size={20} className="text-primary fill-primary/10" /> : <Square size={20} className="text-slate-300" />}
                     </button>
                     <button onClick={() => deleteTax(tax.id)} className="text-slate-300 hover:text-red-500 transition-colors">
-                      <Trash2 size={16} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </td>
@@ -174,48 +180,48 @@ const Taxes = () => {
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New Duty/Tax">
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Particulars Name</label>
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">Particulars Name</label>
             <input 
               required 
-              placeholder="E.G. CGST @ 9%" 
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold uppercase focus:border-primary outline-none"
+              placeholder="E.G. GST @ 18%" 
+              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold uppercase focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
               value={formData.particulars}
               onChange={e => setFormData({...formData, particulars: e.target.value})}
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Tax Type</label>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">Calculation Type</label>
             <select 
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none"
+              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none cursor-pointer focus:border-primary transition-all"
               value={formData.type}
               onChange={e => setFormData({...formData, type: e.target.value})}
             >
               <option value="Percentage">Percentage (%)</option>
-              <option value="Amount">Amount (₹)</option>
-              <option value="Fixed Value">Fixed Value</option>
+              <option value="Amount">Direct Amount (₹)</option>
+              <option value="Fixed Value">Fixed Total Value</option>
             </select>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">
-              {formData.type === 'Percentage' ? 'Percentage Rate' : formData.type === 'Amount' ? 'Amount Value' : 'Fixed Value'}
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase ml-1 tracking-widest">
+              {formData.type === 'Percentage' ? 'Tax Rate (%)' : formData.type === 'Amount' ? 'Amount (₹)' : 'Value'}
             </label>
             <input 
               required 
               type="number" 
               step="0.01"
               placeholder="0.00"
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold font-mono focus:border-primary outline-none"
+              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold font-mono focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
               value={formData.value}
               onChange={e => setFormData({...formData, value: e.target.value})}
             />
           </div>
 
-          <button type="submit" disabled={loading} className="w-full bg-[#FCD34D] py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-[#FBBF24] transition-all">
-            {loading ? 'Saving...' : 'Confirm Tax Setting'}
+          <button type="submit" disabled={loading} className="w-full bg-[#FCD34D] py-4 rounded-xl font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:bg-[#FBBF24] active:scale-[0.98] transition-all disabled:opacity-50">
+            {loading ? 'Processing...' : 'Add Tax Setting'}
           </button>
         </form>
       </Modal>
