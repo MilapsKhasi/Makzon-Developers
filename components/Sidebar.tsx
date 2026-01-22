@@ -13,8 +13,8 @@ const Sidebar = () => {
   const [activeCompany, setActiveCompany] = useState<any>(null);
 
   // 1. Fetch Companies belonging only to the Logged-in User
+useEffect(() => {
   const fetchCompanies = async () => {
-    setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -22,31 +22,33 @@ const Sidebar = () => {
       const { data, error } = await supabase
         .from('companies')
         .select('*')
-        .eq('user_id', user.id) // Filter by the user_id column we just added
-        .order('name', { ascending: true });
+        .eq('user_id', user.id)
+        .order('name');
 
       if (error) throw error;
       
-      setCompanies(data || []);
-      
-      // Set the first company as active if none is selected
-      const savedCid = localStorage.getItem('active_company_id');
       if (data && data.length > 0) {
+        setCompanies(data);
+        
+        // Check if we already have a selection, otherwise take the first one
+        const savedCid = localStorage.getItem('active_company_id');
         const current = data.find(c => c.id === savedCid) || data[0];
+        
         setActiveCompany(current);
         localStorage.setItem('active_company_id', current.id);
+        
+        // IMPORTANT: Dispatch a custom event so other components know the ID is ready
+        window.dispatchEvent(new Event('companySelected'));
       }
     } catch (err) {
-      console.error("Error fetching companies:", err);
+      console.error(err);
     } finally {
-      setLoading(false);
+      setLoading(false); // This stops the sidebar spinner
     }
   };
 
-  useEffect(() => {
-    fetchCompanies();
-  }, []);
-
+  fetchCompanies();
+}, []);
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard, shortcut: 'D' },
     { name: 'Sales Invoices', path: '/sales', icon: ShoppingBag, shortcut: 'I' },
