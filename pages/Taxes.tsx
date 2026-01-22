@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader2, Settings2, CheckSquare, Square } from 'lucide-react';
+import { Plus, Trash2, Loader2, CheckSquare, Square } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getActiveCompanyId } from '../utils/helpers';
 import Modal from '../components/Modal';
@@ -8,37 +8,61 @@ const Taxes = () => {
   const [loading, setLoading] = useState(true);
   const [taxes, setTaxes] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const cid = getActiveCompanyId();
+  
+  // 1. Move CID into state so the UI updates when the Sidebar finishes loading
+  const [cid, setCid] = useState<string | null>(getActiveCompanyId());
 
   const [formData, setFormData] = useState({
     particulars: '',
-    type: 'Percentage', // Default
+    type: 'Percentage',
     value: ''
   });
 
-  const fetchTaxes = async () => {
-    if (!cid) return;
-    console.log("Saving for Company ID:", cid); // <--- Check this in your browser console
+  // 2. Modified fetch function that accepts an ID directly
+  const fetchTaxes = async (companyId: string | null) => {
+    if (!companyId) {
+      // If no ID yet, keep loading false so we don't show a spinner forever
+      setLoading(false); 
+      return;
+    }
+
+    setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('tax_settings') // Make sure this table exists in your Supabase
+        .from('tax_settings')
         .select('*')
-        .eq('company_id', cid)
+        .eq('company_id', companyId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
       setTaxes(data || []);
     } catch (err) {
-      console.error(err);
+      console.error("Tax Fetch Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchTaxes(); }, [cid]);
+  // 3. Effect to handle initial load and "Listen" for Sidebar updates
+  useEffect(() => {
+    // Fetch immediately with whatever is in localStorage
+    fetchTaxes(cid);
+
+    // This listener catches the "shout" from the Sidebar
+    const handleCompanyChange = () => {
+      const newId = getActiveCompanyId();
+      setCid(newId);
+      fetchTaxes(newId);
+    };
+
+    window.addEventListener('companySelected', handleCompanyChange);
+    return () => window.removeEventListener('companySelected', handleCompanyChange);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!cid) return alert("Please select a company first");
+    
     setLoading(true);
     try {
       const { error } = await supabase.from('tax_settings').insert([{
@@ -48,10 +72,12 @@ const Taxes = () => {
         value: parseFloat(formData.value),
         is_selected: false
       }]);
+      
       if (error) throw error;
+      
       setIsModalOpen(false);
       setFormData({ particulars: '', type: 'Percentage', value: '' });
-      fetchTaxes();
+      fetchTaxes(cid);
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -72,9 +98,19 @@ const Taxes = () => {
     }
   };
 
+  const deleteTax = async (id: string) => {
+    if (!window.confirm("Delete this tax setting?")) return;
+    try {
+      const { error } = await supabase.from('tax_settings').delete().eq('id', id);
+      if (error) throw error;
+      setTaxes(taxes.filter(t => t.id !== id));
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Duties & Taxes</h1>
@@ -88,7 +124,6 @@ const Taxes = () => {
         </button>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-300 shadow-xl overflow-hidden">
         <table className="w-full text-left">
           <thead className="bg-slate-50 border-b border-slate-200">
@@ -97,7 +132,7 @@ const Taxes = () => {
               <th className="px-6 py-4">Particulars</th>
               <th className="px-6 py-4">Type</th>
               <th className="px-6 py-4">Value</th>
-              <th className="px-6 py-4 w-24 text-center">Select</th>
+              <th className="px-6 py-4 w-32 text-center">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -114,9 +149,14 @@ const Taxes = () => {
                   {tax.value}{tax.type === 'Percentage' ? '%' : ''}
                 </td>
                 <td className="px-6 py-4 text-center">
-                  <button onClick={() => toggleSelection(tax.id, tax.is_selected)} className="text-primary hover:scale-110 transition-transform">
-                    {tax.is_selected ? <CheckSquare size={20} /> : <Square size={20} className="text-slate-300" />}
-                  </button>
+                  <div className="flex items-center justify-center gap-4">
+                    <button onClick={() => toggleSelection(tax.id, tax.is_selected)} title="Select for billing">
+                      {tax.is_selected ? <CheckSquare size={20} className="text-primary" /> : <Square size={20} className="text-slate-300" />}
+                    </button>
+                    <button onClick={() => deleteTax(tax.id)} className="text-slate-300 hover:text-red-500 transition-colors">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -124,7 +164,6 @@ const Taxes = () => {
         </table>
       </div>
 
-      {/* Modal Form */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New Duty/Tax">
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div className="space-y-1">
