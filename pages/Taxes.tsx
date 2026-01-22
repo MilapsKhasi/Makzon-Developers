@@ -36,24 +36,25 @@ const Taxes = () => {
 
   useEffect(() => {
     // Immediate Load
-    const currentId = getActiveCompanyId();
-    if (currentId) {
-      setCid(currentId);
-      fetchTaxes(currentId);
+useEffect(() => {
+    const activeId = getActiveCompanyId();
+    if (activeId) {
+      setCid(activeId);
+      fetchTaxes(activeId);
     }
 
-    // "The Watcher" - Listens for the Sidebar's shout
-    const handleWorkspaceChange = () => {
-      const newId = localStorage.getItem('active_company_id');
-      console.log("Workspace change detected! New ID:", newId);
-      setCid(newId);
-      fetchTaxes(newId);
+    const handleCompanyChange = () => {
+      const newId = getActiveCompanyId();
+      if (newId !== cid) { // ONLY fetch if the ID actually changed
+        setCid(newId);
+        fetchTaxes(newId);
+      }
     };
 
-    window.addEventListener('companySelected', handleWorkspaceChange);
-    return () => window.removeEventListener('companySelected', handleWorkspaceChange);
-  }, [fetchTaxes]);
-
+    window.addEventListener('companySelected', handleCompanyChange);
+    return () => window.removeEventListener('companySelected', handleCompanyChange);
+  }, [cid, fetchTaxes]); // fetchTaxes is stable because of useCallback
+    
   // ... (Keep handleSubmit, toggleSelection, deleteTax from previous version)
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
