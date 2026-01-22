@@ -55,9 +55,9 @@ const Dashboard = () => {
 
   const statCards = [
     { label: 'Cash Balance', value: formatCurrency(stats.cashBalance), icon: Wallet, color: 'text-violet', bg: 'bg-white' },
-    { label: 'Total Sales', value: formatCurrency(stats.totalSales), icon: BadgeIndianRupee, color: 'text-green-600', bg: 'bg-white' },
-    { label: 'Purchases', value: formatCurrency(stats.totalPurchases), icon: ShoppingCart, color: 'text-red-500', bg: 'bg-white' },
-    { label: 'Active Customers', value: stats.customerCount.toString(), icon: Users, color: 'text-blue-600', bg: 'bg-white' },
+    { label: 'Total Sales', value: formatCurrency(stats.totalSales), icon: BadgeIndianRupee, color: 'text-violet', bg: 'bg-white' },
+    { label: 'Purchases', value: formatCurrency(stats.totalPurchases), icon: ShoppingCart, color: 'text-violet', bg: 'bg-white' },
+    { label: 'Active Customers', value: stats.customerCount.toString(), icon: Users, color: 'text-violet', bg: 'bg-white' },
   ];
 
   return (
