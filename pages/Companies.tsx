@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Building2, Plus, Search, Loader2, LogOut, ArrowRight, RefreshCw, WifiOff } from 'lucide-react';
 import Modal from '../components/Modal';
 import Logo from '../components/Logo';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase.ts';
 
 const Companies = () => {
   const [companies, setCompanies] = useState<any[]>([]);
