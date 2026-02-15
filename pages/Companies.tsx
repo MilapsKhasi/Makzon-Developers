@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Plus, Search, Loader2, LogOut, ArrowRight, RefreshCw, WifiOff } from 'lucide-react';
+import { Building2, Plus, Search, Loader2, LogOut, ArrowRight } from 'lucide-react';
 import Modal from '../components/Modal';
 import Logo from '../components/Logo';
 import { supabase } from '../lib/supabase.ts';
@@ -33,39 +33,52 @@ const Companies = () => {
 
   useEffect(() => { loadData(); }, []);
 
-const handleCreateCompany = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
+  const handleCreateCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
 
-  try {
-    // 1. Get the current logged-in user
-    const { data: { user } } = await supabase.auth.getUser();
+    try {
+      // 1. Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No active session found");
 
-    if (!user) throw new Error("No active session found");
+      // 2. Insert into companies (Matches your Master SQL exactly)
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
+        .insert([
+          { 
+            name: newCompany.name.toUpperCase(), 
+            gstin: newCompany.gstin.toUpperCase(), 
+            address: newCompany.address,
+            created_by: user.id,
+            user_id: user.id 
+          }
+        ])
+        .select()
+        .single();
 
-    // 2. Insert company with user_id
-    const { data, error } = await supabase
-      .from('companies')
-      .insert([
-        { 
-          name: formData.name.toUpperCase(),
-          address: formData.address,
-          // ... other fields
-          user_id: user.id // <--- This links the company to the logged-in person
-        }
-      ])
-      .select();
+      if (companyError) throw companyError;
 
-    if (error) throw error;
-    
-    // Refresh list or redirect
-    alert("Company Created Successfully!");
-  } catch (err: any) {
-    alert(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+      // 3. Update Profile with active_company_id (The "Brain" update)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ active_company_id: companyData.id })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      // 4. Success UI Actions
+      setIsModalOpen(false);
+      setNewCompany({ name: '', gstin: '', address: '' });
+      await loadData(); // Refresh the list
+      alert("Company Registered Successfully!");
+
+    } catch (err: any) {
+      alert("Registration Error: " + err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const selectCompany = (ws: any) => {
     localStorage.setItem('activeCompanyId', ws.id);
@@ -146,27 +159,48 @@ const handleCreateCompany = async (e: React.FormEvent) => {
             )}
         </div>
       </div>
+
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Register Business Workspace" maxWidth="max-w-2xl">
         <form onSubmit={handleCreateCompany} className="p-8 space-y-6 bg-white">
           <div className="space-y-6 border border-slate-200 rounded-md p-8 bg-white">
             <div className="space-y-1.5">
               <label className="text-sm font-bold uppercase text-slate-400">Legal Business Name</label>
-              <input required type="text" value={newCompany.name} onChange={(e) =>
-                setNewCompany({ ...newCompany, name: e.target.value })} className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-base font-bold uppercase focus:border-slate-400" placeholder="e.g. ACME SOLUTIONS" />
+              <input 
+                required 
+                type="text" 
+                value={newCompany.name} 
+                onChange={(e) => setNewCompany({ ...newCompany, name: e.target.value })} 
+                className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-base font-bold uppercase focus:border-slate-400" 
+                placeholder="e.g. ACME SOLUTIONS" 
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-bold uppercase text-slate-400">GSTIN Identification</label>
-              <input type="text" value={newCompany.gstin} onChange={(e) =>
-                setNewCompany({ ...newCompany, gstin: e.target.value.toUpperCase() })} className="w-full px-4 py-3 border border-slate-200 rounded outline-none font-mono text-sm uppercase focus:border-slate-400" placeholder="27AAAAA0000A1Z5" />
+              <input 
+                type="text" 
+                value={newCompany.gstin} 
+                onChange={(e) => setNewCompany({ ...newCompany, gstin: e.target.value })} 
+                className="w-full px-4 py-3 border border-slate-200 rounded outline-none font-mono text-sm uppercase focus:border-slate-400" 
+                placeholder="27AAAAA0000A1Z5" 
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-bold uppercase text-slate-400">Registered Office Address</label>
-              <textarea value={newCompany.address} onChange={(e) =>
-                setNewCompany({ ...newCompany, address: e.target.value })} rows={3} className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-sm focus:border-slate-400 resize-none" placeholder="Enter complete office address..." />
+              <textarea 
+                value={newCompany.address} 
+                onChange={(e) => setNewCompany({ ...newCompany, address: e.target.value })} 
+                rows={3} 
+                className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-sm focus:border-slate-400 resize-none" 
+                placeholder="Enter complete office address..." 
+              />
             </div>
           </div>
           <div className="flex items-center justify-end space-x-6 pt-4">
-            <button type="submit" disabled={creating} className="bg-primary text-slate-900 px-10 py-3 rounded-md font-bold text-sm hover:bg-primary-dark shadow-lg active:scale-95 disabled:opacity-50 flex items-center">
+            <button 
+              type="submit" 
+              disabled={creating} 
+              className="bg-primary text-slate-900 px-10 py-3 rounded-md font-bold text-sm hover:bg-primary-dark shadow-lg active:scale-95 disabled:opacity-50 flex items-center"
+            >
               {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               {creating ? 'REGISTERING...' : 'SAVE WORKSPACE'}
             </button>
