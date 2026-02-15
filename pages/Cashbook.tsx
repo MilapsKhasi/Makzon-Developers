@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Loader2, Calendar, Trash2, Edit, Eye, ArrowLeft, FileDown, AlertCircle } from 'lucide-react';
-import { getActiveCompanyId, formatDate } from '../utils/helpers';
+import { Plus, Search, Loader2, Calendar, Trash2, Edit, Eye, ArrowLeft, FileDown, AlertCircle, RefreshCw } from 'lucide-react';
+import { formatDate } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import CashbookSheet from '../components/CashbookSheet';
 import { exportToCSV } from '../utils/exportHelper';
+import { useCompany } from '../context/CompanyContext';
 
 const Cashbook = () => {
+  const { activeCompany, loading: companyLoading } = useCompany();
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewState, setViewState] = useState<'list' | 'entry'>('list');
@@ -14,45 +16,30 @@ const Cashbook = () => {
   const [dbError, setDbError] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  // activeCompanyId is derived from local storage/helpers
-  const activeCompanyId = getActiveCompanyId();
-
   const loadData = async () => {
-    // Only fetch if we have a valid company context
-    const cid = getActiveCompanyId();
-    
-    // Debug log as requested
-    console.log('Current Company ID being used:', cid);
-
-    if (!cid) {
+    // Rely strictly on activeCompany from context
+    if (!activeCompany?.id) {
+      console.log('Cashbook: No active company ID available yet.');
       setLoading(false);
-      setEntries([]);
       return;
     }
 
     setLoading(true);
     try {
-      // Fetching with strict filtering
+      console.log('Cashbook: Fetching for Company ID:', activeCompany.id);
+      
       const { data, error } = await supabase
         .from('cashbooks')
         .select('*')
-        .eq('company_id', cid)
-        .eq('is_deleted', false)
+        .eq('company_id', activeCompany.id)
+        .or('is_deleted.eq.false,is_deleted.is.null') // Robust check for boolean or null
         .order('date', { ascending: false });
       
-      // Debug log raw response as requested
-      console.log('Supabase Raw Response:', { data, error });
+      console.log('Cashbook: Supabase Raw Response:', { data, error });
 
       if (error) {
-        // Detailed error logging
-        console.error("Cashbook API Fetch Failed:", {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
-
-        if (error.message.includes('schema cache') || error.message.includes('not found') || error.message.includes('does not exist')) {
+        console.error("Cashbook API Fetch Failed:", error);
+        if (error.message.includes('schema cache') || error.message.includes('not found')) {
            setDbError(true);
         }
         throw error;
@@ -61,8 +48,8 @@ const Cashbook = () => {
       setEntries(data || []);
       setDbError(false);
     } catch (e: any) {
-      console.warn("Cashbook module falling back to local storage cache for ID:", cid);
-      const localData = localStorage.getItem(`local_cashbook_${cid}`);
+      console.warn("Cashbook: Fetch failed, checking local cache for ID:", activeCompany.id);
+      const localData = localStorage.getItem(`local_cashbook_${activeCompany.id}`);
       if (localData) {
         setEntries(JSON.parse(localData));
       } else {
@@ -74,14 +61,15 @@ const Cashbook = () => {
   };
 
   useEffect(() => {
-    // Check if activeCompanyId exists before fetching
-    if (!activeCompanyId) {
+    // Wait for CompanyContext to finish loading the initial session/company
+    if (companyLoading) return;
+
+    if (!activeCompany?.id) {
       setEntries([]);
       setLoading(false);
       return;
     }
 
-    // Load data immediately on page mount / company change
     loadData();
 
     const handleSettingsChange = () => {
@@ -89,14 +77,10 @@ const Cashbook = () => {
     };
     
     window.addEventListener('appSettingsChanged', handleSettingsChange);
-    
-    // Cleanup function: release listeners and clear state to prevent "old data" flickers
     return () => {
       window.removeEventListener('appSettingsChanged', handleSettingsChange);
-      setEntries([]); 
-      setLoading(true);
     };
-  }, [activeCompanyId]); // Dependency array includes activeCompanyId for navigation/switch refreshes
+  }, [activeCompany?.id, companyLoading]);
 
   const stats = useMemo(() => {
     return entries.reduce((acc, entry) => ({
@@ -107,13 +91,10 @@ const Cashbook = () => {
   }, [entries]);
 
   const handleExportCSV = async () => {
-    const cid = getActiveCompanyId();
-    if (!cid || entries.length === 0) return;
+    if (!activeCompany?.id || entries.length === 0) return;
 
     setExporting(true);
     try {
-      const { data: company } = await supabase.from('companies').select('*').eq('id', cid).single();
-      
       const headers = ['SR', 'STMT DATE', 'INCOME (INR)', 'EXPENSE (INR)', 'NET BALANCE (INR)'];
       const rows = entries.map((e, i) => [
         i + 1,
@@ -124,11 +105,11 @@ const Cashbook = () => {
       ]);
 
       const config = {
-        companyName: company?.name || 'Cashbook Report',
-        gstin: company?.gstin || 'N/A',
-        email: company?.email || '',
-        phone: company?.phone || '',
-        address: company?.address || 'N/A',
+        companyName: activeCompany.name || 'Cashbook Report',
+        gstin: activeCompany.gstin || 'N/A',
+        email: '',
+        phone: '',
+        address: activeCompany.address || 'N/A',
         reportTitle: 'Cashbook Register Statement',
         dateRange: 'Full History'
       };
@@ -149,7 +130,8 @@ const Cashbook = () => {
     }
 
     setLoading(true);
-    const cid = getActiveCompanyId();
+    const cid = activeCompany?.id;
+    if (!cid) return;
     
     const payload = { 
       company_id: cid, 
@@ -161,35 +143,29 @@ const Cashbook = () => {
       is_deleted: false
     };
 
-    // Log the Payload before sending
-    console.log('Sending this to Supabase:', payload);
+    console.log('Cashbook: Saving Payload:', payload);
 
     try {
       let queryResult;
       if (data.id && typeof data.id === 'string' && !data.id.startsWith('local_')) {
         queryResult = await supabase.from('cashbooks').update(payload).eq('id', data.id).select();
       } else {
-        // Including created_at as it is now part of the schema
         queryResult = await supabase.from('cashbooks').insert([{ ...payload, created_at: new Date().toISOString() }]).select();
       }
       
       const { data: responseData, error: responseError } = queryResult;
-
-      // Report the Truth to the console
-      console.log('Supabase Save Response:', { data: responseData, error: responseError });
+      console.log('Cashbook: Save Response:', { data: responseData, error: responseError });
 
       if (responseError) {
-        // Alert on Failure
         alert('Save Failed: ' + responseError.message);
         throw responseError;
       }
       
       await loadData();
     } catch (e: any) {
-      console.warn("Sync failed, updating local copy:", e.message);
+      console.warn("Cashbook: Sync failed, using local fallback:", e.message);
       const localKey = `local_cashbook_${cid}`;
       const existing = JSON.parse(localStorage.getItem(localKey) || '[]');
-      
       let updated;
       if (data.id) {
         updated = existing.map((e: any) => e.id === data.id ? { ...e, ...payload } : e);
@@ -201,7 +177,6 @@ const Cashbook = () => {
         };
         updated = [localEntry, ...existing];
       }
-      
       localStorage.setItem(localKey, JSON.stringify(updated));
       setEntries(updated);
     } finally { 
@@ -212,13 +187,11 @@ const Cashbook = () => {
   };
 
   const deleteEntry = async (id: string) => {
-      const cid = getActiveCompanyId();
       if (!confirm("Permanently delete this statement?")) return;
-      
       setLoading(true);
       try {
         if (id.startsWith('local_')) {
-          const localKey = `local_cashbook_${cid}`;
+          const localKey = `local_cashbook_${activeCompany?.id}`;
           const existing = JSON.parse(localStorage.getItem(localKey) || '[]');
           const updated = existing.filter((e: any) => e.id !== id);
           localStorage.setItem(localKey, JSON.stringify(updated));
@@ -235,14 +208,21 @@ const Cashbook = () => {
       }
   };
 
-  // UI Fallback if no workspace is selected
-  if (!activeCompanyId) {
+  if (companyLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!activeCompany?.id) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-10 bg-white border border-slate-200 rounded-md">
         <AlertCircle className="w-16 h-16 text-amber-500 mb-4" />
         <h2 className="text-xl font-bold text-slate-900 mb-2">Workspace Required</h2>
         <p className="text-slate-500 text-center max-w-md">
-          Please select a workspace first from the top menu or the workspaces directory to view and manage the cashbook.
+          Please select a workspace first from the top menu to view and manage the cashbook.
         </p>
       </div>
     );
@@ -266,7 +246,16 @@ const Cashbook = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex justify-between items-center">
-        <h1 className="text-[20px] font-normal text-slate-900">Cashbook Register</h1>
+        <div className="flex items-center space-x-3">
+          <h1 className="text-[20px] font-normal text-slate-900">Cashbook Register</h1>
+          <button 
+            onClick={loadData} 
+            title="Refresh Data"
+            className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
         <div className="flex space-x-2">
             <button 
               onClick={handleExportCSV}
@@ -287,13 +276,13 @@ const Cashbook = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[ 
-          { label: 'TOTAL INCOME', value: stats.income }, 
-          { label: 'TOTAL EXPENSE', value: stats.expense }, 
-          { label: 'NET BALANCE', value: stats.balance } 
+          { label: 'TOTAL INCOME', value: stats.income, color: 'text-emerald-600' }, 
+          { label: 'TOTAL EXPENSE', value: stats.expense, color: 'text-rose-600' }, 
+          { label: 'NET BALANCE', value: stats.balance, color: 'text-slate-900' } 
         ].map((stat, i) => (
           <div key={i} className="bg-white border border-slate-200 rounded-md p-5 flex flex-col">
             <span className="text-[11px] text-slate-500 font-normal uppercase tracking-tight mb-1 block">{stat.label}</span>
-            <span className="text-[24px] font-normal text-slate-900 leading-none font-mono">
+            <span className={`text-[24px] font-normal leading-none font-mono ${stat.color}`}>
               {stat.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </span>
           </div>
