@@ -121,12 +121,9 @@ const Stock = () => {
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, item: null })} onConfirm={confirmDelete} title="Delete Stock Item" message={`Are you sure you want to remove "${deleteDialog.item?.name}" from master?`} />
       
       <div className="flex items-center justify-between shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Inventory Control</h1>
-          <p className="text-slate-500 text-sm font-medium">Manage stock levels and track inward purchase entries.</p>
-        </div>
-        <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-slate-900 px-8 py-3 rounded-lg font-bold text-xs hover:bg-primary-dark transition-all uppercase flex items-center shadow-sm">
-            <Plus className="w-4 h-4 mr-2" /> New SKU Item
+        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Inventory Control</h1>
+        <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-slate-900 px-8 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-all capitalize flex items-center shadow-sm">
+            <Plus className="w-4 h-4 mr-2" /> New Sku Item
         </button>
       </div>
 
@@ -151,10 +148,10 @@ const Stock = () => {
 
                 return (
                   <div key={item.id} onClick={() => setSelectedId(String(item.id))} className={`p-4 border rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-primary border-slate-900' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
-                      <h3 className={`font-bold uppercase text-[11px] truncate mb-1 ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>{item.name}</h3>
+                      <h3 className={`font-medium capitalize text-[11px] truncate mb-1 ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>{item.name}</h3>
                       <div className="flex justify-between items-end">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">HSN: {item.hsn || 'N/A'}</span>
-                          <span className={`font-mono text-lg font-bold leading-none ${isSelected ? 'text-slate-900' : 'text-slate-900'}`}>
+                          <span className="text-[10px] font-medium text-slate-400 capitalize tracking-tighter">Hsn: {item.hsn || 'N/A'}</span>
+                          <span className={`font-mono text-lg font-medium leading-none ${isSelected ? 'text-slate-900' : 'text-slate-900'}`}>
                               {currentBalance.toFixed(0)} <span className="text-[10px] opacity-60 font-sans">{item.unit || 'PCS'}</span>
                           </span>
                       </div>
@@ -174,10 +171,10 @@ const Stock = () => {
                     <Package className="w-6 h-6 text-slate-400" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tight">{selectedItem.name}</h2>
+                    <h2 className="text-xl font-medium text-slate-900 capitalize tracking-tight">{selectedItem.name}</h2>
                     <div className="flex items-center space-x-2 mt-1">
-                      <span className="text-[9px] font-bold text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded uppercase">HSN {selectedItem.hsn || 'N/A'}</span>
-                      <span className="text-[9px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded uppercase">SKU {selectedItem.sku || 'N/A'}</span>
+                      <span className="text-[9px] font-medium text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded capitalize">Hsn {selectedItem.hsn || 'N/A'}</span>
+                      <span className="text-[9px] font-medium text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded capitalize">Sku {selectedItem.sku || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
@@ -190,57 +187,57 @@ const Stock = () => {
               
               <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-xl">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Balance</p>
-                      <p className="text-3xl font-bold font-mono text-primary">{itemStats.stockBalance.toFixed(0)} <span className="text-xs font-normal opacity-50">{selectedItem.unit}</span></p>
+                  <div className="bg-white text-slate-900 p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-[9px] font-medium text-slate-400 capitalize tracking-widest mb-1">Current Balance</p>
+                      <p className="text-3xl font-medium font-mono text-primary-dark">{itemStats.stockBalance.toFixed(0)} <span className="text-xs font-normal opacity-50">{selectedItem.unit}</span></p>
                   </div>
                   <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Purchased (Inward)</p>
+                      <p className="text-[9px] font-medium text-slate-400 capitalize tracking-widest mb-1">Purchased (Inward)</p>
                       <div className="flex items-center text-emerald-600">
                         <ArrowDownLeft className="w-4 h-4 mr-1" />
-                        <p className="text-2xl font-bold font-mono">{itemStats.inwardTotal.toFixed(0)}</p>
+                        <p className="text-2xl font-medium font-mono">{itemStats.inwardTotal.toFixed(0)}</p>
                       </div>
                   </div>
                   <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Sold (Outward)</p>
+                      <p className="text-[9px] font-medium text-slate-400 capitalize tracking-widest mb-1">Sold (Outward)</p>
                       <div className="flex items-center text-rose-600">
                         <ArrowUpRight className="w-4 h-4 mr-1" />
-                        <p className="text-2xl font-bold font-mono">{itemStats.outwardTotal.toFixed(0)}</p>
+                        <p className="text-2xl font-medium font-mono">{itemStats.outwardTotal.toFixed(0)}</p>
                       </div>
                   </div>
                   <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Standard Cost</p>
-                      <p className="text-2xl font-bold text-slate-900 font-mono">₹{selectedItem.rate || 0}</p>
+                      <p className="text-[9px] font-medium text-slate-400 capitalize tracking-widest mb-1">Standard Cost</p>
+                      <p className="text-2xl font-medium text-slate-900 font-mono">₹{selectedItem.rate || 0}</p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                  <h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center">
                       <History className="w-4 h-4 mr-2" /> Stock Movement Log
                   </h4>
                   <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
                     <table className="clean-table">
                       <thead>
                           <tr>
-                              <th>Date</th>
-                              <th>Voucher #</th>
-                              <th>Type</th>
-                              <th>Party</th>
-                              <th className="text-right">Quantity</th>
+                              <th className="font-medium capitalize">Date</th>
+                              <th className="font-medium capitalize">Voucher #</th>
+                              <th className="font-medium capitalize">Type</th>
+                              <th className="font-medium capitalize">Party</th>
+                              <th className="text-right font-medium capitalize">Quantity</th>
                           </tr>
                       </thead>
                       <tbody>
                           {itemStats.transactions.map((t, idx) => (
                               <tr key={idx} className="hover:bg-slate-50 transition-none">
                                   <td className="text-slate-500">{formatDate(t.date)}</td>
-                                  <td className="font-mono font-bold text-slate-900">{t.docNo}</td>
+                                  <td className="font-mono font-medium text-slate-900">{t.docNo}</td>
                                   <td>
-                                      <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-sm ${t.type === 'Sale' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-700'}`}>
+                                      <span className={`text-[9px] font-medium capitalize px-2 py-0.5 rounded-sm ${t.type === 'Sale' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-700'}`}>
                                           {t.type}
                                       </span>
                                   </td>
-                                  <td className="uppercase font-medium text-slate-700 truncate max-w-[200px]">{t.party}</td>
-                                  <td className={`text-right font-bold font-mono ${t.type === 'Purchase' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                  <td className="capitalize font-medium text-slate-700 truncate max-w-[200px]">{t.party}</td>
+                                  <td className={`text-right font-medium font-mono ${t.type === 'Purchase' ? 'text-emerald-600' : 'text-rose-600'}`}>
                                       {t.type === 'Purchase' ? '+' : '-'}{t.qty}
                                   </td>
                               </tr>

@@ -32,7 +32,6 @@ const Dashboard = () => {
     }
 
     try {
-      // Dual query: Bills (Purchases) and Sales Invoices (Sales)
       let billQuery = supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false);
       let saleQuery = supabase.from('sales_invoices').select('*').eq('company_id', cid).eq('is_deleted', false);
 
@@ -85,11 +84,11 @@ const Dashboard = () => {
   const StatBox = ({ label, value, subLabel, icon: Icon }: any) => (
     <div className="bg-white border border-slate-200 p-4 rounded hover:border-slate-300">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{label}</span>
+        <span className="text-[11px] font-medium text-slate-500 capitalize tracking-tight">{label}</span>
         <Icon className="w-3.5 h-3.5 text-slate-300" />
       </div>
-      <div className="text-xl font-bold text-slate-900 leading-none mb-1">{value}</div>
-      {subLabel && <div className="text-[10px] text-slate-400 font-medium uppercase">{subLabel}</div>}
+      <div className="text-xl font-medium text-slate-900 leading-none mb-1">{value}</div>
+      {subLabel && <div className="text-[10px] text-slate-400 font-medium capitalize">{subLabel}</div>}
     </div>
   );
 
@@ -100,10 +99,10 @@ const Dashboard = () => {
       </Modal>
 
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900 uppercase">Executive Summary</h1>
+        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Executive Summary</h1>
         <div className="flex items-center space-x-2">
           <DateFilter onFilterChange={setDateRange} />
-          <button onClick={() => setIsPurchaseModalOpen(true)} className="px-4 py-2 bg-primary text-slate-900 font-bold text-xs rounded uppercase hover:bg-primary-dark">New Purchase</button>
+          <button onClick={() => setIsPurchaseModalOpen(true)} className="px-4 py-2 bg-primary text-slate-900 font-medium text-xs rounded capitalize hover:bg-primary-dark">New Purchase</button>
         </div>
       </div>
 
@@ -111,12 +110,12 @@ const Dashboard = () => {
         <StatBox label="Sales (Gross)" value={formatCurrency(stats.totalSales)} subLabel={`Net Recv: ${formatCurrency(stats.receivables)}`} icon={BadgeIndianRupee} />
         <StatBox label="Purchases" value={formatCurrency(stats.totalPurchases)} subLabel={`Net Payable: ${formatCurrency(stats.payables)}`} icon={ShoppingCart} />
         <StatBox label="Active Partners" value={stats.totalVendors + stats.totalCustomers} subLabel={`${stats.totalVendors} Vendors / ${stats.totalCustomers} Customers`} icon={Users} />
-        <StatBox label="Inventory" value={stats.stockItems} subLabel="Registered SKU items" icon={Package} />
+        <StatBox label="Inventory" value={stats.stockItems} subLabel="Registered SKU Items" icon={Package} />
       </div>
 
       <div className="bg-white border border-slate-200 rounded overflow-hidden">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-          <h2 className="text-sm font-bold text-slate-700 uppercase">Recent Transactions</h2>
+          <h2 className="text-sm font-medium text-slate-700 capitalize">Recent Transactions</h2>
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 w-3.5 h-3.5" />
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filter list..." className="pl-7 pr-3 py-1 border border-slate-200 rounded text-xs outline-none focus:border-slate-300 w-48" />
@@ -126,26 +125,26 @@ const Dashboard = () => {
         <table className="clean-table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Document #</th>
-              <th>Party Name</th>
-              <th className="text-right">Total Amount</th>
-              <th className="text-center">Status</th>
+              <th className="font-medium capitalize">Date</th>
+              <th className="font-medium capitalize">Type</th>
+              <th className="font-medium capitalize">Document #</th>
+              <th className="font-medium capitalize">Party Name</th>
+              <th className="text-right font-medium capitalize">Total Amount</th>
+              <th className="text-center font-medium capitalize">Status</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-20 text-slate-400 uppercase text-[10px] font-bold tracking-widest">Refreshing Data...</td></tr>
+              <tr><td colSpan={6} className="text-center py-20 text-slate-400 capitalize text-[10px] font-medium tracking-widest">Refreshing Data...</td></tr>
             ) : filteredVouchers.map((v) => (
               <tr key={v.id}>
                 <td className="text-slate-500">{formatDate(v.date)}</td>
-                <td className={`text-[10px] font-bold uppercase ${v.type === 'Sale' ? 'text-blue-600' : 'text-rose-600'}`}>{v.type}</td>
-                <td className="font-mono font-bold">{v.bill_number}</td>
-                <td className="uppercase font-medium text-slate-700">{v.vendor_name || v.customer_name}</td>
-                <td className="text-right font-mono font-bold">{formatCurrency(v.grand_total, false)}</td>
+                <td className={`text-[10px] font-medium capitalize ${v.type === 'Sale' ? 'text-blue-600' : 'text-rose-600'}`}>{v.type}</td>
+                <td className="font-mono font-medium">{v.bill_number}</td>
+                <td className="capitalize font-medium text-slate-700">{v.vendor_name || v.customer_name}</td>
+                <td className="text-right font-mono font-medium">{formatCurrency(v.grand_total, false)}</td>
                 <td className="text-center">
-                  <span className={`text-[9px] px-2 py-0.5 rounded-sm font-bold uppercase ${v.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>{v.status}</span>
+                  <span className={`text-[9px] px-2 py-0.5 rounded-sm font-medium capitalize ${v.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>{v.status}</span>
                 </td>
               </tr>
             ))}

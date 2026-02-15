@@ -15,7 +15,7 @@ const Reports = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [companyInfo, setCompanyInfo] = useState<any>(null);
 
-  const tabs = ['Purchases', 'Sales Register', 'Vendors Summary', 'Customers Summary', 'GST Summary'];
+  const tabs = ['Purchases', 'Sales Register', 'Vendors Summary', 'Customers Summary', 'Gst Summary'];
 
   const loadData = async () => {
     setLoading(true);
@@ -28,7 +28,6 @@ const Reports = () => {
     const { data: company } = await supabase.from('companies').select('*').eq('id', cid).single();
     setCompanyInfo(company);
 
-    // Fetch from both tables
     const [{ data: purchaseData }, { data: saleData }] = await Promise.all([
       supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false),
       supabase.from('sales_invoices').select('*').eq('company_id', cid).eq('is_deleted', false)
@@ -48,7 +47,7 @@ const Reports = () => {
         }
 
         const typeFilter = activeTab === 'Purchases' || activeTab === 'Vendors Summary' ? 'Purchase' : 'Sale';
-        if (activeTab === 'GST Summary') return true;
+        if (activeTab === 'Gst Summary') return true;
         if (item.type !== typeFilter) return false;
         
         const search = searchQuery.toLowerCase();
@@ -71,13 +70,13 @@ const Reports = () => {
 
     if (activeTab === 'Purchases' || activeTab === 'Sales Register') {
       return bills.map(doc => ({
-        "DATE": formatDate(doc.date),
-        "DOC NO": doc.bill_number || doc.invoice_number,
-        "PARTY": doc.vendor_name || doc.customer_name,
-        "TAXABLE": (Number(doc.total_without_gst) || 0).toFixed(2),
-        "GST": (Number(doc.total_gst) || 0).toFixed(2),
-        "NET TOTAL": (Number(doc.grand_total) || 0).toFixed(2),
-        "STATUS": doc.status || 'Pending'
+        "Date": formatDate(doc.date),
+        "Doc No": doc.bill_number || doc.invoice_number,
+        "Party": doc.vendor_name || doc.customer_name,
+        "Taxable": (Number(doc.total_without_gst) || 0).toFixed(2),
+        "Gst": (Number(doc.total_gst) || 0).toFixed(2),
+        "Net Total": (Number(doc.grand_total) || 0).toFixed(2),
+        "Status": doc.status || 'Pending'
       }));
     }
 
@@ -86,18 +85,18 @@ const Reports = () => {
       bills.forEach(bill => {
         const name = bill.vendor_name || bill.customer_name || 'Unknown';
         if (!grouped[name]) {
-          grouped[name] = { "PARTY NAME": name, "GSTIN": bill.gstin || 'N/A', "DOC COUNT": 0, "TAXABLE": 0, "GST": 0, "GRAND TOTAL": 0 };
+          grouped[name] = { "Party Name": name, "Gstin": bill.gstin || 'N/A', "Doc Count": 0, "Taxable": 0, "Gst": 0, "Grand Total": 0 };
         }
-        grouped[name]["DOC COUNT"] += 1;
-        grouped[name]["TAXABLE"] += Number(bill.total_without_gst || 0);
-        grouped[name]["GST"] += Number(bill.total_gst || 0);
-        grouped[name]["GRAND TOTAL"] += Number(bill.grand_total || 0);
+        grouped[name]["Doc Count"] += 1;
+        grouped[name]["Taxable"] += Number(bill.total_without_gst || 0);
+        grouped[name]["Gst"] += Number(bill.total_gst || 0);
+        grouped[name]["Grand Total"] += Number(bill.grand_total || 0);
       });
       return Object.values(grouped).map(v => ({
         ...v,
-        "TAXABLE": Number(v["TAXABLE"]).toFixed(2),
-        "GST": Number(v["GST"]).toFixed(2),
-        "GRAND TOTAL": Number(v["GRAND TOTAL"]).toFixed(2)
+        "Taxable": Number(v["Taxable"]).toFixed(2),
+        "Gst": Number(v["Gst"]).toFixed(2),
+        "Grand Total": Number(v["Grand Total"]).toFixed(2)
       }));
     }
 
@@ -133,12 +132,12 @@ const Reports = () => {
       <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} onExport={handleExport} reportName={`${activeTab}`} />
 
       <div className="flex items-center justify-between print:hidden">
-        <h1 className="text-[20px] font-normal text-slate-900">Reports Engine</h1>
+        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Reports Engine</h1>
         <div className="flex items-center space-x-2">
           <button 
             onClick={() => setIsExportModalOpen(true)}
             disabled={reportTableData.length === 0}
-            className="px-6 py-2 bg-white border border-slate-200 rounded-md text-xs font-bold uppercase hover:bg-slate-50 disabled:opacity-50 shadow-sm transition-all"
+            className="px-6 py-2 bg-white border border-slate-200 rounded-md text-xs font-medium capitalize hover:bg-slate-50 disabled:opacity-50 shadow-sm transition-all"
           >
             Export Statement
           </button>
@@ -163,8 +162,8 @@ const Reports = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`w-full text-left px-4 py-2 text-xs font-normal transition-none ${
-                activeTab === tab ? 'bg-slate-50 text-slate-900 font-bold border-r-2 border-slate-900' : 'text-slate-500 hover:bg-slate-50'
+              className={`w-full text-left px-4 py-2 text-xs font-medium transition-none capitalize ${
+                activeTab === tab ? 'bg-slate-50 text-slate-900 font-medium border-r-2 border-slate-900' : 'text-slate-500 hover:bg-slate-50'
               }`}
             >
               {tab}
@@ -174,8 +173,8 @@ const Reports = () => {
 
         <div className="flex-1 bg-white border border-slate-200 rounded-md overflow-hidden flex flex-col shadow-sm print:border-none">
           <div className="p-4 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center">
-             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{activeTab} Register</h3>
-             <span className="text-[10px] font-bold text-slate-400">{reportTableData.length} entries matching</span>
+             <h3 className="text-[10px] font-medium text-slate-400 capitalize tracking-widest">{activeTab} Register</h3>
+             <span className="text-[10px] font-medium text-slate-400 capitalize">{reportTableData.length} entries matching</span>
           </div>
 
           <div className="flex-1 overflow-auto bg-white custom-scrollbar">
@@ -184,14 +183,14 @@ const Reports = () => {
             ) : reportTableData.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center py-32 text-center">
                     <FileText className="w-12 h-12 text-slate-100 mb-4" />
-                    <p className="text-slate-300 italic text-xs">Report set is currently empty.</p>
+                    <p className="text-slate-300 italic text-xs capitalize">Report set is currently empty.</p>
                 </div>
             ) : (
                 <table className="clean-table w-full text-[11px]">
                   <thead>
                     <tr>
                       {Object.keys(reportTableData[0] || {}).map(h => (
-                          <th key={h} className="whitespace-nowrap font-black text-slate-500 bg-slate-50/50">{h}</th>
+                          <th key={h} className="whitespace-nowrap font-medium text-slate-500 bg-slate-50/50 capitalize">{h}</th>
                       ))}
                     </tr>
                   </thead>

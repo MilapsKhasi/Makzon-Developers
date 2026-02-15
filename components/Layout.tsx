@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu } from 'lucide-react';
@@ -40,13 +39,13 @@ const Layout = () => {
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: BadgeIndianRupee, label: 'Sales/Invoices', path: '/sales' },
+    { icon: BadgeIndianRupee, label: 'Sales Invoices', path: '/sales' },
     { icon: ShoppingCart, label: 'Purchase Bills', path: '/bills' },
     { icon: UserSquare2, label: 'Customers', path: '/customers' },
     { icon: Users, label: 'Vendors', path: '/vendors' },
     { icon: Package, label: 'Stock Master', path: '/stock' },
     { icon: BookOpen, label: 'Cashbook', path: '/cashbook' },
-    { icon: Percent, label: 'Duties/Taxes', path: '/duties-taxes' },
+    { icon: Percent, label: 'Duties & Taxes', path: '/duties-taxes' },
     { icon: BarChart3, label: 'Reports', path: '/reports' },
     { icon: SettingsIcon, label: 'Settings', path: '/settings' },
   ];
@@ -63,12 +62,12 @@ const Layout = () => {
               key={item.path}
               to={item.path}
               className={`flex items-center px-3 py-2 rounded transition-colors ${location.pathname === item.path
-                ? 'bg-primary text-slate-900 font-bold'
+                ? 'bg-primary text-slate-900 font-medium'
                 : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
                 }`}
             >
               <item.icon className={`w-4 h-4 shrink-0 ${location.pathname === item.path ? 'text-slate-900' : 'text-slate-400'}`} />
-              {isSidebarOpen && <span className="ml-3 text-[13px] whitespace-nowrap">{item.label}</span>}
+              {isSidebarOpen && <span className="ml-3 text-[13px] whitespace-nowrap capitalize">{item.label}</span>}
             </Link>
           ))}
         </nav>
@@ -86,8 +85,8 @@ const Layout = () => {
                 className="flex items-center px-3 py-1 bg-white border border-slate-200 rounded text-sm hover:border-slate-300 transition-colors"
               >
                 <Building2 className="w-3.5 h-3.5 text-slate-400 mr-2" />
-                <span className="font-semibold text-slate-700 uppercase text-[11px] max-w-[150px] truncate">
-                  {activeCompany?.name || 'Workspace'}
+                <span className="font-medium text-slate-700 capitalize text-[11px] max-w-[150px] truncate">
+                  {activeCompany?.name || 'Select Workspace'}
                 </span>
                 <ChevronDown className="ml-2 w-3 h-3 text-slate-400" />
               </button>
@@ -97,10 +96,10 @@ const Layout = () => {
                     <button
                       key={ws.id}
                       onClick={() => handleSwitchWorkspace(ws)}
-                      className={`w-full flex items-center px-4 py-2 text-left text-xs hover:bg-slate-50 ${activeCompany?.id === ws.id ? 'bg-primary/10 font-bold' : ''}`}
+                      className={`w-full flex items-center px-4 py-2 text-left text-xs hover:bg-slate-50 ${activeCompany?.id === ws.id ? 'bg-primary/10 font-medium' : ''}`}
                     >
                       <Building2 className="w-3.5 h-3.5 text-slate-400 mr-2" />
-                      <span className="truncate uppercase">{ws.name}</span>
+                      <span className="truncate capitalize">{ws.name}</span>
                     </button>
                   ))}
                 </div>

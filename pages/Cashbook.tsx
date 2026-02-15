@@ -17,26 +17,20 @@ const Cashbook = () => {
   const [exporting, setExporting] = useState(false);
 
   const loadData = async () => {
-    // Rely strictly on activeCompany from context
     if (!activeCompany?.id) {
-      console.log('Cashbook: No active company ID available yet.');
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
-      console.log('Cashbook: Fetching for Company ID:', activeCompany.id);
-      
       const { data, error } = await supabase
         .from('cashbooks')
         .select('*')
         .eq('company_id', activeCompany.id)
-        .or('is_deleted.eq.false,is_deleted.is.null') // Robust check for boolean or null
+        .or('is_deleted.eq.false,is_deleted.is.null')
         .order('date', { ascending: false });
       
-      console.log('Cashbook: Supabase Raw Response:', { data, error });
-
       if (error) {
         console.error("Cashbook API Fetch Failed:", error);
         if (error.message.includes('schema cache') || error.message.includes('not found')) {
@@ -61,7 +55,6 @@ const Cashbook = () => {
   };
 
   useEffect(() => {
-    // Wait for CompanyContext to finish loading the initial session/company
     if (companyLoading) return;
 
     if (!activeCompany?.id) {
@@ -95,7 +88,7 @@ const Cashbook = () => {
 
     setExporting(true);
     try {
-      const headers = ['SR', 'STMT DATE', 'INCOME (INR)', 'EXPENSE (INR)', 'NET BALANCE (INR)'];
+      const headers = ['Sr', 'Stmt Date', 'Income (Inr)', 'Expense (Inr)', 'Net Balance (Inr)'];
       const rows = entries.map((e, i) => [
         i + 1,
         e.date,
@@ -143,8 +136,6 @@ const Cashbook = () => {
       is_deleted: false
     };
 
-    console.log('Cashbook: Saving Payload:', payload);
-
     try {
       let queryResult;
       if (data.id && typeof data.id === 'string' && !data.id.startsWith('local_')) {
@@ -154,7 +145,6 @@ const Cashbook = () => {
       }
       
       const { data: responseData, error: responseError } = queryResult;
-      console.log('Cashbook: Save Response:', { data: responseData, error: responseError });
 
       if (responseError) {
         alert('Save Failed: ' + responseError.message);
@@ -220,7 +210,7 @@ const Cashbook = () => {
     return (
       <div className="h-full flex flex-col items-center justify-center p-10 bg-white border border-slate-200 rounded-md">
         <AlertCircle className="w-16 h-16 text-amber-500 mb-4" />
-        <h2 className="text-xl font-bold text-slate-900 mb-2">Workspace Required</h2>
+        <h2 className="text-xl font-medium text-slate-900 mb-2 capitalize">Workspace Required</h2>
         <p className="text-slate-500 text-center max-w-md">
           Please select a workspace first from the top menu to view and manage the cashbook.
         </p>
@@ -247,7 +237,7 @@ const Cashbook = () => {
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-3">
-          <h1 className="text-[20px] font-normal text-slate-900">Cashbook Register</h1>
+          <h1 className="text-[20px] font-medium text-slate-900 capitalize">Cashbook Register</h1>
           <button 
             onClick={loadData} 
             title="Refresh Data"
@@ -260,14 +250,14 @@ const Cashbook = () => {
             <button 
               onClick={handleExportCSV}
               disabled={exporting || entries.length === 0}
-              className="px-4 py-2 bg-white border border-slate-200 rounded-md text-xs hover:bg-slate-50 transition-none uppercase font-medium flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-white border border-slate-200 rounded-md text-xs hover:bg-slate-50 transition-none capitalize font-medium flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <FileDown className="w-3.5 h-3.5 mr-2" />}
-                Export CSV
+                Export Csv
             </button>
             <button 
               onClick={() => { setEditingEntry(null); setViewState('entry'); }} 
-              className="bg-primary text-slate-900 px-6 py-2 rounded-md font-normal text-sm hover:bg-primary-dark flex items-center transition-none uppercase"
+              className="bg-primary text-slate-900 px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center transition-none capitalize"
             >
               <Plus className="w-4 h-4 mr-2" /> Create Statement
             </button>
@@ -276,13 +266,13 @@ const Cashbook = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[ 
-          { label: 'TOTAL INCOME', value: stats.income, color: 'text-emerald-600' }, 
-          { label: 'TOTAL EXPENSE', value: stats.expense, color: 'text-rose-600' }, 
-          { label: 'NET BALANCE', value: stats.balance, color: 'text-slate-900' } 
+          { label: 'Total Income', value: stats.income, color: 'text-emerald-600' }, 
+          { label: 'Total Expense', value: stats.expense, color: 'text-rose-600' }, 
+          { label: 'Net Balance', value: stats.balance, color: 'text-slate-900' } 
         ].map((stat, i) => (
           <div key={i} className="bg-white border border-slate-200 rounded-md p-5 flex flex-col">
-            <span className="text-[11px] text-slate-500 font-normal uppercase tracking-tight mb-1 block">{stat.label}</span>
-            <span className={`text-[24px] font-normal leading-none font-mono ${stat.color}`}>
+            <span className="text-[11px] text-slate-500 font-medium capitalize tracking-tight mb-1 block">{stat.label}</span>
+            <span className={`text-[24px] font-medium leading-none font-mono ${stat.color}`}>
               {stat.value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </span>
           </div>
@@ -296,7 +286,7 @@ const Cashbook = () => {
             type="text" 
             value={searchQuery} 
             onChange={(e) => setSearchQuery(e.target.value)} 
-            placeholder="Search statements by date (YYYY-MM-DD)..." 
+            placeholder="Search statements..." 
             className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-md text-xs outline-none focus:border-slate-300" 
           />
         </div>
@@ -304,19 +294,19 @@ const Cashbook = () => {
         <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
-                <th className="w-16 py-4 px-6 text-center border-r border-slate-100">SR</th>
-                <th className="py-4 px-6 border-r border-slate-100">STMT DATE</th>
-                <th className="text-right py-4 px-6 border-r border-slate-100">INCOME</th>
-                <th className="text-right py-4 px-6 border-r border-slate-100">EXPENSE</th>
-                <th className="text-right py-4 px-6 border-r border-slate-100">BALANCE</th>
-                <th className="text-center py-4 px-6">ACTIONS</th>
+              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-medium text-slate-400 capitalize tracking-widest">
+                <th className="w-16 py-4 px-6 text-center border-r border-slate-100 font-medium capitalize">Sr</th>
+                <th className="py-4 px-6 border-r border-slate-100 font-medium capitalize">Stmt Date</th>
+                <th className="text-right py-4 px-6 border-r border-slate-100 font-medium capitalize">Income</th>
+                <th className="text-right py-4 px-6 border-r border-slate-100 font-medium capitalize">Expense</th>
+                <th className="text-right py-4 px-6 border-r border-slate-100 font-medium capitalize">Balance</th>
+                <th className="text-center py-4 px-6 font-medium capitalize">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading && entries.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-20 text-slate-400 font-semibold uppercase tracking-widest text-[10px]">
+                  <td colSpan={6} className="text-center py-20 text-slate-400 font-medium capitalize tracking-widest text-[10px]">
                     <div className="flex items-center justify-center space-x-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       <span>Loading records...</span>
@@ -332,13 +322,13 @@ const Cashbook = () => {
                       <span className="text-slate-700 font-medium">{e.date}</span>
                     </div>
                   </td>
-                  <td className="text-right py-3 px-6 border-r border-slate-100 font-mono text-emerald-600 font-semibold">
+                  <td className="text-right py-3 px-6 border-r border-slate-100 font-mono text-emerald-600 font-medium">
                     {(Number(e.income_total) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
-                  <td className="text-right py-3 px-6 border-r border-slate-100 font-mono text-rose-600 font-semibold">
+                  <td className="text-right py-3 px-6 border-r border-slate-100 font-mono text-rose-600 font-medium">
                     {(Number(e.expense_total) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
-                  <td className="text-right py-3 px-6 border-r border-slate-100 font-semibold text-slate-900 font-mono">
+                  <td className="text-right py-3 px-6 border-r border-slate-100 font-medium text-slate-900 font-mono">
                     {(Number(e.balance) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="text-center py-3 px-6">

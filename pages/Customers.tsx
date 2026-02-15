@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark, Plus, Contact, Phone, Mail, MapPin } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -9,8 +8,8 @@ import { supabase } from '../lib/supabase';
 
 const StatCard = ({ label, value, colorClass = "text-slate-900" }: { label: string, value: string, colorClass?: string }) => (
   <div className="bg-white p-6 border border-slate-200 rounded-xl hover:border-slate-300 transition-all">
-    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-    <p className={`text-xl font-bold ${colorClass} tracking-tight font-mono`}>{value}</p>
+    <p className="text-[10px] font-medium text-slate-400 capitalize tracking-widest mb-1">{label}</p>
+    <p className={`text-xl font-medium ${colorClass} tracking-tight font-mono`}>{value}</p>
   </div>
 );
 
@@ -24,7 +23,6 @@ const Customers = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
   
-  // Shortcut states
   const [lastShiftNTime, setLastShiftNTime] = useState(0);
   const [lastShiftETime, setLastShiftETime] = useState(0);
   const [lastShiftFTime, setLastShiftFTime] = useState(0);
@@ -104,7 +102,6 @@ const Customers = () => {
     };
   }, [selectedCustomer, invoices]);
 
-  // Handle action button focusing
   useEffect(() => {
     if (actionFocusIdx === 0) fullScreenBtnRef.current?.focus();
     if (actionFocusIdx === 1) editBtnRef.current?.focus();
@@ -132,7 +129,6 @@ const Customers = () => {
       const isFocusedInInput = (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.tagName === 'SELECT') && activeEl !== searchInputRef.current;
       if (isFocusedInInput || isFormOpen) return;
 
-      // Table Row Navigation (Transaction Register)
       if (tableRowIdx !== null) {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
@@ -144,42 +140,28 @@ const Customers = () => {
       }
 
       if (e.shiftKey) {
-        // Sequences Detection
         if (e.key === 'N' || e.key === 'n') setLastShiftNTime(Date.now());
         if (e.key === 'E' || e.key === 'e') {
             setLastShiftETime(Date.now());
-            // Shift + E (Direct Table Edit)
             if (tableRowIdx !== null && stats.transactions[tableRowIdx]) {
                 e.preventDefault();
-                // Since transactions are Bills, they can't be edited directly here easily without a separate Bill modal logic
-                // But following user prompt "Edit the selected table field"
                 alert("Redirecting to Bill edition is handled in Bills Ledger. Use Shift+E+C for customer.");
             }
         }
         if (e.key === 'F' || e.key === 'f') setLastShiftFTime(Date.now());
         if (e.key === 'D' || e.key === 'd') {
             setLastShiftDTime(Date.now());
-            // Double press Shift + D to delete entry in table
-            if (tableRowIdx !== null && stats.transactions[tableRowIdx]) {
-                e.preventDefault();
-                // This logic is usually simplified for this specific screen
-                alert("Delete transaction directly from Bills Ledger.");
-            }
         }
 
-        // Shift + N + C: New Customer
         if ((e.key === 'C' || e.key === 'c') && (Date.now() - lastShiftNTime < 1000)) {
             e.preventDefault(); setEditingCustomer(null); setIsFormOpen(true); setLastShiftNTime(0); return;
         }
-        // Shift + E + C: Edit Selected Customer
         if ((e.key === 'C' || e.key === 'c') && (Date.now() - lastShiftETime < 1000)) {
             e.preventDefault(); setEditingCustomer(selectedCustomer); setIsFormOpen(true); setLastShiftETime(0); return;
         }
-        // Shift + F + C: Fullscreen Selected Customer
         if ((e.key === 'C' || e.key === 'c') && (Date.now() - lastShiftFTime < 1000)) {
             e.preventDefault(); setIsFullScreen(!isFullScreen); setLastShiftFTime(0); return;
         }
-        // Shift + D + C: Delete Selected Customer
         if ((e.key === 'C' || e.key === 'c') && (Date.now() - lastShiftDTime < 1000)) {
             e.preventDefault();
             if (!deleteDialog.isOpen) setDeleteDialog({ isOpen: true, customer: selectedCustomer });
@@ -187,7 +169,6 @@ const Customers = () => {
             setLastShiftDTime(0); return;
         }
 
-        // Navigation Shortcuts
         if (e.key === 'ArrowUp') {
             e.preventDefault(); searchInputRef.current?.focus(); setTableRowIdx(null); setActionFocusIdx(null);
         } else if (e.key === 'ArrowDown') {
@@ -218,8 +199,8 @@ const Customers = () => {
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, customer: null })} onConfirm={confirmDeleteCustomer} title="Delete Customer" message={`Delete customer account for "${deleteDialog.customer?.name}"? (Press Shift + D + C again to confirm)`} />
 
       <div className="flex justify-between items-center shrink-0">
-        <h1 className="text-[20px] font-normal text-slate-900">Customers Ledger</h1>
-        <button onClick={() => { setEditingCustomer(null); setIsFormOpen(true); }} className="bg-link text-white px-8 py-2 rounded-md font-normal text-sm hover:bg-link/90 transition-none uppercase">
+        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Customers Ledger</h1>
+        <button onClick={() => { setEditingCustomer(null); setIsFormOpen(true); }} className="bg-link text-white px-8 py-2 rounded-md font-medium text-sm hover:bg-link/90 transition-none capitalize">
             <Plus className="w-4 h-4 mr-2 inline" /> New Customer
         </button>
       </div>
@@ -234,8 +215,8 @@ const Customers = () => {
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
               {filteredCustomers.map((customer) => (
                 <div key={customer.id} onClick={() => setSelectedCustomerId(String(customer.id))} className={`p-4 border rounded-md cursor-pointer transition-none ${String(selectedCustomerId) === String(customer.id) ? 'bg-link text-white border-slate-900 shadow-sm' : 'bg-white border-slate-100 hover:bg-slate-50'}`}>
-                  <h3 className={`font-bold uppercase truncate mb-1 text-xs ${String(selectedCustomerId) === String(customer.id) ? 'text-white' : 'text-slate-900'}`}>{customer.name}</h3>
-                  <p className={`text-[10px] font-bold ${String(selectedCustomerId) === String(customer.id) ? 'text-white/70' : 'text-slate-400'}`}>GST: {customer.gstin || 'UNREGISTERED'}</p>
+                  <h3 className={`font-medium capitalize truncate mb-1 text-xs ${String(selectedCustomerId) === String(customer.id) ? 'text-white' : 'text-slate-900'}`}>{customer.name}</h3>
+                  <p className={`text-[10px] font-medium capitalize ${String(selectedCustomerId) === String(customer.id) ? 'text-white/70' : 'text-slate-400'}`}>Gst: {customer.gstin || 'Unregistered'}</p>
                 </div>
               ))}
             </div>
@@ -249,8 +230,8 @@ const Customers = () => {
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-slate-50 rounded flex items-center justify-center border border-slate-200"><Contact className="w-5 h-5 text-slate-400" /></div>
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900 uppercase leading-none">{selectedCustomer.name}</h2>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">ID: {selectedCustomer.id.split('-')[0]}</p>
+                    <h2 className="text-lg font-medium text-slate-900 capitalize leading-none">{selectedCustomer.name}</h2>
+                    <p className="text-[10px] font-medium text-slate-400 capitalize tracking-tighter mt-1">Id: {selectedCustomer.id.split('-')[0]}</p>
                   </div>
                 </div>
                 <div className="flex space-x-2">
@@ -264,47 +245,47 @@ const Customers = () => {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
                   <StatCard label="Total Receivable" value={formatCurrency(stats.balance)} colorClass="text-link" />
                   <StatCard label="Gross Sales" value={formatCurrency(stats.totalSales)} colorClass="text-slate-600" />
-                  <StatCard label="GST Aggregate" value={selectedCustomer.gstin || 'N/A'} colorClass="text-slate-400 text-sm" />
+                  <StatCard label="Gst Aggregate" value={selectedCustomer.gstin || 'N/A'} colorClass="text-slate-400 text-sm" />
                   <StatCard label="Status" value="Active" colorClass="text-emerald-500" />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
                   <div className="space-y-4 bg-slate-50/50 p-6 rounded-xl border border-slate-100">
-                    <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><Phone className="w-3.5 h-3.5 mr-2" /> Communication</h4>
+                    <h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center"><Phone className="w-3.5 h-3.5 mr-2" /> Communication</h4>
                     <div className="text-xs text-slate-600 space-y-2">
                         <p className="flex items-center"><Phone className="w-3.5 h-3.5 mr-2 opacity-30" /> {selectedCustomer.phone || 'N/A'}</p>
                         <p className="flex items-center"><Mail className="w-3.5 h-3.5 mr-2 opacity-30" /> {selectedCustomer.email || 'N/A'}</p>
                     </div>
                   </div>
                   <div className="space-y-4 bg-slate-50/50 p-6 rounded-xl border border-slate-100 md:col-span-2">
-                    <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><MapPin className="w-3.5 h-3.5 mr-2" /> Office Address</h4>
+                    <h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center"><MapPin className="w-3.5 h-3.5 mr-2" /> Office Address</h4>
                     <p className="text-xs text-slate-600 font-medium leading-relaxed">{selectedCustomer.address || 'No registered address.'}</p>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between"><h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><History className="w-4 h-4 mr-2 text-slate-300" /> Sales & Billing History</h4></div>
+                  <div className="flex items-center justify-between"><h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center"><History className="w-4 h-4 mr-2 text-slate-300" /> Sales & Billing History</h4></div>
                   <div className="border border-slate-200 rounded-md overflow-hidden bg-white shadow-sm">
                     <table className="clean-table">
                         <thead>
-                            <tr className="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                <th>Date</th>
-                                <th>Invoice #</th>
-                                <th className="text-right">Taxable</th>
-                                <th className="text-right">GST</th>
-                                <th className="text-right">Grand Total</th>
-                                <th className="text-center">Settlement</th>
+                            <tr className="bg-slate-50 text-[10px] font-medium text-slate-400 capitalize tracking-widest">
+                                <th className="font-medium capitalize">Date</th>
+                                <th className="font-medium capitalize">Invoice #</th>
+                                <th className="text-right font-medium capitalize">Taxable</th>
+                                <th className="text-right font-medium capitalize">Gst</th>
+                                <th className="text-right font-medium capitalize">Grand Total</th>
+                                <th className="text-center font-medium capitalize">Settlement</th>
                             </tr>
                         </thead>
                         <tbody>
                             {stats.transactions.map((inv, idx) => (
                                 <tr key={inv.id} className={`transition-colors ${tableRowIdx === idx ? 'bg-slate-50/50 border-l-4 border-link' : 'hover:bg-slate-50'}`}>
                                     <td className="text-slate-500 font-medium">{formatDate(inv.date)}</td>
-                                    <td className="font-mono font-bold text-slate-900">{inv.bill_number}</td>
+                                    <td className="font-mono font-medium text-slate-900">{inv.bill_number}</td>
                                     <td className="text-right font-mono text-slate-400">{(inv.total_without_gst || 0).toFixed(2)}</td>
                                     <td className="text-right font-mono text-slate-400">{(inv.total_gst || 0).toFixed(2)}</td>
-                                    <td className="text-right font-mono font-bold text-slate-900">{(inv.grand_total || 0).toFixed(2)}</td>
-                                    <td className="text-center"><span className={`text-[9px] font-bold px-3 py-0.5 rounded-full uppercase ${inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>{inv.status}</span></td>
+                                    <td className="text-right font-mono font-medium text-slate-900">{(inv.grand_total || 0).toFixed(2)}</td>
+                                    <td className="text-center"><span className={`text-[9px] font-medium px-3 py-0.5 rounded-full capitalize ${inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>{inv.status}</span></td>
                                 </tr>
                             ))}
                             {stats.transactions.length === 0 && (

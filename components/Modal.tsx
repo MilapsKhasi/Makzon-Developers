@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 
@@ -41,15 +40,13 @@ const Modal: React.FC<ModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
-      {/* 30% Opacity Grey-Toned Backdrop */}
       <div 
         className="absolute inset-0 bg-slate-900/30" 
         onClick={() => !preventBackdropClose && onClose()} 
       />
-      {/* Modal Container - Flat (No Shadow), Scrollable flex structure */}
       <div className={`relative bg-white border border-slate-300 w-full ${maxWidth} flex flex-col overflow-hidden rounded-md max-h-[90vh]`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white shrink-0">
-          <h3 className="text-[18px] font-normal text-slate-900">{title}</h3>
+          <h3 className="text-[18px] font-medium text-slate-900 capitalize">{title}</h3>
           <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 transition-none">
             <X className="w-5 h-5" />
           </button>

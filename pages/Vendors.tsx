@@ -8,8 +8,8 @@ import { supabase } from '../lib/supabase';
 
 const StatCard = ({ label, value, colorClass = "text-slate-900" }: { label: string, value: string, colorClass?: string }) => (
   <div className="bg-white p-6 border border-slate-200 rounded-xl hover:border-slate-300 transition-all">
-    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-    <p className={`text-xl font-bold ${colorClass} tracking-tight font-mono`}>{value}</p>
+    <p className="text-[10px] font-medium text-slate-400 capitalize tracking-widest mb-1">{label}</p>
+    <p className={`text-xl font-medium ${colorClass} tracking-tight font-mono`}>{value}</p>
   </div>
 );
 
@@ -48,7 +48,6 @@ const Vendors = () => {
       if (vErr) throw vErr;
       if (bErr) throw bErr;
 
-      // Filter vendors robustly
       const vendorOnly = (partyData || []).filter(p => p.party_type === 'vendor' || (!p.party_type && p.is_customer !== true));
       const normalizedBills = (billData || []).map(normalizeBill);
 
@@ -133,17 +132,16 @@ const Vendors = () => {
       />
 
       <div className="flex justify-between items-center shrink-0">
-        <h1 className="text-[20px] font-normal text-slate-900">Vendors Directory</h1>
+        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Vendors Directory</h1>
         <button 
           onClick={() => { setEditingVendor(null); setIsFormOpen(true); }} 
-          className="bg-primary text-slate-900 px-6 py-2 rounded-md font-normal text-sm hover:bg-primary-dark transition-none flex items-center"
+          className="bg-primary text-slate-900 px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize"
         >
-          <Plus className="w-4 h-4 mr-2" /> NEW VENDOR
+          <Plus className="w-4 h-4 mr-2" /> New Vendor
         </button>
       </div>
 
       <div className="flex-1 flex gap-6 min-h-0 overflow-hidden">
-        {/* Sidebar List */}
         {!isFullScreen && (
           <div className="w-80 flex flex-col space-y-4 shrink-0">
             <div className="relative">
@@ -165,10 +163,10 @@ const Vendors = () => {
                     onClick={() => setSelectedVendorId(String(vendor.id))} 
                     className={`p-4 border rounded-md cursor-pointer transition-none group ${isSelected ? 'bg-primary border-slate-900' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
                   >
-                    <h3 className={`text-xs font-bold uppercase truncate mb-1 ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>{vendor.name}</h3>
+                    <h3 className={`text-xs font-medium capitalize truncate mb-1 ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>{vendor.name}</h3>
                     <div className="flex justify-between items-center text-[10px] font-medium text-slate-400">
-                      <span className={isSelected ? 'text-slate-900/60' : ''}>{vendor.gstin || 'NO GSTIN'}</span>
-                      <span className={isSelected ? 'text-slate-900 font-bold' : 'text-slate-900'}>₹{(Number(vendor.balance) || 0).toFixed(0)}</span>
+                      <span className={isSelected ? 'text-slate-900/60' : ''}>{vendor.gstin || 'No Gstin'}</span>
+                      <span className={isSelected ? 'text-slate-900 font-medium' : 'text-slate-900'}>₹{(Number(vendor.balance) || 0).toFixed(0)}</span>
                     </div>
                   </div>
                 );
@@ -186,8 +184,8 @@ const Vendors = () => {
                     <Landmark className="w-5 h-5 text-slate-400" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900 uppercase leading-none">{selectedVendor.name}</h2>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-1">ID: {selectedVendor.id.split('-')[0]}</p>
+                    <h2 className="text-lg font-medium text-slate-900 capitalize leading-none">{selectedVendor.name}</h2>
+                    <p className="text-[10px] font-medium text-slate-400 capitalize tracking-tighter mt-1">Id: {selectedVendor.id.split('-')[0]}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -207,25 +205,25 @@ const Vendors = () => {
                   <StatCard label="Ledger Balance" value={formatCurrency(stats.balance)} colorClass="text-slate-900" />
                   <StatCard label="Total Purchases" value={formatCurrency(stats.totalPurchased)} colorClass="text-slate-500" />
                   <StatCard label="Settled Amount" value={formatCurrency(stats.totalPaid)} colorClass="text-green-600" />
-                  <StatCard label="Status" value={selectedVendor.status || 'Active'} colorClass="text-primary font-bold" />
+                  <StatCard label="Status" value={selectedVendor.status || 'Active'} colorClass="text-primary-dark font-medium" />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
                   <div className="bg-slate-50/50 p-6 rounded-xl border border-slate-100 space-y-4">
-                    <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><ShieldCheck className="w-3.5 h-3.5 mr-2" /> KYC & Identity</h4>
+                    <h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center"><ShieldCheck className="w-3.5 h-3.5 mr-2" /> Kyc & Identity</h4>
                     <div className="space-y-3">
-                      <div><p className="text-[10px] text-slate-400 font-bold uppercase">GSTIN</p><p className="text-sm font-mono font-bold text-slate-800 tracking-tight">{selectedVendor.gstin || 'Not Registered'}</p></div>
-                      <div><p className="text-[10px] text-slate-400 font-bold uppercase">PAN</p><p className="text-sm font-mono font-bold text-slate-800 tracking-tight">{selectedVendor.pan || 'N/A'}</p></div>
+                      <div><p className="text-[10px] text-slate-400 font-medium capitalize">Gstin</p><p className="text-sm font-mono font-medium text-slate-800 tracking-tight">{selectedVendor.gstin || 'Not Registered'}</p></div>
+                      <div><p className="text-[10px] text-slate-400 font-medium capitalize">Pan</p><p className="text-sm font-mono font-medium text-slate-800 tracking-tight">{selectedVendor.pan || 'N/A'}</p></div>
                     </div>
                   </div>
                   <div className="bg-slate-50/50 p-6 rounded-xl border border-slate-100 space-y-4">
-                    <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><CreditCard className="w-3.5 h-3.5 mr-2" /> Banking Profile</h4>
+                    <h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center"><CreditCard className="w-3.5 h-3.5 mr-2" /> Banking Profile</h4>
                     <div className="space-y-3">
-                      <div><p className="text-[10px] text-slate-400 font-bold uppercase">A/C Number</p><p className="text-sm font-mono font-bold text-slate-800">{selectedVendor.account_number || 'N/A'}</p></div>
-                      <div><p className="text-[10px] text-slate-400 font-bold uppercase">IFSC Code</p><p className="text-sm font-mono font-bold text-slate-800">{selectedVendor.ifsc_code || 'N/A'}</p></div>
+                      <div><p className="text-[10px] text-slate-400 font-medium capitalize">A/C Number</p><p className="text-sm font-mono font-medium text-slate-800">{selectedVendor.account_number || 'N/A'}</p></div>
+                      <div><p className="text-[10px] text-slate-400 font-medium capitalize">Ifsc Code</p><p className="text-sm font-mono font-medium text-slate-800">{selectedVendor.ifsc_code || 'N/A'}</p></div>
                     </div>
                   </div>
                   <div className="bg-slate-50/50 p-6 rounded-xl border border-slate-100 space-y-4">
-                    <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><ExternalLink className="w-3.5 h-3.5 mr-2" /> Contact details</h4>
+                    <h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center"><ExternalLink className="w-3.5 h-3.5 mr-2" /> Contact Details</h4>
                     <div className="space-y-2">
                       <div className="flex items-center text-xs text-slate-600"><Phone className="w-3.5 h-3.5 mr-2 text-slate-300" /> {selectedVendor.phone || 'No Phone'}</div>
                       <div className="flex items-center text-xs text-slate-600"><Mail className="w-3.5 h-3.5 mr-2 text-slate-300" /> {selectedVendor.email || 'No Email'}</div>
@@ -234,13 +232,13 @@ const Vendors = () => {
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between"><h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center"><History className="w-4 h-4 mr-2 text-slate-300" /> Transaction Register</h4><span className="text-[10px] text-slate-400 italic">Cloud-synced from Bills module</span></div>
+                  <div className="flex items-center justify-between"><h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center"><History className="w-4 h-4 mr-2 text-slate-300" /> Transaction Register</h4></div>
                   <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
                     <table className="clean-table">
-                      <thead><tr><th>DATE</th><th>BILL NO</th><th className="text-right">WITHOUT GST</th><th className="text-right">TAX</th><th className="text-right">TOTAL</th><th className="text-center">STATUS</th></tr></thead>
+                      <thead><tr><th className="font-medium capitalize">Date</th><th className="font-medium capitalize">Bill No</th><th className="text-right font-medium capitalize">Without Gst</th><th className="text-right font-medium capitalize">Tax</th><th className="text-right font-medium capitalize">Total</th><th className="text-center font-medium capitalize">Status</th></tr></thead>
                       <tbody>
                         {stats.transactions.map((bill) => (
-                          <tr key={bill.id} className="hover:bg-slate-50 transition-none group"><td className="text-slate-500 font-medium">{formatDate(bill.date)}</td><td className="font-mono font-bold text-slate-900">{bill.bill_number}</td><td className="text-right font-mono text-slate-500">{(Number(bill.total_without_gst) || 0).toFixed(2)}</td><td className="text-right font-mono text-slate-500">{(Number(bill.total_gst) || 0).toFixed(2)}</td><td className="text-right font-mono font-bold text-slate-900">{(Number(bill.grand_total) || 0).toFixed(2)}</td><td className="text-center"><span className={`text-[10px] font-bold px-2 py-0.5 rounded-sm uppercase ${bill.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>{bill.status}</span></td></tr>
+                          <tr key={bill.id} className="hover:bg-slate-50 transition-none group"><td className="text-slate-500 font-medium">{formatDate(bill.date)}</td><td className="font-mono font-medium text-slate-900">{bill.bill_number}</td><td className="text-right font-mono text-slate-500">{(Number(bill.total_without_gst) || 0).toFixed(2)}</td><td className="text-right font-mono text-slate-500">{(Number(bill.total_gst) || 0).toFixed(2)}</td><td className="text-right font-mono font-medium text-slate-900">{(Number(bill.grand_total) || 0).toFixed(2)}</td><td className="text-center"><span className={`text-[10px] font-medium px-2 py-0.5 rounded-sm capitalize ${bill.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>{bill.status}</span></td></tr>
                         ))}
                       </tbody>
                     </table>
