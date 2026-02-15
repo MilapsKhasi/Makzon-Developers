@@ -1,3 +1,4 @@
+
 import { supabase } from '../lib/supabase';
 
 export const CURRENCIES = {
@@ -6,7 +7,8 @@ export const CURRENCIES = {
 };
 
 export const getActiveCompanyId = () => {
-  return localStorage.getItem('active_company_id');
+  const id = localStorage.getItem('activeCompanyId');
+  return id && id !== 'undefined' ? id : '';
 };
 
 export const getAppSettings = () => {
@@ -75,25 +77,20 @@ export const toStorageValue = (val: any) => {
   return isNaN(num) ? 0 : num;
 };
 
-/**
- * STRICT SAVING LOGIC:
- * Implements Virtual Mapping by stripping non-SQL columns before save.
- */
 export const safeSupabaseSave = async (table: string, payload: any, id?: string): Promise<any> => {
   const cid = getActiveCompanyId();
-  if (!cid && table !== 'companies') {
+  if (!cid && table !== 'companies' && table !== 'profiles') {
     throw new Error("No active workspace context.");
   }
 
   let cleanPayload: any = { ...payload };
-  if (table !== 'companies') {
+  if (table !== 'companies' && table !== 'profiles') {
     cleanPayload.company_id = cid;
   }
 
-  // GHOST COLUMN FILTER: Strictly remove fields that are UI-only or Virtual
   const ghostColumns = [
-    'type',           // Derivable via normalizeBill
-    'gst_type',       // Stored inside JSONB 'items'
+    'type',
+    'gst_type',
     'transaction_type', 
     'user_id', 
     'items_raw', 
@@ -111,21 +108,11 @@ export const safeSupabaseSave = async (table: string, payload: any, id?: string)
   return res;
 };
 
-/**
- * VIRTUAL MAPPING ENGINE:
- * Manually injects 'type' and 'gst_type' from document structure or JSONB container.
- */
 export const normalizeBill = (data: any) => {
   if (!data) return null;
-
-  // 1. VIRTUAL TYPE DETECTION: Identifies Sales vs Purchase based on identifier columns
   const isSale = data.customer_name !== undefined || data.invoice_number !== undefined;
-  
-  // 2. Uniform Accessors for UI compatibility
   const partyName = data.customer_name || data.vendor_name || 'Unknown';
   const docNumber = data.invoice_number || data.bill_number || 'N/A';
-  
-  // 3. JSONB EXTRACTION: Unpacks virtual fields stored in the JSONB blob
   const itemsRaw = data.items || {};
   let line_items = [];
   let gstType = 'Intra-State';
@@ -139,12 +126,12 @@ export const normalizeBill = (data: any) => {
 
   return {
     ...data,
-    type: isSale ? 'Sale' : 'Purchase', // Manually added for UI
+    type: isSale ? 'Sale' : 'Purchase',
     vendor_name: partyName, 
     customer_name: partyName, 
     bill_number: docNumber, 
     invoice_number: docNumber,
-    gst_type: gstType,                   // Manually extracted from JSONB
+    gst_type: gstType,
     items: line_items,
     items_raw: itemsRaw                  
   };
