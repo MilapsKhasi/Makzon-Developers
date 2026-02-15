@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import Logo from './Logo';
@@ -35,6 +35,17 @@ const Layout = () => {
     await setCompany(ws);
     setShowWorkspaceMenu(false);
     navigate('/', { replace: true });
+  };
+
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      localStorage.clear();
+      navigate('/setup', { replace: true });
+    } catch (err) {
+      console.error("Error signing out:", err);
+    }
   };
 
   const menuItems = [
@@ -91,17 +102,28 @@ const Layout = () => {
                 <ChevronDown className="ml-2 w-3 h-3 text-slate-400" />
               </button>
               {showWorkspaceMenu && (
-                <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded shadow-lg py-1 z-50">
-                  {workspaces.map((ws) => (
+                <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-200 rounded shadow-lg overflow-hidden z-50">
+                  <div className="max-h-60 overflow-y-auto custom-scrollbar py-1">
+                    {workspaces.map((ws) => (
+                      <button
+                        key={ws.id}
+                        onClick={() => handleSwitchWorkspace(ws)}
+                        className={`w-full flex items-center px-4 py-2 text-left text-xs hover:bg-slate-50 transition-colors ${activeCompany?.id === ws.id ? 'bg-primary/10 font-medium' : ''}`}
+                      >
+                        <Building2 className="w-3.5 h-3.5 text-slate-400 mr-2" />
+                        <span className="truncate capitalize">{ws.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-t border-slate-100 py-1 bg-slate-50/50">
                     <button
-                      key={ws.id}
-                      onClick={() => handleSwitchWorkspace(ws)}
-                      className={`w-full flex items-center px-4 py-2 text-left text-xs hover:bg-slate-50 ${activeCompany?.id === ws.id ? 'bg-primary/10 font-medium' : ''}`}
+                      onClick={handleSignOut}
+                      className="w-full flex items-center px-4 py-2.5 text-left text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors"
                     >
-                      <Building2 className="w-3.5 h-3.5 text-slate-400 mr-2" />
-                      <span className="truncate capitalize">{ws.name}</span>
+                      <LogOut className="w-3.5 h-3.5 mr-2" />
+                      <span className="capitalize">Sign Out</span>
                     </button>
-                  ))}
+                  </div>
                 </div>
               )}
             </div>
