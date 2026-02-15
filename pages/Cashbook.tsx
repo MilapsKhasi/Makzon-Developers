@@ -16,14 +16,8 @@ const Cashbook = () => {
   const [dbError, setDbError] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-const loadData = async () => {
-    if (!activeCompany?.id) {
-      setLoading(false);
-      return;
-    }
+resource: the server responded with a status of 400 ()
 
-    setLoading(true);
-    setDbError(false); // Reset error state
     
     try {
       console.log('Fetching for Company:', activeCompany.id);
