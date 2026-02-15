@@ -16,50 +16,50 @@ const Cashbook = () => {
   const [dbError, setDbError] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const loadData = async () => {
-    // Rely strictly on activeCompany from context
+const loadData = async () => {
     if (!activeCompany?.id) {
-      console.log('Cashbook: No active company ID available yet.');
       setLoading(false);
       return;
     }
 
     setLoading(true);
+    setDbError(false); // Reset error state
+    
     try {
-      console.log('Cashbook: Fetching for Company ID:', activeCompany.id);
+      console.log('Fetching for Company:', activeCompany.id);
       
       const { data, error } = await supabase
-        .from('cashbooks')
+        .from('cashbooks') // <--- CHECK: Is it 'cashbook' or 'cashbooks'?
         .select('*')
         .eq('company_id', activeCompany.id)
-        .or('is_deleted.eq.false,is_deleted.is.null') // Robust check for boolean or null
+        .or('is_deleted.eq.false,is_deleted.is.null')
         .order('date', { ascending: false });
       
-      console.log('Cashbook: Supabase Raw Response:', { data, error });
-
       if (error) {
-        console.error("Cashbook API Fetch Failed:", error);
-        if (error.message.includes('schema cache') || error.message.includes('not found')) {
-           setDbError(true);
-        }
+        console.error("SUPABASE ERROR:", error);
         throw error;
       }
 
+      console.log('Data fetched successfully:', data);
       setEntries(data || []);
-      setDbError(false);
+      
+      // Update local cache only on success
+      localStorage.setItem(`local_cashbook_${activeCompany.id}`, JSON.stringify(data || []));
+
     } catch (e: any) {
-      console.warn("Cashbook: Fetch failed, checking local cache for ID:", activeCompany.id);
+      console.error("Fetch failed, loading from local cache as fallback", e);
       const localData = localStorage.getItem(`local_cashbook_${activeCompany.id}`);
       if (localData) {
         setEntries(JSON.parse(localData));
       } else {
         setEntries([]);
       }
+      setDbError(true);
     } finally {
       setLoading(false);
     }
   };
-
+  
   useEffect(() => {
     // Wait for CompanyContext to finish loading the initial session/company
     if (companyLoading) return;
