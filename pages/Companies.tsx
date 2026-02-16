@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// Fixed: Added Save to the lucide-react imports
 import { Building2, Plus, Search, Loader2, LogOut, ArrowRight, Edit, Trash2, Save } from 'lucide-react';
 import Modal from '../components/Modal';
 import Logo from '../components/Logo';
 import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 import { supabase } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 
@@ -166,15 +166,24 @@ const Companies = () => {
               <div>
                 <h1 className="text-[20px] font-medium text-slate-900 capitalize">Select Workspace</h1>
               </div>
-              <button onClick={handleOpenCreate} className="bg-primary text-slate-900 px-8 py-3 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize">
-                <Plus className="w-4 h-4 mr-2" /> New Workspace
-              </button>
+              {companies.length > 0 && (
+                <button onClick={handleOpenCreate} className="bg-primary text-slate-900 px-8 py-3 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize">
+                  <Plus className="w-4 h-4 mr-2" /> New Workspace
+                </button>
+              )}
             </div>
 
             {loading ? (
               <div className="py-40 flex flex-col items-center justify-center">
                 <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
               </div>
+            ) : filteredCompanies.length === 0 ? (
+                <EmptyState 
+                  title="No Workspace Found" 
+                  message="It seems you haven't registered any business workspace yet. Start by creating one!" 
+                  actionLabel="Register Workspace" 
+                  onAction={handleOpenCreate} 
+                />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCompanies.map((company) => (

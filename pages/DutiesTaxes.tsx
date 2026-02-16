@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Loader2, X, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getActiveCompanyId, safeSupabaseSave, getSelectedLedgerIds, toggleSelectedLedgerId } from '../utils/helpers';
 import ConfirmDialog from '../components/ConfirmDialog';
+import EmptyState from '../components/EmptyState';
 
 const DutiesTaxes = () => {
   const [taxes, setTaxes] = useState<any[]>([]);
@@ -165,56 +167,67 @@ const DutiesTaxes = () => {
 
       <div className="flex justify-between items-center">
         <h1 className="text-[20px] font-medium text-slate-900 capitalize">Duties & Taxes</h1>
-        <button 
-          onClick={() => { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); }} 
-          className="bg-primary text-slate-900 px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-none capitalize"
-        >
-          New Ledger
-        </button>
+        {taxes.length > 0 && (
+          <button 
+            onClick={() => { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); }} 
+            className="bg-primary text-slate-900 px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-none capitalize"
+          >
+            New Ledger
+          </button>
+        )}
       </div>
 
-      <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
-        <table className="clean-table">
-          <thead>
-            <tr>
-              <th className="w-20 text-center font-medium capitalize">Select</th>
-              <th className="font-medium capitalize">Ledger Name</th>
-              <th className="font-medium capitalize">Type</th>
-              <th className="font-medium capitalize">Calculation</th>
-              <th className="font-medium capitalize">Value</th>
-              <th className="text-right font-medium capitalize">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={6} className="text-center py-20 text-slate-400">Loading ledgers...</td></tr>
-            ) : taxes.map((tax) => {
-              const isSelected = selectedIds.includes(tax.id) || tax.is_default;
-              return (
-                <tr key={tax.id} className="hover:bg-slate-50/50">
-                  <td className="text-center">
-                    <button onClick={async () => {
-                        const nextIds = toggleSelectedLedgerId(tax.id);
-                        setSelectedIds(nextIds);
-                        window.dispatchEvent(new Event('appSettingsChanged'));
-                    }} className={`w-4 h-4 rounded border ${isSelected ? 'bg-primary border-slate-900' : 'bg-white border-slate-300'} mx-auto transition-none`} />
-                  </td>
-                  <td className="font-medium text-slate-700">{tax.name}</td>
-                  <td className="text-[11px] font-medium capitalize">{tax.type}</td>
-                  <td className="text-[11px] text-slate-400 capitalize">{tax.calc_method}</td>
-                  <td className="font-mono text-[13px]">{tax.calc_method === 'Percentage' ? `${tax.rate}%` : tax.fixed_amount.toFixed(2)}</td>
-                  <td className="text-right">
-                    <div className="flex justify-end space-x-2">
-                      <button onClick={() => { setEditingTax(tax); setFormData(tax); setIsModalOpen(true); }} className="text-slate-400 hover:text-slate-900 transition-none"><Edit className="w-4 h-4" /></button>
-                      <button onClick={() => setDeleteDialog({ isOpen: true, tax })} className="text-slate-400 hover:text-red-500 transition-none"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                  </td>
+      {!loading && taxes.length === 0 ? (
+        <EmptyState 
+          title="No Tax Ledgers" 
+          message="Configure your GST, VAT, or other charges/deductions to automate calculation on your invoices and bills." 
+          actionLabel="Create First Ledger" 
+          onAction={() => { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); }} 
+        />
+      ) : (
+        <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
+            <table className="clean-table">
+            <thead>
+                <tr>
+                <th className="w-20 text-center font-medium capitalize">Select</th>
+                <th className="font-medium capitalize">Ledger Name</th>
+                <th className="font-medium capitalize">Type</th>
+                <th className="font-medium capitalize">Calculation</th>
+                <th className="font-medium capitalize">Value</th>
+                <th className="text-right font-medium capitalize">Actions</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+                {loading ? (
+                <tr><td colSpan={6} className="text-center py-20 text-slate-400">Loading ledgers...</td></tr>
+                ) : taxes.map((tax) => {
+                const isSelected = selectedIds.includes(tax.id) || tax.is_default;
+                return (
+                    <tr key={tax.id} className="hover:bg-slate-50/50">
+                    <td className="text-center">
+                        <button onClick={async () => {
+                            const nextIds = toggleSelectedLedgerId(tax.id);
+                            setSelectedIds(nextIds);
+                            window.dispatchEvent(new Event('appSettingsChanged'));
+                        }} className={`w-4 h-4 rounded border ${isSelected ? 'bg-primary border-slate-900' : 'bg-white border-slate-300'} mx-auto transition-none`} />
+                    </td>
+                    <td className="font-medium text-slate-700">{tax.name}</td>
+                    <td className="text-[11px] font-medium capitalize">{tax.type}</td>
+                    <td className="text-[11px] text-slate-400 capitalize">{tax.calc_method}</td>
+                    <td className="font-mono text-[13px]">{tax.calc_method === 'Percentage' ? `${tax.rate}%` : tax.fixed_amount.toFixed(2)}</td>
+                    <td className="text-right">
+                        <div className="flex justify-end space-x-2">
+                        <button onClick={() => { setEditingTax(tax); setFormData(tax); setIsModalOpen(true); }} className="text-slate-400 hover:text-slate-900 transition-none"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => setDeleteDialog({ isOpen: true, tax })} className="text-slate-400 hover:text-red-500 transition-none"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                    </td>
+                    </tr>
+                );
+                })}
+            </tbody>
+            </table>
+        </div>
+      )}
     </div>
   );
 };
