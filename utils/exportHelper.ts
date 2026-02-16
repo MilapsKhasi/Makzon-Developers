@@ -2,6 +2,7 @@
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatDate } from './helpers';
 
 export interface ExportConfig {
     companyName: string;
@@ -65,6 +66,9 @@ export const exportCashbookEntryToPDF = (
     const pageWidth = doc.internal.pageSize.getWidth();
     let currentY = 20;
 
+    // Format the date to DD/MM/YYYY or DD/MM/YY as requested
+    const formattedDate = formatDate(config.date);
+
     const incomeTotal = incomeRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
     const expenseTotal = expenseRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
     const netClosing = config.openingBalance + incomeTotal - expenseTotal;
@@ -73,7 +77,7 @@ export const exportCashbookEntryToPDF = (
     const sharedColumnStyles: any = {
         0: { cellWidth: 20, halign: 'center' }, // SR NO
         1: { cellWidth: 'auto', halign: 'left' }, // PARTICULARS
-        2: { cellWidth: 35, halign: 'right' }  // AMOUNT
+        2: { cellWidth: 40, halign: 'right' }  // AMOUNT
     };
 
     // 1. Company Header
@@ -82,13 +86,13 @@ export const exportCashbookEntryToPDF = (
     doc.text(config.companyName.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
     currentY += 10;
 
-    // 2. Report Sub-header
+    // 2. Report Sub-header - Using the requested DD/MM/YYYY format
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text(`DAILY CASH STATEMENT - DATE: ${config.date}`, pageWidth / 2, currentY, { align: 'center' });
+    doc.text(`DAILY CASH STATEMENT - DATE: ${formattedDate}`, pageWidth / 2, currentY, { align: 'center' });
     currentY += 12;
 
-    // 3. Opening Balance Block (Reference image style)
+    // 3. Opening Balance Block
     autoTable(doc, {
         startY: currentY,
         body: [
@@ -98,7 +102,7 @@ export const exportCashbookEntryToPDF = (
         styles: { fontSize: 11, fontStyle: 'bold', cellPadding: 5, textColor: [0, 0, 0], lineWidth: 0.15, lineColor: [200, 200, 200] },
         columnStyles: {
             0: { halign: 'left', cellWidth: 'auto' },
-            1: { halign: 'right', cellWidth: 35 }
+            1: { halign: 'right', cellWidth: 40 }
         }
     });
 
@@ -122,7 +126,7 @@ export const exportCashbookEntryToPDF = (
 
     currentY = (doc as any).lastAutoTable.finalY + 12;
 
-    // 5. Expense Section (Red) - Updated from Orange
+    // 5. Expense Section (Vibrant Red)
     autoTable(doc, {
         startY: currentY,
         head: [
@@ -146,7 +150,7 @@ export const exportCashbookEntryToPDF = (
         body: [
             ['TOTAL INCOME', incomeTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })],
             ['TOTAL EXPENSE', expenseTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })],
-            [`CLOSING BALANCE FOR DATE ${config.date}`, netClosing.toLocaleString('en-IN', { minimumFractionDigits: 2 })]
+            [`CLOSING BALANCE FOR DATE ${formattedDate}`, netClosing.toLocaleString('en-IN', { minimumFractionDigits: 2 })]
         ],
         theme: 'grid',
         styles: { fontSize: 12, fontStyle: 'bold', cellPadding: 5, textColor: [0, 0, 0], lineWidth: 0.15, lineColor: [200, 200, 200] },
@@ -163,7 +167,7 @@ export const exportCashbookEntryToPDF = (
     doc.setFont('helvetica', 'normal');
     doc.text(footerText, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
 
-    doc.save(`Cashbook_${config.date}.pdf`);
+    doc.save(`Cashbook_${formattedDate.replace(/\//g, '-')}.pdf`);
 };
 
 export const exportCashbookEntryToExcel = (
@@ -172,14 +176,15 @@ export const exportCashbookEntryToExcel = (
     config: { companyName: string; date: string; openingBalance: number; openingDateText: string }
 ) => {
     const ws_data: any[][] = [];
+    const formattedDate = formatDate(config.date);
     ws_data.push([config.companyName.toUpperCase()]);
-    ws_data.push([`DAILY CASH STATEMENT - DATE: ${config.date}`]);
+    ws_data.push([`DAILY CASH STATEMENT - DATE: ${formattedDate}`]);
     ws_data.push([]);
     
     ws_data.push([`OPENING BALANCE FOR DATE ${config.openingDateText}`, "", config.openingBalance]);
     ws_data.push([]);
 
-    ws_data.push(["INCOME (INWARD)"]);
+    ws_data.push(["INCOME (INWARDS)"]);
     ws_data.push(["SR NO", "PARTICULARS", "AMOUNT"]);
     let totalIn = 0;
     incomeRows.forEach((r, i) => {
@@ -190,7 +195,7 @@ export const exportCashbookEntryToExcel = (
     ws_data.push(["TOTAL INWARD", "", totalIn]);
     
     ws_data.push([]);
-    ws_data.push(["EXPENSE (OUTWARD)"]);
+    ws_data.push(["EXPENSE (OUTWARDS)"]);
     ws_data.push(["SR NO", "PARTICULARS", "AMOUNT"]);
     let totalOut = 0;
     expenseRows.forEach((r, i) => {
@@ -202,12 +207,12 @@ export const exportCashbookEntryToExcel = (
     
     ws_data.push([]);
     const closing = config.openingBalance + totalIn - totalOut;
-    ws_data.push(["NET CLOSING BALANCE", "", closing]);
+    ws_data.push([`CLOSING BALANCE FOR DATE ${formattedDate}`, "", closing]);
 
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Statement");
-    XLSX.writeFile(wb, `Cashbook_${config.date}.xlsx`);
+    XLSX.writeFile(wb, `Cashbook_${formattedDate.replace(/\//g, '-')}.xlsx`);
 };
 
 export const exportToCSV = (headers: string[], rows: any[][], config: ExportConfig) => {
