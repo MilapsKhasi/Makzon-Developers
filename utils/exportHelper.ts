@@ -53,254 +53,143 @@ export const exportToExcel = (
 /**
  * Specialized export for Cashbook Entry Sheet with precise formatting for PDF:
  * - Vertical layout (Income then Expense)
- * - Exact text formatting and alignments
+ * - Includes Opening Balance contextually from the record's raw_data
  */
 export const exportCashbookEntryToPDF = (
     incomeRows: any[],
     expenseRows: any[],
-    config: { companyName: string; date: string }
+    config: { companyName: string; date: string; openingBalance: number; openingDateText: string }
 ) => {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
-    let currentY = 25; // Initial Y position
+    let currentY = 25;
 
-    // 1. Company Header (Centered, Bold, simulating vertical height via margin)
+    // 1. Company Header
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.text(config.companyName.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
     currentY += 8;
 
-    // 2. Daily Cash Statement (Centered, Normal)
+    // 2. Daily Cash Statement
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.text(`DAILY CASH STATEMENT - DATE: ${config.date}`, pageWidth / 2, currentY, { align: 'center' });
     currentY += 12;
 
-    // 3. Income Section
+    // 3. Opening Balance Section (Explicit row as requested)
     autoTable(doc, {
         startY: currentY,
-        head: [
-            [{ content: 'INCOME (INWARD)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] } }],
-            ['SR NO', 'PARTICULARS / SOURCE', 'AMOUNT (INR)']
+        body: [
+            [`OPENING BALANCE OF DATE ${config.openingDateText}:`, config.openingBalance.toFixed(2)]
         ],
-        body: incomeRows.map((row, i) => [i + 1, row.particulars, parseFloat(row.amount).toFixed(2)]),
-        foot: [['TOTAL', '', incomeRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0).toFixed(2)]],
         theme: 'grid',
-        styles: { 
-            fontSize: 9, 
-            cellPadding: 4, 
-            lineWidth: 0.1, 
-            lineColor: [0, 0, 0],
-            textColor: [0, 0, 0],
-            font: 'helvetica'
-        },
-        headStyles: { 
-            fillColor: [255, 255, 255], 
-            textColor: [0, 0, 0], 
-            fontStyle: 'bold', 
-            halign: 'left',
-            cellPadding: { left: 6, top: 4, bottom: 4, right: 4 }
-        },
+        styles: { fontSize: 10, fontStyle: 'bold', cellPadding: 5, textColor: [0, 0, 0], lineWidth: 0.2 },
         columnStyles: {
-            0: { cellWidth: 25, halign: 'left' },
-            1: { cellWidth: 'auto', halign: 'left' },
-            2: { cellWidth: 45, halign: 'left' }
-        },
-        footStyles: { 
-            fillColor: [255, 255, 255], 
-            textColor: [0, 0, 0], 
-            fontStyle: 'bold',
-            halign: 'left',
-            cellPadding: { left: 6, top: 4, bottom: 4 }
-        },
-        didParseCell: (data) => {
-            // Apply custom alignment for footer 'TOTAL' label
-            if (data.section === 'foot' && data.column.index === 0) {
-                data.cell.styles.halign = 'center';
-            }
-            // Indent effect for body rows
-            if (data.section === 'body') {
-                data.cell.styles.cellPadding = { left: 6, top: 4, bottom: 4, right: 4 };
-            }
+            0: { halign: 'left', cellWidth: 'auto' },
+            1: { halign: 'right', cellWidth: 45 }
         }
     });
 
     currentY = (doc as any).lastAutoTable.finalY + 10;
 
-    // 4. Expense Section
+    // 4. Income Section
     autoTable(doc, {
         startY: currentY,
         head: [
-            [{ content: 'EXPENSE (OUTWARD)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] } }],
+            [{ content: 'INCOME (INWARD)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [240, 240, 240] } }],
+            ['SR NO', 'PARTICULARS / SOURCE', 'AMOUNT (INR)']
+        ],
+        body: incomeRows.map((row, i) => [i + 1, row.particulars, parseFloat(row.amount).toFixed(2)]),
+        foot: [['TOTAL INWARD', '', incomeRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0).toFixed(2)]],
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 4, lineWidth: 0.1, lineColor: [150, 150, 150] },
+        columnStyles: { 0: { cellWidth: 20 }, 2: { cellWidth: 45, halign: 'right' } },
+        footStyles: { fontStyle: 'bold', fillColor: [245, 255, 245] }
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+
+    // 5. Expense Section
+    autoTable(doc, {
+        startY: currentY,
+        head: [
+            [{ content: 'EXPENSE (OUTWARD)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [240, 240, 240] } }],
             ['SR NO', 'PARTICULARS / USAGE', 'AMOUNT (INR)']
         ],
         body: expenseRows.map((row, i) => [i + 1, row.particulars, parseFloat(row.amount).toFixed(2)]),
-        foot: [['TOTAL', '', expenseRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0).toFixed(2)]],
+        foot: [['TOTAL OUTWARD', '', expenseRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0).toFixed(2)]],
         theme: 'grid',
-        styles: { 
-            fontSize: 9, 
-            cellPadding: 4, 
-            lineWidth: 0.1, 
-            lineColor: [0, 0, 0],
-            textColor: [0, 0, 0],
-            font: 'helvetica'
-        },
-        headStyles: { 
-            fillColor: [255, 255, 255], 
-            textColor: [0, 0, 0], 
-            fontStyle: 'bold', 
-            halign: 'left',
-            cellPadding: { left: 6, top: 4, bottom: 4, right: 4 }
-        },
-        columnStyles: {
-            0: { cellWidth: 25, halign: 'left' },
-            1: { cellWidth: 'auto', halign: 'left' },
-            2: { cellWidth: 45, halign: 'left' }
-        },
-        footStyles: { 
-            fillColor: [255, 255, 255], 
-            textColor: [0, 0, 0], 
-            fontStyle: 'bold',
-            halign: 'left',
-            cellPadding: { left: 6, top: 4, bottom: 4 }
-        },
-        didParseCell: (data) => {
-            if (data.section === 'foot' && data.column.index === 0) {
-                data.cell.styles.halign = 'center';
-            }
-            if (data.section === 'body') {
-                data.cell.styles.cellPadding = { left: 6, top: 4, bottom: 4, right: 4 };
-            }
-        }
+        styles: { fontSize: 9, cellPadding: 4, lineWidth: 0.1, lineColor: [150, 150, 150] },
+        columnStyles: { 0: { cellWidth: 20 }, 2: { cellWidth: 45, halign: 'right' } },
+        footStyles: { fontStyle: 'bold', fillColor: [255, 245, 245] }
     });
 
-    currentY = (doc as any).lastAutoTable.finalY + 8;
+    currentY = (doc as any).lastAutoTable.finalY + 10;
 
-    // 5. Closing Net Balance (Centered Text, Left Aligned Amount with Indent)
-    const totalIncome = incomeRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
-    const totalExpense = expenseRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
-    const netBalance = totalIncome - totalExpense;
+    // 6. Final Summary
+    const totalIn = incomeRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
+    const totalOut = expenseRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
+    const net = config.openingBalance + totalIn - totalOut;
 
     autoTable(doc, {
         startY: currentY,
-        body: [['CLOSING NET BALANCE:', '', netBalance.toFixed(2)]],
+        body: [
+            ['NET CLOSING BALANCE:', net.toFixed(2)]
+        ],
         theme: 'grid',
-        styles: { 
-            fontSize: 10, 
-            cellPadding: 4, 
-            fontStyle: 'normal',
-            lineWidth: 0.1,
-            lineColor: [0, 0, 0]
-        },
+        styles: { fontSize: 12, fontStyle: 'bold', cellPadding: 6, fillColor: [255, 255, 255] },
         columnStyles: {
-            0: { cellWidth: 'auto', halign: 'center' },
-            1: { cellWidth: 0 }, 
-            2: { cellWidth: 45, halign: 'left', cellPadding: { left: 6, top: 4, bottom: 4 } }
+            0: { halign: 'right' },
+            1: { halign: 'right', cellWidth: 45 }
         }
     });
 
-    doc.save(`Cashbook_Statement_${config.date.replace(/[\/\-]/g, '_')}.pdf`);
+    doc.save(`Cashbook_${config.date}.pdf`);
 };
 
 export const exportCashbookEntryToExcel = (
     incomeRows: any[],
     expenseRows: any[],
-    config: { companyName: string; date: string }
+    config: { companyName: string; date: string; openingBalance: number; openingDateText: string }
 ) => {
     const ws_data: any[][] = [];
-    const merges: XLSX.Range[] = [];
-    const rowHeights: any[] = [];
-
-    // --- 1. Company Header ---
-    ws_data.push([config.companyName.toUpperCase(), null, null]);
-    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } });
-    rowHeights.push({ hpt: 25.50 });
-
-    // --- 2. Daily Cash Statement Header ---
-    ws_data.push([`DAILY CASH STATEMENT - DATE: ${config.date}`, null, null]);
-    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-    rowHeights.push({ hpt: 18.75 });
-
-    // --- 3. Spacer ---
+    ws_data.push([config.companyName.toUpperCase()]);
+    ws_data.push([`DAILY CASH STATEMENT - DATE: ${config.date}`]);
     ws_data.push([]);
-    rowHeights.push({ hpt: 12 });
+    
+    // Explicit Opening Balance Row
+    ws_data.push([`OPENING BALANCE OF DATE ${config.openingDateText}`, "", config.openingBalance]);
+    ws_data.push([]);
 
-    // --- 4. INCOME SECTION ---
-    const incomeHeaderIdx = ws_data.length;
-    ws_data.push(["INCOME (INWARD)", null, null]);
-    merges.push({ s: { r: incomeHeaderIdx, c: 0 }, e: { r: incomeHeaderIdx, c: 2 } });
-    rowHeights.push({ hpt: 20.25 });
-
-    const incomeSubHeaderIdx = ws_data.length;
-    ws_data.push(["SR NO", "PARTICULARS / SOURCE", "AMOUNT (INR)"]);
-    rowHeights.push({ hpt: 20.25 });
-
-    let totalIncome = 0;
-    const cleanIncome = incomeRows.filter(r => r.particulars.trim() !== '' || r.amount !== '');
-    cleanIncome.forEach((row, idx) => {
-        const amt = parseFloat(row.amount) || 0;
-        totalIncome += amt;
-        ws_data.push([idx + 1, row.particulars, amt]);
-        rowHeights.push({ hpt: 17.75 });
+    ws_data.push(["INCOME (INWARD)"]);
+    ws_data.push(["SR NO", "PARTICULARS", "AMOUNT"]);
+    let totalIn = 0;
+    incomeRows.forEach((r, i) => {
+        const amt = parseFloat(r.amount) || 0;
+        totalIn += amt;
+        ws_data.push([i + 1, r.particulars, amt]);
     });
-
-    const incomeTotalIdx = ws_data.length;
-    ws_data.push(["TOTAL", null, totalIncome]);
-    merges.push({ s: { r: incomeTotalIdx, c: 0 }, e: { r: incomeTotalIdx, c: 1 } });
-    rowHeights.push({ hpt: 18.75 });
-
-    // --- 5. Spacer ---
+    ws_data.push(["TOTAL INWARD", "", totalIn]);
+    
     ws_data.push([]);
-    rowHeights.push({ hpt: 12 });
-
-    // --- 6. EXPENSE SECTION ---
-    const expenseHeaderIdx = ws_data.length;
-    ws_data.push(["EXPENSE (OUTWARD)", null, null]);
-    merges.push({ s: { r: expenseHeaderIdx, c: 0 }, e: { r: expenseHeaderIdx, c: 2 } });
-    rowHeights.push({ hpt: 20.25 });
-
-    const expenseSubHeaderIdx = ws_data.length;
-    ws_data.push(["SR NO", "PARTICULARS / USAGE", "AMOUNT (INR)"]);
-    rowHeights.push({ hpt: 20.25 });
-
-    let totalExpense = 0;
-    const cleanExpense = expenseRows.filter(r => r.particulars.trim() !== '' || r.amount !== '');
-    cleanExpense.forEach((row, idx) => {
-        const amt = parseFloat(row.amount) || 0;
-        totalExpense += amt;
-        ws_data.push([idx + 1, row.particulars, amt]);
-        rowHeights.push({ hpt: 17.75 });
+    ws_data.push(["EXPENSE (OUTWARD)"]);
+    ws_data.push(["SR NO", "PARTICULARS", "AMOUNT"]);
+    let totalOut = 0;
+    expenseRows.forEach((r, i) => {
+        const amt = parseFloat(r.amount) || 0;
+        totalOut += amt;
+        ws_data.push([i + 1, r.particulars, amt]);
     });
-
-    const expenseTotalIdx = ws_data.length;
-    ws_data.push(["TOTAL", null, totalExpense]);
-    merges.push({ s: { r: expenseTotalIdx, c: 0 }, e: { r: expenseTotalIdx, c: 1 } });
-    rowHeights.push({ hpt: 18.75 });
-
-    // --- 7. Spacer ---
+    ws_data.push(["TOTAL OUTWARD", "", totalOut]);
+    
     ws_data.push([]);
-    rowHeights.push({ hpt: 12 });
-
-    // --- 8. CLOSING SUMMARY ---
-    const netBalance = totalIncome - totalExpense;
-    const closingIdx = ws_data.length;
-    ws_data.push(["CLOSING NET BALANCE:", null, netBalance]);
-    merges.push({ s: { r: closingIdx, c: 0 }, e: { r: closingIdx, c: 1 } });
-    rowHeights.push({ hpt: 18.75 });
+    const closing = config.openingBalance + totalIn - totalOut;
+    ws_data.push(["NET CLOSING BALANCE", "", closing]);
 
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
-
-    ws['!merges'] = merges;
-    ws['!rows'] = rowHeights;
-    ws['!cols'] = [
-        { wch: 15 }, 
-        { wch: 65 }, 
-        { wch: 25 }  
-    ];
-
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Statement");
-    XLSX.writeFile(wb, `Cashbook_Statement_${config.date.replace(/[\/\-]/g, '_')}.xlsx`);
+    XLSX.writeFile(wb, `Cashbook_${config.date}.xlsx`);
 };
 
 export const exportToCSV = (headers: string[], rows: any[][], config: ExportConfig) => {

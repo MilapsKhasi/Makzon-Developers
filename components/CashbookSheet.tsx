@@ -14,15 +14,17 @@ interface CashbookSheetProps {
   initialData?: any;
   existingEntries?: any[];
   prevBalance?: number;
+  prevDate?: string;
   onSave: (data: any) => void;
   onCancel: () => void;
 }
 
-const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntries = [], prevBalance = 0, onSave, onCancel }) => {
+const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntries = [], prevBalance = 0, prevDate = 'Initial', onSave, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [reportDate, setReportDate] = useState(''); // ISO Format (YYYY-MM-DD)
   const [displayDate, setDisplayDate] = useState(''); // UI Format (DD/MM/YY)
   const [openingBalance, setOpeningBalance] = useState(0);
+  const [openingDateText, setOpeningDateText] = useState('');
   
   const createEmptyRow = () => ({ id: Math.random().toString(36).substr(2, 9), particulars: '', amount: '' });
 
@@ -44,17 +46,20 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
       
       setIncomeRows(inc);
       setExpenseRows(exp);
-      // For editing, we prioritize what was saved, but fallback to live link if it looks fresh
-      setOpeningBalance(Number(raw.openingBalance) || prevBalance);
+      // For existing entries, we MUST use the opening balance and date that was active when this was created
+      setOpeningBalance(Number(raw.openingBalance) || 0);
+      setOpeningDateText(raw.prevDate || 'Initial');
     } else {
       const todayIso = new Date().toISOString().split('T')[0];
       setReportDate(todayIso);
       setDisplayDate(formatDate(todayIso));
       setIncomeRows(Array(12).fill(null).map(createEmptyRow));
       setExpenseRows(Array(12).fill(null).map(createEmptyRow));
+      // For new entries, use the live linked balance and date passed from props
       setOpeningBalance(prevBalance);
+      setOpeningDateText(prevDate);
     }
-  }, [initialData, prevBalance]);
+  }, [initialData, prevBalance, prevDate]);
 
   const handleDateBlur = () => {
     const iso = parseDateFromInput(displayDate);
@@ -112,14 +117,14 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     const companyName = localStorage.getItem('activeCompanyName') || 'Workspace';
     const cleanIncome = incomeRows.filter(r => r.particulars.trim() !== '' && r.amount !== '');
     const cleanExpense = expenseRows.filter(r => r.particulars.trim() !== '' && r.amount !== '');
-    exportCashbookEntryToExcel(cleanIncome, cleanExpense, { companyName, date: reportDate });
+    exportCashbookEntryToExcel(cleanIncome, cleanExpense, { companyName, date: reportDate, openingBalance, openingDateText });
   };
 
   const handleExportPDF = () => {
     const companyName = localStorage.getItem('activeCompanyName') || 'Workspace';
     const cleanIncome = incomeRows.filter(r => r.particulars.trim() !== '' && r.amount !== '');
     const cleanExpense = expenseRows.filter(r => r.particulars.trim() !== '' && r.amount !== '');
-    exportCashbookEntryToPDF(cleanIncome, cleanExpense, { companyName, date: reportDate });
+    exportCashbookEntryToPDF(cleanIncome, cleanExpense, { companyName, date: reportDate, openingBalance, openingDateText });
   };
 
   const incomeTotal = calculateTotal(incomeRows);
@@ -129,7 +134,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
   return (
     <div className="bg-white dark:bg-slate-900 w-full border border-slate-300 dark:border-slate-800 rounded-md flex flex-col h-full animate-in fade-in duration-300 overflow-hidden">
       {/* Utility Header */}
-      <div className="flex items-center justify-between px-6 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shrink-0">
+      <div className="flex items-center justify-between px-6 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shrink-0">
         <div className="flex items-center space-x-4">
           <button onClick={onCancel} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500">
             <ArrowLeft className="w-5 h-5" />
@@ -139,19 +144,30 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
           </h2>
         </div>
         <div className="flex items-center space-x-2">
-          <button onClick={handleExportPDF} className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 font-semibold text-[12px] hover:bg-slate-50 transition-all capitalize">
+          <button onClick={handleExportPDF} className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 font-semibold text-[11px] hover:bg-slate-50 transition-all capitalize">
             <FileText className="w-4 h-4 mr-2 text-rose-500" /> PDF
           </button>
-          <button onClick={handleExportXLSX} className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 font-semibold text-[12px] hover:bg-slate-50 transition-all capitalize">
+          <button onClick={handleExportXLSX} className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 font-semibold text-[11px] hover:bg-slate-50 transition-all capitalize">
             <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-500" /> Excel
           </button>
           <button 
             onClick={() => {
               setLoading(true);
-              onSave({ id: initialData?.id, date: reportDate, openingBalance, incomeTotal, expenseTotal, balance: closingBalance, incomeRows, expenseRows });
+              // Crucial: Save prevDate and openingBalance so historical exports remain accurate
+              onSave({ 
+                id: initialData?.id, 
+                date: reportDate, 
+                openingBalance, 
+                prevDate: openingDateText,
+                incomeTotal, 
+                expenseTotal, 
+                balance: closingBalance, 
+                incomeRows, 
+                expenseRows 
+              });
             }}
             disabled={loading}
-            className="bg-primary text-slate-900 px-8 py-2 rounded font-bold text-[12px] hover:bg-primary-dark transition-all flex items-center ml-2 capitalize"
+            className="bg-primary text-slate-900 px-8 py-1.5 rounded font-bold text-[12px] hover:bg-primary-dark transition-all flex items-center ml-2 capitalize shadow-sm"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             {initialData ? 'Update' : 'Save'}
@@ -159,9 +175,9 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50 dark:bg-slate-950 flex flex-col space-y-3 custom-scrollbar">
-        {/* Minimized Header Row */}
-        <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-5 py-2.5 border border-slate-200 dark:border-slate-800 rounded shadow-sm shrink-0">
+      <div className="flex-1 overflow-y-auto p-3 bg-slate-50/50 dark:bg-slate-950 flex flex-col space-y-2 custom-scrollbar">
+        {/* Absolute Minimal Header Row */}
+        <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-4 py-2 border border-slate-200 dark:border-slate-800 rounded shadow-sm shrink-0">
             <div className="flex items-center space-x-3">
               <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Stmt Date</label>
               <input 
@@ -174,9 +190,11 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
               />
             </div>
             
-            {/* Extremely Compact Opening Balance Card */}
-            <div className="flex flex-col items-end bg-white dark:bg-slate-900 px-5 py-2 rounded border border-slate-300 dark:border-slate-700 min-w-[200px] shadow-sm">
-              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5 leading-none">Opening Balance</span>
+            {/* Smallest Possible Contextual Opening Balance Card */}
+            <div className="flex flex-col items-end bg-white dark:bg-slate-900 px-4 py-2 rounded border border-slate-300 dark:border-slate-700 min-w-[220px] shadow-sm">
+              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5 leading-none">
+                Opening Balance of Date {openingDateText}
+              </span>
               <span className="text-[20px] font-bold font-mono text-slate-900 dark:text-white leading-none">
                 {formatCurrency(openingBalance)}
               </span>
@@ -186,14 +204,14 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
         <div className="flex-1 flex flex-col min-h-0 border border-slate-300 dark:border-slate-800 rounded overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
           {/* Table Subtotals Header */}
           <div className="grid grid-cols-2 divide-x divide-slate-300 dark:divide-slate-800 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0">
-            <div className="flex items-center justify-between px-5 py-2.5 bg-emerald-50/20 dark:bg-emerald-950/10">
+            <div className="flex items-center justify-between px-4 py-2 bg-emerald-50/20 dark:bg-emerald-950/10">
               <span className="text-[12px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-tight">Income (Inward)</span>
               <div className="flex items-center space-x-2">
                 <span className="text-[9px] text-emerald-600 font-bold uppercase">Sub</span>
                 <span className="text-[14px] font-bold text-emerald-600 font-mono">{formatCurrency(incomeTotal)}</span>
               </div>
             </div>
-            <div className="flex items-center justify-between px-5 py-2.5 bg-rose-50/20 dark:bg-rose-950/10">
+            <div className="flex items-center justify-between px-4 py-2 bg-rose-50/20 dark:bg-rose-950/10">
               <span className="text-[12px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-tight">Expense (Outward)</span>
               <div className="flex items-center space-x-2">
                 <span className="text-[9px] text-rose-600 font-bold uppercase">Sub</span>
@@ -254,18 +272,18 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
           </div>
 
           {/* Footer Totals */}
-          <div className="bg-slate-50 dark:bg-slate-800/40 px-6 py-4 shrink-0 flex items-center justify-between border-t border-slate-200 dark:border-slate-800">
+          <div className="bg-slate-50 dark:bg-slate-800/40 px-6 py-3 shrink-0 flex items-center justify-between border-t border-slate-200 dark:border-slate-800">
             <div className="flex space-x-4">
-              <div className="flex flex-col bg-white dark:bg-slate-900 px-4 py-2 rounded border border-slate-200 dark:border-slate-800 min-w-[140px] shadow-sm">
+              <div className="flex flex-col bg-white dark:bg-slate-900 px-4 py-1.5 rounded border border-slate-200 dark:border-slate-800 min-w-[140px] shadow-sm">
                 <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Total In</span>
                 <span className="text-[16px] font-bold font-mono text-emerald-600 leading-none">{formatCurrency(incomeTotal)}</span>
               </div>
-              <div className="flex flex-col bg-white dark:bg-slate-900 px-4 py-2 rounded border border-slate-200 dark:border-slate-800 min-w-[140px] shadow-sm">
+              <div className="flex flex-col bg-white dark:bg-slate-900 px-4 py-1.5 rounded border border-slate-200 dark:border-slate-800 min-w-[140px] shadow-sm">
                 <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Total Out</span>
                 <span className="text-[16px] font-bold font-mono text-rose-600 leading-none">{formatCurrency(expenseTotal)}</span>
               </div>
             </div>
-            <div className="flex flex-col items-end bg-white dark:bg-slate-900 px-6 py-3 rounded border border-slate-300 dark:border-slate-700 min-w-[240px] shadow-sm">
+            <div className="flex flex-col items-end bg-white dark:bg-slate-900 px-6 py-2.5 rounded border border-slate-300 dark:border-slate-700 min-w-[240px] shadow-sm">
               <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Net Closing Balance</span>
               <span className={`text-[24px] font-bold font-mono leading-none ${closingBalance >= 0 ? 'text-link' : 'text-rose-600'}`}>{formatCurrency(closingBalance)}</span>
             </div>

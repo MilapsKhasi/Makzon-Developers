@@ -60,6 +60,24 @@ const Cashbook = () => {
     }), { income: 0, expense: 0, balance: 0 });
   }, [entries]);
 
+  // Context-aware Previous Data Calculation
+  const prevData = useMemo(() => {
+    if (entries.length === 0) return { balance: 0, date: 'Initial' };
+    
+    if (!editingEntry) {
+      // Logic for New Entry: Link to the absolute latest record
+      return { balance: Number(entries[0].balance) || 0, date: formatDate(entries[0].date) };
+    } else {
+      // Logic for Editing: Link to the record created just before this one
+      const currentIndex = entries.findIndex(e => e.id === editingEntry.id);
+      const preceding = entries[currentIndex + 1]; // sorted desc, so index+1 is older
+      if (preceding) {
+        return { balance: Number(preceding.balance) || 0, date: formatDate(preceding.date) };
+      }
+      return { balance: 0, date: 'Initial' };
+    }
+  }, [entries, editingEntry, viewState]);
+
   const handleExportCSV = async () => {
     if (!activeCompany?.id || entries.length === 0) return;
     setExporting(true);
@@ -146,7 +164,8 @@ const Cashbook = () => {
         <CashbookSheet 
           initialData={editingEntry} 
           existingEntries={entries}
-          prevBalance={entries.length > 0 ? (editingEntry?.id === entries[0].id ? (entries[1]?.balance || 0) : entries[0].balance) : 0}
+          prevBalance={prevData.balance}
+          prevDate={prevData.date}
           onSave={handleSaveSheet} 
           onCancel={() => { setViewState('list'); setEditingEntry(null); }} 
         />
@@ -182,13 +201,13 @@ const Cashbook = () => {
                 </button>
             </div>
 
-            {/* Hidden Logic Source Card */}
+            {/* Hidden Logic Source Card - Preserved for Linked Data but Hidden in UI */}
             <div className="hidden">
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 min-w-[320px] relative overflow-hidden">
                 <Landmark className="absolute top-0 right-0 p-4 opacity-5 w-20 h-20 text-white" />
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Live Logic Feed</span>
                 <div className="text-[28px] font-bold text-white font-mono leading-none mb-2">
-                    {formatCurrency(entries.length > 0 ? entries[0].balance : 0)}
+                    {formatCurrency(prevData.balance)}
                 </div>
               </div>
             </div>
