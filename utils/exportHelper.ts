@@ -54,6 +54,7 @@ export const exportToExcel = (
  * Specialized export for Cashbook Entry Sheet with precise formatting for PDF:
  * - Vertical layout (Income then Expense)
  * - Includes Opening Balance contextually from the record's raw_data
+ * - Styled with specific colors for financial totals
  */
 export const exportCashbookEntryToPDF = (
     incomeRows: any[],
@@ -63,6 +64,13 @@ export const exportCashbookEntryToPDF = (
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
     let currentY = 25;
+
+    // Shared Column Definitions for consistency across tables
+    const sharedColumnStyles: any = {
+        0: { cellWidth: 20, halign: 'center' }, // SR NO
+        1: { cellWidth: 'auto' },               // PARTICULARS
+        2: { cellWidth: 45, halign: 'right' }   // AMOUNT
+    };
 
     // 1. Company Header
     doc.setFont('helvetica', 'bold');
@@ -76,7 +84,7 @@ export const exportCashbookEntryToPDF = (
     doc.text(`DAILY CASH STATEMENT - DATE: ${config.date}`, pageWidth / 2, currentY, { align: 'center' });
     currentY += 12;
 
-    // 3. Opening Balance Section (Explicit row as requested)
+    // 3. Opening Balance Section
     autoTable(doc, {
         startY: currentY,
         body: [
@@ -103,8 +111,12 @@ export const exportCashbookEntryToPDF = (
         foot: [['TOTAL INWARD', '', incomeRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0).toFixed(2)]],
         theme: 'grid',
         styles: { fontSize: 9, cellPadding: 4, lineWidth: 0.1, lineColor: [150, 150, 150] },
-        columnStyles: { 0: { cellWidth: 20 }, 2: { cellWidth: 45, halign: 'right' } },
-        footStyles: { fontStyle: 'bold', fillColor: [245, 255, 245] }
+        columnStyles: sharedColumnStyles,
+        footStyles: { 
+            fontStyle: 'bold', 
+            fillColor: [245, 255, 245], 
+            textColor: [0, 128, 0] // Dark Green for Income Total
+        }
     });
 
     currentY = (doc as any).lastAutoTable.finalY + 10;
@@ -120,8 +132,12 @@ export const exportCashbookEntryToPDF = (
         foot: [['TOTAL OUTWARD', '', expenseRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0).toFixed(2)]],
         theme: 'grid',
         styles: { fontSize: 9, cellPadding: 4, lineWidth: 0.1, lineColor: [150, 150, 150] },
-        columnStyles: { 0: { cellWidth: 20 }, 2: { cellWidth: 45, halign: 'right' } },
-        footStyles: { fontStyle: 'bold', fillColor: [255, 245, 245] }
+        columnStyles: sharedColumnStyles,
+        footStyles: { 
+            fontStyle: 'bold', 
+            fillColor: [255, 245, 245], 
+            textColor: [200, 0, 0] // Clear Red for Expense Total
+        }
     });
 
     currentY = (doc as any).lastAutoTable.finalY + 10;
