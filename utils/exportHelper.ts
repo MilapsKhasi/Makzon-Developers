@@ -52,7 +52,7 @@ export const exportToExcel = (
 
 /**
  * Specialized export for Cashbook Entry Sheet matching the visual reference:
- * - High-impact colored headers
+ * - High-impact colored headers (Green for Income, Red for Expense)
  * - Unified column widths for vertical alignment
  * - Bottom summary ledger
  */
@@ -122,11 +122,11 @@ export const exportCashbookEntryToPDF = (
 
     currentY = (doc as any).lastAutoTable.finalY + 12;
 
-    // 5. Expense Section (Orange/Red)
+    // 5. Expense Section (Red) - Updated from Orange
     autoTable(doc, {
         startY: currentY,
         head: [
-            [{ content: 'EXPENSE (OUTWARDS)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [255, 121, 32], textColor: [255, 255, 255], fontSize: 12 } }],
+            [{ content: 'EXPENSE (OUTWARDS)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [220, 38, 38], textColor: [255, 255, 255], fontSize: 12 } }],
             ['SR NO', 'PARTICULARS', 'AMOUNT']
         ],
         body: expenseRows.map((row, i) => [i + 1, row.particulars.toUpperCase(), parseFloat(row.amount).toFixed(2)]),
@@ -135,7 +135,7 @@ export const exportCashbookEntryToPDF = (
         styles: { fontSize: 9, cellPadding: 4, lineWidth: 0.1, lineColor: [220, 220, 220] },
         headStyles: { fillColor: [245, 245, 245], textColor: [80, 80, 80], fontStyle: 'bold', fontSize: 8 },
         columnStyles: sharedColumnStyles,
-        footStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [200, 0, 0], fontSize: 10 }
+        footStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [220, 38, 38], fontSize: 10 }
     });
 
     currentY = (doc as any).lastAutoTable.finalY + 15;
