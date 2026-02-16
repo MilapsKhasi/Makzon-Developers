@@ -34,7 +34,6 @@ export const getAppSettings = () => {
 export const formatCurrency = (amount: number | undefined | null, includeSymbol: boolean = true) => {
   if (amount === undefined || amount === null || isNaN(amount)) return includeSymbol ? '₹ 0.00' : '0.00';
   const { currency } = getAppSettings();
-  const config = CURRENCIES[currency as keyof typeof CURRENCIES] || CURRENCIES.INR;
   
   const options: any = {
     minimumFractionDigits: 2,
@@ -48,7 +47,7 @@ export const formatCurrency = (amount: number | undefined | null, includeSymbol:
     options.style = 'decimal';
   }
   
-  // Enforce en-IN for professional comma spacing in India (1,00,000 style)
+  // Standardizing to Indian numbering system for high-scale readability
   return new Intl.NumberFormat('en-IN', options).format(amount);
 };
 
