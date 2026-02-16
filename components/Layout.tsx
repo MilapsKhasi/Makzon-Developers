@@ -140,6 +140,16 @@ const Layout = () => {
         <div className="h-12 flex items-center px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <Logo size={28} />
         </div>
+        
+        {/* Gateway of Findesk Header */}
+        <div className={`bg-primary flex items-center transition-all duration-300 shrink-0 border-b border-slate-200 dark:border-slate-800 ${isSidebarOpen ? 'px-4 py-2.5 h-10' : 'h-1.5 justify-center'}`}>
+          {isSidebarOpen && (
+            <span className="text-slate-900 font-semibold text-[10px] uppercase tracking-wider whitespace-nowrap animate-in fade-in duration-500">
+              Gateway of Findesk
+            </span>
+          )}
+        </div>
+
         <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5 custom-scrollbar">
           {menuItems.map((item) => (
             <Link
