@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor } from 'lucide-react';
-import { getActiveCompanyId, safeSupabaseSave } from '../utils/helpers';
+import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor, Percent, CheckCircle2 } from 'lucide-react';
+import { getActiveCompanyId, safeSupabaseSave, getAppSettings } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import ConfirmDialog from '../components/ConfirmDialog';
 
@@ -11,6 +11,7 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [workspaceInfo, setWorkspaceInfo] = useState({ name: '', gstin: '', address: '' });
   const [theme, setTheme] = useState(localStorage.getItem('app_theme') || 'light');
+  const [gstConfig, setGstConfig] = useState({ enabled: false, type: 'CGST - SGST' });
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -22,6 +23,13 @@ const Settings = () => {
         const { data, error } = await supabase.from('companies').select('*').eq('id', cid).single();
         if (error) throw error;
         if (data) setWorkspaceInfo({ name: data.name || '', gstin: data.gstin || '', address: data.address || '' });
+
+        // Load GST settings from app settings
+        const settings = getAppSettings();
+        setGstConfig({
+            enabled: settings.gstEnabled || false,
+            type: settings.gstType || 'CGST - SGST'
+        });
       }
     } catch (err) {
       console.error(err);
@@ -48,8 +56,48 @@ const Settings = () => {
     setSaving(true);
     try {
       const cid = getActiveCompanyId();
+      
+      // 1. Save Workspace Info
       await safeSupabaseSave('companies', workspaceInfo, cid);
       localStorage.setItem('activeCompanyName', workspaceInfo.name);
+
+      // 2. Save GST settings to LocalStorage for workspace persistence
+      const currentSettings = getAppSettings();
+      const updatedSettings = { 
+        ...currentSettings, 
+        gstEnabled: gstConfig.enabled, 
+        gstType: gstConfig.type 
+      };
+      localStorage.setItem(`appSettings_${cid}`, JSON.stringify(updatedSettings));
+
+      // 3. Auto-generate Duties & Taxes if GST is enabled
+      if (gstConfig.enabled) {
+        const ledgersToEnsure = gstConfig.type === 'CGST - SGST' ? ['CGST', 'SGST'] : ['IGST'];
+        
+        for (const name of ledgersToEnsure) {
+            const { data: existing } = await supabase
+                .from('duties_taxes')
+                .select('id')
+                .eq('company_id', cid)
+                .eq('name', name)
+                .eq('is_deleted', false)
+                .maybeSingle();
+
+            if (!existing) {
+                await safeSupabaseSave('duties_taxes', {
+                    name,
+                    type: 'Charge',
+                    calc_method: 'Fixed',
+                    fixed_amount: 0,
+                    rate: 0,
+                    apply_on: 'Subtotal',
+                    is_default: true,
+                    is_deleted: false
+                });
+            }
+        }
+      }
+
       window.dispatchEvent(new Event('appSettingsChanged'));
       alert("Settings updated successfully!");
     } catch (err: any) {
@@ -117,6 +165,50 @@ const Settings = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* GST Configuration Section */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">
+            <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">GST Configuration</h3>
+          </div>
+          <div className="p-8 space-y-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Enable GST</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Turn on GST calculations and automatic tax ledger generation.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGstConfig({ ...gstConfig, enabled: !gstConfig.enabled })}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${gstConfig.enabled ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${gstConfig.enabled ? 'translate-x-5' : 'translate-x-0'}`}
+                />
+              </button>
+            </div>
+
+            {gstConfig.enabled && (
+                <div className="animate-in slide-in-from-top-2 duration-300 grid grid-cols-1 md:grid-cols-2 gap-8 items-center border-t border-slate-100 dark:border-slate-800 pt-8">
+                    <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Select GST Type</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Ledgers will be created automatically based on your choice.</p>
+                    </div>
+                    <div className="relative">
+                        <select 
+                            value={gstConfig.type} 
+                            onChange={(e) => setGstConfig({ ...gstConfig, type: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded text-sm font-medium outline-none focus:border-slate-400 dark:focus:border-slate-500 appearance-none"
+                        >
+                            <option value="CGST - SGST">CGST - SGST (Intra-State)</option>
+                            <option value="IGST">IGST (Inter-State)</option>
+                        </select>
+                        <Percent className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                </div>
+            )}
           </div>
         </div>
 
