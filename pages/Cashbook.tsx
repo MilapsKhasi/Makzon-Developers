@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Loader2, Calendar, Trash2, Edit, Eye, ArrowLeft, FileDown, AlertCircle, RefreshCw } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
@@ -17,18 +18,21 @@ const Cashbook = () => {
   const [exporting, setExporting] = useState(false);
 
   const loadData = async () => {
+    // Safety check for active company context
     if (!activeCompany?.id) {
+      setEntries([]);
       setLoading(false);
       return;
     }
 
     setLoading(true);
     try {
+      // Query refined to avoid 400 errors and handle RLS null/false logic efficiently
       const { data, error } = await supabase
         .from('cashbooks')
         .select('*')
         .eq('company_id', activeCompany.id)
-        .or('is_deleted.eq.false,is_deleted.is.null')
+        .not('is_deleted', 'is', true)
         .order('date', { ascending: false });
       
       if (error) {
@@ -42,19 +46,16 @@ const Cashbook = () => {
       setEntries(data || []);
       setDbError(false);
     } catch (e: any) {
-      console.warn("Cashbook: Fetch failed, checking local cache for ID:", activeCompany.id);
-      const localData = localStorage.getItem(`local_cashbook_${activeCompany.id}`);
-      if (localData) {
-        setEntries(JSON.parse(localData));
-      } else {
-        setEntries([]);
-      }
+      console.error("Cashbook synchronization error:", e.message);
+      // Removed local cache fallback logic as requested to prevent stale/empty results on reload
+      setEntries([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Explicitly wait for company profile to load before initiating data fetch
     if (companyLoading) return;
 
     if (!activeCompany?.id) {
@@ -144,7 +145,7 @@ const Cashbook = () => {
         queryResult = await supabase.from('cashbooks').insert([{ ...payload, created_at: new Date().toISOString() }]).select();
       }
       
-      const { data: responseData, error: responseError } = queryResult;
+      const { error: responseError } = queryResult;
 
       if (responseError) {
         alert('Save Failed: ' + responseError.message);
@@ -153,22 +154,8 @@ const Cashbook = () => {
       
       await loadData();
     } catch (e: any) {
-      console.warn("Cashbook: Sync failed, using local fallback:", e.message);
-      const localKey = `local_cashbook_${cid}`;
-      const existing = JSON.parse(localStorage.getItem(localKey) || '[]');
-      let updated;
-      if (data.id) {
-        updated = existing.map((e: any) => e.id === data.id ? { ...e, ...payload } : e);
-      } else {
-        const localEntry = { 
-          ...payload, 
-          id: 'local_' + Math.random().toString(36).substr(2, 9),
-          created_at: new Date().toISOString()
-        };
-        updated = [localEntry, ...existing];
-      }
-      localStorage.setItem(localKey, JSON.stringify(updated));
-      setEntries(updated);
+      console.error("Cashbook Save Error:", e.message);
+      alert("Could not save the statement to the server.");
     } finally { 
       setLoading(false);
       setViewState('list'); 
@@ -180,17 +167,9 @@ const Cashbook = () => {
       if (!confirm("Permanently delete this statement?")) return;
       setLoading(true);
       try {
-        if (id.startsWith('local_')) {
-          const localKey = `local_cashbook_${activeCompany?.id}`;
-          const existing = JSON.parse(localStorage.getItem(localKey) || '[]');
-          const updated = existing.filter((e: any) => e.id !== id);
-          localStorage.setItem(localKey, JSON.stringify(updated));
-          setEntries(updated);
-        } else {
-          const { error } = await supabase.from('cashbooks').update({ is_deleted: true }).eq('id', id);
-          if (error) throw error;
-          await loadData();
-        }
+        const { error } = await supabase.from('cashbooks').update({ is_deleted: true }).eq('id', id);
+        if (error) throw error;
+        await loadData();
       } catch (err) {
         alert("Failed to delete entry.");
       } finally {
