@@ -1,7 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-// Fixed: Added Save to the lucide-react imports
 import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
@@ -22,7 +20,7 @@ const Layout = () => {
   const [editingWs, setEditingWs] = useState<any>(null);
   const [wsFormData, setWsFormData] = useState({ name: '', gstin: '', address: '' });
   const [isDeletingWs, setIsDeletingWs] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; ws: any | null }>({ isOpen: boolean; ws: null });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; ws: any | null }>({ isOpen: false, ws: null });
 
   const loadWorkspaces = async () => {
     try {
