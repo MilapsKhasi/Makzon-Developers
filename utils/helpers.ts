@@ -13,12 +13,21 @@ export const getActiveCompanyId = () => {
 
 export const getAppSettings = () => {
   const cid = getActiveCompanyId();
-  if (!cid) return { currency: 'INR', borderStyle: 'rounded', dateFormat: 'DD/MM/YYYY' };
+  const defaultSettings = { 
+    currency: 'INR', 
+    borderStyle: 'rounded', 
+    dateFormat: 'DD/MM/YYYY',
+    gstEnabled: false,
+    gstType: 'CGST - SGST'
+  };
+  
+  if (!cid) return defaultSettings;
+  
   const s = localStorage.getItem(`appSettings_${cid}`);
   try {
-    return s ? JSON.parse(s) : { currency: 'INR', borderStyle: 'rounded', dateFormat: 'DD/MM/YYYY' };
+    return s ? { ...defaultSettings, ...JSON.parse(s) } : defaultSettings;
   } catch (e) {
-    return { currency: 'INR', borderStyle: 'rounded', dateFormat: 'DD/MM/YYYY' };
+    return defaultSettings;
   }
 };
 
@@ -52,7 +61,7 @@ export const formatDate = (iso: any) => {
 
 export const parseDateFromInput = (input: string): string | null => {
   if (!input) return null;
-  const parts = input.split(/[\/\-\.]/);
+  const parts = input.split(/[\/\-.]/);
   if (parts.length !== 3) return null;
   let [d, m, y] = parts;
   if (y.length === 2) {

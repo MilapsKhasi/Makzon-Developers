@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen } from 'lucide-react';
-import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill } from '../utils/helpers';
+import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
 import VendorForm from './VendorForm';
@@ -13,6 +14,7 @@ interface BillFormProps {
 
 const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) => {
   const cid = getActiveCompanyId();
+  const appSettings = getAppSettings();
   const today = new Date().toISOString().split('T')[0];
   const manualOverrides = useRef<Set<string>>(new Set());
 
@@ -21,7 +23,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     bill_number: '', 
     date: today, 
     displayDate: formatDate(today), 
-    gst_type: 'Intra-State',
+    gst_type: appSettings.gstType || 'CGST - SGST',
     items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', rate: '', tax_rate: 0, taxableAmount: 0 }],
     total_without_gst: 0, 
     total_gst: 0, 
@@ -63,6 +65,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   const recalculate = (state: any, sourceField?: string, sourceDutyId?: string, sourceVal?: any) => {
     let taxable = state.total_without_gst;
     let gst = state.total_gst;
+    let autoGstSum = 0;
 
     if (sourceDutyId) manualOverrides.current.add(sourceDutyId);
 
@@ -80,6 +83,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         const tamt = q * r;
         const gamt = tamt * (t / 100);
         taxable += tamt;
+        autoGstSum += gamt;
         gst += gamt;
         return { ...item, taxableAmount: tamt };
       });
@@ -91,6 +95,13 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       let calcAmt = d.amount || 0;
       if (sourceDutyId === d.id) {
         calcAmt = parseNumber(sourceVal);
+      } else if (appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST')) {
+          // Auto-calculate GST Ledgers from items
+          if (appSettings.gstType === 'CGST - SGST') {
+              if (d.name === 'CGST' || d.name === 'SGST') calcAmt = autoGstSum / 2;
+          } else if (appSettings.gstType === 'IGST') {
+              if (d.name === 'IGST') calcAmt = autoGstSum;
+          }
       } else if (!manualOverrides.current.has(d.id)) {
         const base = d.apply_on === 'Net Total' ? (taxable + gst) : taxable;
         const rate = parseFloat(d.bill_rate !== undefined ? d.bill_rate : d.rate) || 0;
@@ -149,7 +160,6 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     if (!formData.vendor_name || !formData.bill_number) return alert("Required: Vendor and Bill No");
     setLoading(true);
     try {
-      // VIRTUAL MAPPING IMPLEMENTATION: payload strictly matching SQL columns
       const payload: any = {
           vendor_name: formData.vendor_name,
           bill_number: formData.bill_number,
@@ -164,7 +174,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
           items: {
               line_items: formData.items,
               duties_and_taxes: formData.duties_and_taxes,
-              gst_type: formData.gst_type // VIRTUAL: stored in JSONB
+              gst_type: formData.gst_type
           }
       };
       
@@ -178,64 +188,94 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   };
 
   return (
-    <div className="bg-white w-full flex flex-col">
+    <div className="bg-white dark:bg-slate-900 w-full flex flex-col">
       <Modal isOpen={vendorModal.isOpen} onClose={() => setVendorModal({ ...vendorModal, isOpen: false })} title="Vendor Master" maxWidth="max-w-4xl">
         <VendorForm initialData={vendorModal.initialData} prefilledName={vendorModal.prefilledName} onSubmit={(v) => { setVendorModal({ ...vendorModal, isOpen: false }); loadDependencies(); }} onCancel={() => setVendorModal({ ...vendorModal, isOpen: false })} />
       </Modal>
 
       <form onSubmit={handleSubmit} className="p-8 space-y-6">
-        <div className="border border-slate-200 rounded-md p-8 bg-white space-y-6">
+        <div className="border border-slate-200 dark:border-slate-800 rounded-md p-8 bg-white dark:bg-slate-900 space-y-6">
             <div className="grid grid-cols-3 gap-6">
-                <div className="space-y-1.5"><label className="text-[14px] font-normal">Date</label><input required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px]" /></div>
-                <div className="space-y-1.5"><label className="text-[14px] font-normal">Bill No</label><input required value={formData.bill_number} onChange={e => setFormData({...formData, bill_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-mono" /></div>
-                <div className="space-y-1.5"><label className="text-[14px] font-normal">Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px]"><option value="Pending">Pending</option><option value="Paid">Paid</option></select></div>
+                <div className="space-y-1.5"><label className="text-[14px] font-normal dark:text-slate-300">Date</label><input required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px]" /></div>
+                <div className="space-y-1.5"><label className="text-[14px] font-normal dark:text-slate-300">Bill No</label><input required value={formData.bill_number} onChange={e => setFormData({...formData, bill_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono" /></div>
+                <div className="space-y-1.5"><label className="text-[14px] font-normal dark:text-slate-300">Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px]"><option value="Pending">Pending</option><option value="Paid">Paid</option></select></div>
             </div>
 
             <div className="space-y-1.5">
-                <label className="text-[14px] font-normal">Vendor Name</label>
+                <label className="text-[14px] font-normal dark:text-slate-300">Vendor Name</label>
                 <div className="flex gap-3">
-                  <input required list="vlist" value={formData.vendor_name} onChange={e => setFormData({...formData, vendor_name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] uppercase" />
-                  <button type="button" onClick={() => setVendorModal({ isOpen: true, initialData: vendors.find(v=>v.name===formData.vendor_name), prefilledName: formData.vendor_name })} className="h-10 w-10 flex items-center justify-center rounded border border-slate-200 hover:bg-slate-50"><UserRoundPen className="w-4 h-4" /></button>
+                  <input required list="vlist" value={formData.vendor_name} onChange={e => setFormData({...formData, vendor_name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] uppercase" />
+                  <button type="button" onClick={() => setVendorModal({ isOpen: true, initialData: vendors.find(v=>v.name===formData.vendor_name), prefilledName: formData.vendor_name })} className="h-10 w-10 flex items-center justify-center rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"><UserRoundPen className="w-4 h-4 text-slate-400" /></button>
                 </div>
                 <datalist id="vlist">{vendors.map(v => <option key={v.id} value={v.name} />)}</datalist>
             </div>
 
-            <div className="border border-slate-200 rounded-md overflow-x-auto mt-6 bg-white">
+            <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-x-auto mt-6 bg-white dark:bg-slate-900">
                 <table className="w-full text-[13px] border-collapse">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500">
-                        <tr><th className="p-3 text-left font-normal border-r border-slate-200">Item Description</th><th className="p-3 text-center w-28 border-r border-slate-200">QTY</th><th className="p-3 text-right w-36 border-r border-slate-200">Rate</th><th className="p-3 text-right w-32">Amount</th><th className="w-10"></th></tr>
+                    <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+                        <tr>
+                            <th className="p-3 text-left font-normal border-r border-slate-200 dark:border-slate-700">Item Description</th>
+                            {appSettings.gstEnabled && <th className="p-3 text-center w-24 border-r border-slate-200 dark:border-slate-700">Tax %</th>}
+                            <th className="p-3 text-center w-28 border-r border-slate-200 dark:border-slate-700">QTY</th>
+                            <th className="p-3 text-right w-36 border-r border-slate-200 dark:border-slate-700">Rate</th>
+                            <th className="p-3 text-right w-32">Amount</th>
+                            <th className="w-10"></th>
+                        </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {formData.items.map((it: any, idx: number) => (
                             <tr key={it.id}>
-                                <td className="p-0 border-r border-slate-100"><input list="itemslist" value={it.itemName} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-9 px-3 outline-none" /></td>
-                                <td className="p-0 border-r border-slate-100"><input value={it.qty} onChange={e => updateItemRow(idx, 'qty', e.target.value)} className="w-full h-9 px-2 text-center outline-none font-mono" /></td>
-                                <td className="p-0 border-r border-slate-100"><input value={it.rate} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-9 px-2 text-right outline-none font-mono" /></td>
-                                <td className="p-3 text-right font-bold font-mono">{formatCurrency(it.taxableAmount, false)}</td>
+                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input list="itemslist" value={it.itemName} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-9 px-3 outline-none bg-transparent dark:text-white" /></td>
+                                {appSettings.gstEnabled && (
+                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800 text-center">
+                                        <select 
+                                            value={it.tax_rate} 
+                                            onChange={e => updateItemRow(idx, 'tax_rate', e.target.value)}
+                                            className="w-full h-9 px-2 outline-none bg-transparent dark:text-white appearance-none text-center cursor-pointer"
+                                        >
+                                            <option value="0">0%</option>
+                                            <option value="5">5%</option>
+                                            <option value="12">12%</option>
+                                            <option value="18">18%</option>
+                                            <option value="40">40%</option>
+                                        </select>
+                                    </td>
+                                )}
+                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={it.qty} onChange={e => updateItemRow(idx, 'qty', e.target.value)} className="w-full h-9 px-2 text-center outline-none font-mono dark:text-white bg-transparent" /></td>
+                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={it.rate} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-9 px-2 text-right outline-none font-mono dark:text-white bg-transparent" /></td>
+                                <td className="p-3 text-right font-bold font-mono dark:text-slate-200">{formatCurrency(it.taxableAmount, false)}</td>
                                 <td className="text-center p-2"><button type="button" onClick={() => setFormData(recalculate({...formData, items: formData.items.filter((_: any, i: number) => i !== idx)}))} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button></td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
                 <datalist id="itemslist">{stockItems.map(s => <option key={s.id} value={s.name} />)}</datalist>
-                <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', qty: '', rate: '', taxableAmount: 0 }]}))} className="w-full py-2 bg-slate-50 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:bg-slate-100 border-t border-slate-200">+ Add Line</button>
+                <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', qty: '', rate: '', tax_rate: 0, taxableAmount: 0 }]}))} className="w-full py-2 bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 border-t border-slate-200 dark:border-slate-700">+ Add Line</button>
             </div>
 
-            <div className="flex justify-between items-start pt-8 border-t border-slate-100 bg-white">
-                <div className="w-1/2 pr-12"><label className="text-[14px] font-normal mb-2 block">Remark</label><textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-[13px] resize-none h-36 bg-slate-50/30 focus:bg-white" placeholder="Internal notes..." /></div>
+            <div className="flex justify-between items-start pt-8 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <div className="w-1/2 pr-12"><label className="text-[14px] font-normal dark:text-slate-300 mb-2 block">Remark</label><textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[13px] resize-none h-36 bg-slate-50/30 focus:bg-white" placeholder="Internal notes..." /></div>
                 <div className="flex flex-col items-end space-y-4 w-1/2">
                     <div className="flex items-center justify-between w-full max-w-sm text-[14px]">
                         <span className="text-slate-500 pr-4">Taxable Amount</span>
-                        <input type="text" value={formatWhileTyping(formData.total_without_gst.toString())} onFocus={(e) => { e.target.value = formData.total_without_gst.toString(); e.target.select(); }} onBlur={(e) => { e.target.value = formatWhileTyping(formData.total_without_gst.toString()) }} onChange={e => setFormData(recalculate({...formData}, 'total_without_gst', undefined, e.target.value))} className="px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-mono font-bold text-right w-48" />
+                        <input type="text" value={formatWhileTyping(formData.total_without_gst.toString())} onFocus={(e) => { e.target.value = formData.total_without_gst.toString(); e.target.select(); }} onBlur={(e) => { e.target.value = formatWhileTyping(formData.total_without_gst.toString()) }} onChange={e => setFormData(recalculate({...formData}, 'total_without_gst', undefined, e.target.value))} className="px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono font-bold text-right w-48" />
                     </div>
                     {formData.duties_and_taxes.map((d: any) => (
                         <div key={d.id} className="flex items-center justify-between w-full max-w-sm text-[14px]">
                             <span className="text-slate-500 pr-4">{d.name}</span>
-                            <input type="text" value={formatWhileTyping(d.amount.toString())} onFocus={(e) => { e.target.value = d.amount.toString(); e.target.select(); }} onBlur={(e) => { e.target.value = formatWhileTyping(d.amount.toString()) }} onChange={e => setFormData(recalculate({...formData}, undefined, d.id, e.target.value))} className="px-4 py-2 border border-slate-200 rounded outline-none text-[14px] font-mono font-bold text-right w-48" />
+                            <input 
+                              type="text" 
+                              value={formatWhileTyping(d.amount.toString())} 
+                              onFocus={(e) => { e.target.value = d.amount.toString(); e.target.select(); }} 
+                              onBlur={(e) => { e.target.value = formatWhileTyping(d.amount.toString()) }} 
+                              onChange={e => setFormData(recalculate({...formData}, undefined, d.id, e.target.value))} 
+                              className={`px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-right w-48 ${appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST') ? 'bg-slate-50 dark:bg-slate-800 cursor-not-allowed' : 'bg-white dark:bg-slate-800'}`}
+                              readOnly={appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST')}
+                            />
                         </div>
                     ))}
-                    <div className="flex items-center justify-between w-full max-w-sm text-[14px] border-t border-slate-100 pt-5">
-                        <span className="text-slate-900 font-bold uppercase text-right pr-4">Grand Total</span>
+                    <div className="flex items-center justify-between w-full max-w-sm text-[14px] border-t border-slate-100 dark:border-slate-800 pt-5">
+                        <span className="text-slate-900 dark:text-slate-100 font-bold uppercase text-right pr-4">Grand Total</span>
                         <span className="font-mono font-bold text-[22px] text-link">{formatCurrency(formData.grand_total, true)}</span>
                     </div>
                 </div>
