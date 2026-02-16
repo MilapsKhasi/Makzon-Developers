@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 
 export interface ExportConfig {
@@ -50,7 +51,8 @@ export const exportToExcel = (
 };
 
 /**
- * Specialized export for Cashbook Entry Sheet with dual side-by-side layout
+ * Specialized export for Cashbook Entry Sheet with vertical stacked layout
+ * as per requested format: Company Header -> Date -> Income Section -> Expense Section -> Closing Balance
  */
 export const exportCashbookEntryToExcel = (
     incomeRows: any[],
@@ -58,89 +60,84 @@ export const exportCashbookEntryToExcel = (
     config: { companyName: string; date: string }
 ) => {
     const sheetData: any[][] = [];
+    const merges: any[] = [];
     
-    // Branding Headers
-    sheetData.push([config.companyName.toUpperCase()]);
-    sheetData.push([`DAILY CASH STATEMENT - DATE: ${config.date}`]);
-    sheetData.push([]); // Spacer
-
-    // Section Headings
-    // Columns: A(Sr), B(Part), C(Amt), D(Spacer), E(Sr), F(Part), G(Amt)
-    sheetData.push(['INCOME (INWARD)', '', '', '', 'EXPENSE (OUTWARD)', '', '']);
+    // 1. Branding Headers
+    sheetData.push([]); // Padding top
+    sheetData.push(["", config.companyName.toUpperCase()]);
+    merges.push({ s: { r: 1, c: 1 }, e: { r: 1, c: 3 } });
     
-    // Column Headers
-    sheetData.push(['SR NO', 'PARTICULARS / SOURCE', 'AMOUNT (INR)', '', 'SR NO', 'PARTICULARS / USAGE', 'AMOUNT (INR)']);
+    sheetData.push(["", `DAILY CASH STATEMENT - DATE: ${config.date}`]);
+    merges.push({ s: { r: 2, c: 1 }, e: { r: 2, c: 3 } });
+    
+    sheetData.push([]); // Spacer row
 
-    const maxRows = Math.max(incomeRows.length, expenseRows.length);
+    // 2. INCOME SECTION
+    sheetData.push(["", "INCOME (INWARD)"]);
+    merges.push({ s: { r: 4, c: 1 }, e: { r: 4, c: 3 } });
+    
+    sheetData.push(["", "SR NO", "PARTICULARS / SOURCE", "AMOUNT (INR)"]);
+    
     let totalIncome = 0;
+    const cleanIncome = incomeRows.filter(r => r.particulars.trim() !== '' || r.amount !== '');
+    
+    cleanIncome.forEach((row, idx) => {
+        const amt = parseFloat(row.amount) || 0;
+        totalIncome += amt;
+        sheetData.push(["", idx + 1, row.particulars, amt]);
+    });
+    
+    // Income Total row
+    const incomeTotalRowIndex = sheetData.length;
+    sheetData.push(["", "TOTAL", "", totalIncome]);
+    merges.push({ s: { r: incomeTotalRowIndex, c: 1 }, e: { r: incomeTotalRowIndex, c: 2 } });
+    
+    sheetData.push([]); // Spacer row between sections
+
+    // 3. EXPENSE SECTION
+    const expenseHeaderIndex = sheetData.length;
+    sheetData.push(["", "EXPENSE (OUTWARD)"]);
+    merges.push({ s: { r: expenseHeaderIndex, c: 1 }, e: { r: expenseHeaderIndex, c: 3 } });
+    
+    sheetData.push(["", "SR NO", "PARTICULARS / USAGE", "AMOUNT (INR)"]);
+    
     let totalExpense = 0;
+    const cleanExpense = expenseRows.filter(r => r.particulars.trim() !== '' || r.amount !== '');
+    
+    cleanExpense.forEach((row, idx) => {
+        const amt = parseFloat(row.amount) || 0;
+        totalExpense += amt;
+        sheetData.push(["", idx + 1, row.particulars, amt]);
+    });
+    
+    // Expense Total row
+    const expenseTotalRowIndex = sheetData.length;
+    sheetData.push(["", "TOTAL", "", totalExpense]);
+    merges.push({ s: { r: expenseTotalRowIndex, c: 1 }, e: { r: expenseTotalRowIndex, c: 2 } });
+    
+    sheetData.push([]); // Spacer row before summary
 
-    for (let i = 0; i < maxRows; i++) {
-        const inc = incomeRows[i] || { particulars: '', amount: '' };
-        const exp = expenseRows[i] || { particulars: '', amount: '' };
-        
-        const incAmt = parseFloat(inc.amount) || 0;
-        const expAmt = parseFloat(exp.amount) || 0;
-        
-        totalIncome += incAmt;
-        totalExpense += expAmt;
-
-        sheetData.push([
-            inc.particulars ? i + 1 : '',
-            inc.particulars || '',
-            inc.particulars ? incAmt : '',
-            '', // spacer column
-            exp.particulars ? i + 1 : '',
-            exp.particulars || '',
-            exp.particulars ? expAmt : ''
-        ]);
-    }
-
-    // Totals Row
-    sheetData.push([]);
-    sheetData.push([
-        'TOTAL', 
-        '', 
-        totalIncome, 
-        '', 
-        'TOTAL', 
-        '', 
-        totalExpense
-    ]);
-
-    // Net Balance Summary
-    sheetData.push([]);
+    // 4. SUMMARY SECTION (Closing Net Balance)
+    const summaryRowIndex = sheetData.length;
     const netBalance = totalIncome - totalExpense;
-    sheetData.push(['', 'CLOSING NET BALANCE:', netBalance]);
+    sheetData.push(["", "CLOSING NET BALANCE:", "", netBalance]);
+    merges.push({ s: { r: summaryRowIndex, c: 1 }, e: { r: summaryRowIndex, c: 2 } });
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-    // Column Widths: Sr(8), Particulars(45), Amount(15), Spacer(5)
+    // Apply merges
+    ws['!merges'] = merges;
+
+    // Set Column Widths: A(Padding: 2), B(Sr: 10), C(Particulars: 60), D(Amount: 20)
     ws['!cols'] = [
-        { wch: 8 },  // A: Sr
-        { wch: 45 }, // B: Particulars
-        { wch: 15 }, // C: Amount
-        { wch: 5 },  // D: Spacer
-        { wch: 8 },  // E: Sr
-        { wch: 45 }, // F: Particulars
-        { wch: 15 }  // G: Amount
+        { wch: 2 },  // A: Left gutter
+        { wch: 10 }, // B: Sr
+        { wch: 60 }, // C: Particulars
+        { wch: 20 }  // D: Amount
     ];
 
-    // Merges
-    ws['!merges'] = [
-        // Company Branding
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
-        // Section Titles
-        { s: { r: 3, c: 0 }, e: { r: 3, c: 2 } }, // Income Header
-        { s: { r: 3, c: 4 }, e: { r: 3, c: 6 } }, // Expense Header
-        // Totals labels
-        { s: { r: 4 + maxRows + 1, c: 0 }, e: { r: 4 + maxRows + 1, c: 1 } }, // Total Income Label
-        { s: { r: 4 + maxRows + 1, c: 4 }, e: { r: 4 + maxRows + 1, c: 5 } }  // Total Expense Label
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, "Cashbook_Statement");
+    XLSX.utils.book_append_sheet(wb, ws, "Cashbook_Report");
     XLSX.writeFile(wb, `Cashbook_${config.date.replace(/[\/\-]/g, '_')}.xlsx`);
 };
 
