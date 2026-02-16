@@ -1,8 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, Loader2, Save, ArrowLeft, Trash2, FileSpreadsheet } from 'lucide-react';
-import { exportCashbookEntryToExcel } from '../utils/exportHelper';
-// Fixed: Replaced non-existent formatDateShort with formatDate
+import { X, ChevronDown, Loader2, Save, ArrowLeft, Trash2, FileSpreadsheet, FileText } from 'lucide-react';
+import { exportCashbookEntryToExcel, exportCashbookEntryToPDF } from '../utils/exportHelper';
 import { formatDate, parseDateFromInput } from '../utils/helpers';
 
 interface CashbookRow {
@@ -38,7 +37,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     // Find entries with date < selected date
     const previousEntries = existingEntries
       .filter(e => e.date < dateStr && e.id !== initialData?.id)
-      .sort((a, b) => b.date.localeCompare(a.date)); // Sort descending to get most recent
+      .sort((a, b) => b.date.localeCompare(a.date));
 
     if (previousEntries.length > 0) {
       setOpeningBalance(Number(previousEntries[0].balance) || 0);
@@ -51,7 +50,6 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     if (initialData) {
       const isoDate = initialData.date || '';
       setReportDate(isoDate);
-      // Fixed: Replaced formatDateShort with formatDate
       setDisplayDate(formatDate(isoDate));
       
       const raw = initialData.raw_data || {};
@@ -67,7 +65,6 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     } else {
       const todayIso = new Date().toISOString().split('T')[0];
       setReportDate(todayIso);
-      // Fixed: Replaced formatDateShort with formatDate
       setDisplayDate(formatDate(todayIso));
       setIncomeRows(Array(15).fill(null).map(createEmptyRow));
       setExpenseRows(Array(15).fill(null).map(createEmptyRow));
@@ -75,7 +72,6 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     }
   }, [initialData]);
 
-  // When date changes, automatically find the previous closing balance
   useEffect(() => {
     if (!initialData && reportDate) {
       findPreviousBalance(reportDate);
@@ -86,11 +82,8 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     const iso = parseDateFromInput(displayDate);
     if (iso) {
       setReportDate(iso);
-      // Fixed: Replaced formatDateShort with formatDate
       setDisplayDate(formatDate(iso));
     } else {
-      // Revert to last valid ISO date if user typed gibberish
-      // Fixed: Replaced formatDateShort with formatDate
       setDisplayDate(formatDate(reportDate));
     }
   };
@@ -139,11 +132,22 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
   };
 
   const handleExportXLSX = () => {
-    const companyName = localStorage.getItem('activeCompanyName') || 'My Digital Finance Desk';
-    const cleanIncome = incomeRows.filter(r => r.particulars.trim() !== '' || r.amount !== '');
-    const cleanExpense = expenseRows.filter(r => r.particulars.trim() !== '' || r.amount !== '');
+    const companyName = localStorage.getItem('activeCompanyName') || 'Findesk Workspace';
+    const cleanIncome = incomeRows.filter(r => r.particulars.trim() !== '' && r.amount !== '');
+    const cleanExpense = expenseRows.filter(r => r.particulars.trim() !== '' && r.amount !== '');
     
     exportCashbookEntryToExcel(cleanIncome, cleanExpense, {
+        companyName,
+        date: reportDate || new Date().toISOString().split('T')[0]
+    });
+  };
+
+  const handleExportPDF = () => {
+    const companyName = localStorage.getItem('activeCompanyName') || 'Findesk Workspace';
+    const cleanIncome = incomeRows.filter(r => r.particulars.trim() !== '' && r.amount !== '');
+    const cleanExpense = expenseRows.filter(r => r.particulars.trim() !== '' && r.amount !== '');
+    
+    exportCashbookEntryToPDF(cleanIncome, cleanExpense, {
         companyName,
         date: reportDate || new Date().toISOString().split('T')[0]
     });
@@ -165,12 +169,19 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
             {initialData ? 'Update Statement' : 'Cashbook Entry Sheet'}
           </h2>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
+          <button 
+            onClick={handleExportPDF}
+            className="flex items-center px-4 py-2.5 bg-white border border-slate-200 rounded text-slate-600 font-semibold text-[13px] hover:bg-slate-50 transition-all"
+          >
+            <FileText className="w-4 h-4 mr-2 text-rose-500" />
+            Download PDF
+          </button>
           <button 
             onClick={handleExportXLSX}
-            className="flex items-center px-4 py-2.5 bg-white border border-slate-200 rounded text-slate-600 font-semibold text-[14px] hover:bg-slate-50 transition-all"
+            className="flex items-center px-4 py-2.5 bg-white border border-slate-200 rounded text-slate-600 font-semibold text-[13px] hover:bg-slate-50 transition-all"
           >
-            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-500" />
             Download XLSX
           </button>
           <button 
@@ -188,10 +199,10 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
               });
             }}
             disabled={loading}
-            className="bg-primary text-slate-900 px-8 py-2.5 rounded font-semibold text-[14px] hover:bg-primary-dark transition-all flex items-center"
+            className="bg-primary text-slate-900 px-8 py-2.5 rounded font-semibold text-[13px] hover:bg-primary-dark transition-all flex items-center ml-2"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            {initialData ? 'Update Statement' : 'Save Statement'}
+            {initialData ? 'Update' : 'Save Statement'}
           </button>
         </div>
       </div>
@@ -199,54 +210,52 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
       {/* Sheet Content */}
       <div className="flex-1 overflow-y-auto p-6 bg-slate-50 flex flex-col space-y-4 custom-scrollbar">
         {/* Info Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-white px-6 py-5 border border-slate-200 rounded flex items-center justify-between col-span-1 lg:col-span-2">
+        <div className="bg-white px-6 py-5 border border-slate-200 rounded flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <label className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Statement Date</label>
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Statement Date</label>
               <input 
                 type="text" 
                 placeholder="DD/MM/YY"
                 value={displayDate}
                 onChange={(e) => setDisplayDate(e.target.value)}
                 onBlur={handleDateBlur}
-                className="border border-slate-200 rounded px-4 py-2 text-[14px] outline-none w-40 font-mono focus:border-link transition-colors"
+                className="border border-slate-200 rounded px-4 py-2 text-[14px] outline-none w-40 font-mono focus:border-slate-400 transition-colors bg-slate-50/50"
               />
             </div>
             
-            <div className="flex items-center space-x-8">
-              <div className="flex items-center space-x-3">
-                <span className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Opening Bal</span>
-                <span className="text-[18px] font-semibold font-mono text-slate-500">
+            <div className="flex items-center space-x-10">
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Opening Bal</span>
+                <span className="text-[18px] font-bold font-mono text-slate-500">
                   ₹ {openingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </span>
               </div>
               
-              <div className="flex items-center space-x-3">
-                <span className="text-[13px] font-semibold text-slate-400 uppercase tracking-wider">Closing Bal</span>
-                <span className={`text-[18px] font-semibold font-mono ${closingBalance >= 0 ? 'text-blue-600' : 'text-rose-600'}`}>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Closing Bal</span>
+                <span className={`text-[22px] font-bold font-mono ${closingBalance >= 0 ? 'text-link' : 'text-rose-600'}`}>
                   ₹ {closingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
-          </div>
         </div>
 
         {/* Ledger Grid */}
-        <div className="flex-1 flex flex-col min-h-0 border border-slate-300 rounded overflow-hidden bg-white">
+        <div className="flex-1 flex flex-col min-h-0 border border-slate-300 rounded overflow-hidden bg-white shadow-sm">
           {/* Legend Headers */}
           <div className="grid grid-cols-2 divide-x divide-slate-300 bg-white border-b border-slate-200 shrink-0">
-            <div className="flex items-center justify-between px-6 py-4 bg-emerald-50/30">
-              <span className="text-[15px] font-semibold text-emerald-700 uppercase tracking-tighter">Inward (Income)</span>
+            <div className="flex items-center justify-between px-6 py-4 bg-emerald-50/20">
+              <span className="text-[14px] font-bold text-emerald-700 uppercase tracking-tight">Income (Inward)</span>
               <div className="flex items-center space-x-3">
-                <span className="text-[11px] text-emerald-600/60 uppercase font-semibold">Subtotal</span>
-                <span className="text-[16px] font-semibold text-green-600 font-mono">₹{incomeTotal.toFixed(2)}</span>
+                <span className="text-[10px] text-emerald-600 font-bold uppercase">Subtotal</span>
+                <span className="text-[16px] font-bold text-emerald-600 font-mono">₹{incomeTotal.toFixed(2)}</span>
               </div>
             </div>
-            <div className="flex items-center justify-between px-6 py-4 bg-rose-50/30">
-              <span className="text-[15px] font-semibold text-rose-700 uppercase tracking-tighter">Outward (Expense)</span>
+            <div className="flex items-center justify-between px-6 py-4 bg-rose-50/20">
+              <span className="text-[14px] font-bold text-rose-700 uppercase tracking-tight">Expense (Outward)</span>
               <div className="flex items-center space-x-3">
-                <span className="text-[11px] text-rose-600/60 uppercase font-semibold">Subtotal</span>
-                <span className="text-[16px] font-semibold text-red-600 font-mono">₹{expenseTotal.toFixed(2)}</span>
+                <span className="text-[10px] text-rose-600 font-bold uppercase">Subtotal</span>
+                <span className="text-[16px] font-bold text-rose-600 font-mono">₹{expenseTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -256,21 +265,21 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
             <div className="overflow-y-auto custom-scrollbar bg-white">
               <table className="w-full text-[13px] border-collapse relative">
                 <thead className="sticky top-0 bg-slate-100 z-20 ring-1 ring-slate-200">
-                  <tr className="text-slate-600 uppercase font-semibold text-[11px]">
-                    <th className="w-16 py-3 px-3 border-r border-slate-200 text-center bg-slate-100">Sr</th>
+                  <tr className="text-slate-500 uppercase font-bold text-[10px] tracking-widest">
+                    <th className="w-14 py-3 px-3 border-r border-slate-200 text-center bg-slate-50">#</th>
                     <th className="py-3 px-4 text-left">Particulars / Source</th>
-                    <th className="w-40 py-3 px-4 text-right border-l border-slate-200">Amount (₹)</th>
+                    <th className="w-36 py-3 px-4 text-right border-l border-slate-200">Amount (₹)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-slate-100">
                   {incomeRows.map((row, idx) => (
-                    <tr key={row.id} className="hover:bg-slate-50 group border-b border-slate-100 last:border-0 relative">
-                      <td className="py-2 px-3 border-r border-slate-200 text-slate-400 text-center font-mono select-none relative group/sr">
-                        <span className="group-hover:hidden">{idx + 1}</span>
+                    <tr key={row.id} className="hover:bg-slate-50/50 group border-b border-slate-100 last:border-0 relative">
+                      <td className="py-2 px-3 border-r border-slate-200 text-slate-300 text-center font-mono select-none relative group/sr">
+                        <span className="group-hover:hidden text-[11px]">{idx + 1}</span>
                         <button 
                           type="button" 
                           onClick={() => removeRow('income', idx)}
-                          className="hidden group-hover:flex absolute inset-0 items-center justify-center text-rose-500 hover:bg-rose-50"
+                          className="hidden group-hover:flex absolute inset-0 items-center justify-center text-rose-400 hover:text-rose-600"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -281,18 +290,18 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
                           value={row.particulars}
                           onChange={(e) => handleInputChange('income', idx, 'particulars', e.target.value)}
                           onKeyDown={(e) => handleKeyDown('income', idx, e)}
-                          placeholder="Type description..."
-                          className="w-full h-10 px-4 outline-none bg-white focus:bg-slate-50 placeholder:text-slate-200 transition-colors font-medium"
+                          placeholder=""
+                          className="w-full h-10 px-4 outline-none bg-transparent focus:bg-white transition-colors font-medium text-slate-700"
                         />
                       </td>
-                      <td className="py-0 px-0 border-l border-slate-200 bg-white">
+                      <td className="py-0 px-0 border-l border-slate-200">
                         <input
-                          type="number"
+                          type="text"
                           value={row.amount}
                           onChange={(e) => handleInputChange('income', idx, 'amount', e.target.value)}
                           onKeyDown={(e) => handleKeyDown('income', idx, e)}
                           placeholder="0.00"
-                          className="w-full h-10 px-4 text-right outline-none bg-white focus:bg-slate-50 font-mono font-semibold text-slate-700 placeholder:text-slate-200"
+                          className="w-full h-10 px-4 text-right outline-none bg-transparent focus:bg-white font-mono font-bold text-slate-900"
                         />
                       </td>
                     </tr>
@@ -305,21 +314,21 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
             <div className="overflow-y-auto custom-scrollbar bg-white">
               <table className="w-full text-[13px] border-collapse relative">
                 <thead className="sticky top-0 bg-slate-100 z-20 ring-1 ring-slate-200">
-                  <tr className="text-slate-600 uppercase font-semibold text-[11px]">
-                    <th className="w-16 py-3 px-3 border-r border-slate-200 text-center bg-slate-100">Sr</th>
+                  <tr className="text-slate-500 uppercase font-bold text-[10px] tracking-widest">
+                    <th className="w-14 py-3 px-3 border-r border-slate-200 text-center bg-slate-50">#</th>
                     <th className="py-3 px-4 text-left">Particulars / Usage</th>
-                    <th className="w-40 py-3 px-4 text-right border-l border-slate-200">Amount (₹)</th>
+                    <th className="w-36 py-3 px-4 text-right border-l border-slate-200">Amount (₹)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-slate-100">
                   {expenseRows.map((row, idx) => (
-                    <tr key={row.id} className="hover:bg-slate-50 group border-b border-slate-100 last:border-0 relative">
-                      <td className="py-2 px-3 border-r border-slate-200 text-slate-400 text-center font-mono select-none relative group/sr">
-                        <span className="group-hover:hidden">{idx + 1}</span>
+                    <tr key={row.id} className="hover:bg-slate-50/50 group border-b border-slate-100 last:border-0 relative">
+                      <td className="py-2 px-3 border-r border-slate-200 text-slate-300 text-center font-mono select-none relative group/sr">
+                        <span className="group-hover:hidden text-[11px]">{idx + 1}</span>
                         <button 
                           type="button" 
                           onClick={() => removeRow('expense', idx)}
-                          className="hidden group-hover:flex absolute inset-0 items-center justify-center text-rose-500 hover:bg-rose-50"
+                          className="hidden group-hover:flex absolute inset-0 items-center justify-center text-rose-400 hover:text-rose-600"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -330,18 +339,18 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
                           value={row.particulars}
                           onChange={(e) => handleInputChange('expense', idx, 'particulars', e.target.value)}
                           onKeyDown={(e) => handleKeyDown('expense', idx, e)}
-                          placeholder="Type description..."
-                          className="w-full h-10 px-4 outline-none bg-white focus:bg-slate-50 placeholder:text-slate-200 transition-colors font-medium"
+                          placeholder=""
+                          className="w-full h-10 px-4 outline-none bg-transparent focus:bg-white transition-colors font-medium text-slate-700"
                         />
                       </td>
-                      <td className="py-0 px-0 border-l border-slate-200 bg-white">
+                      <td className="py-0 px-0 border-l border-slate-200">
                         <input
-                          type="number"
+                          type="text"
                           value={row.amount}
                           onChange={(e) => handleInputChange('expense', idx, 'amount', e.target.value)}
                           onKeyDown={(e) => handleKeyDown('expense', idx, e)}
                           placeholder="0.00"
-                          className="w-full h-10 px-4 text-right outline-none bg-white focus:bg-slate-50 font-mono font-semibold text-slate-700 placeholder:text-slate-200"
+                          className="w-full h-10 px-4 text-right outline-none bg-transparent focus:bg-white font-mono font-bold text-slate-900"
                         />
                       </td>
                     </tr>
@@ -352,25 +361,23 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
           </div>
 
           {/* Sheet Footer Summary */}
-          <div className="bg-slate-100 px-8 py-6 shrink-0 flex items-center justify-between border-t border-slate-200">
+          <div className="bg-slate-50 px-8 py-6 shrink-0 flex items-center justify-between border-t border-slate-200">
             <div className="flex space-x-6">
-              <div className="flex flex-col bg-white px-6 py-3 rounded-md border border-slate-200 min-w-[180px]">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Inward Sum</span>
-                <span className="text-xl font-semibold font-mono text-green-600">₹{incomeTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              <div className="flex flex-col bg-white px-5 py-3 rounded border border-slate-200 min-w-[160px] shadow-sm">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Inward Total</span>
+                <span className="text-[18px] font-bold font-mono text-emerald-600">₹{incomeTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
               </div>
-              <div className="flex flex-col bg-white px-6 py-3 rounded-md border border-slate-200 min-w-[180px]">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Outward Sum</span>
-                <span className="text-xl font-semibold font-mono text-red-600">₹{expenseTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              <div className="flex flex-col bg-white px-5 py-3 rounded border border-slate-200 min-w-[160px] shadow-sm">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Outward Total</span>
+                <span className="text-[18px] font-bold font-mono text-rose-600">₹{expenseTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <div className="flex flex-col items-end bg-white px-6 py-4 rounded-md border border-slate-200 min-w-[200px]">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Closing Balance</span>
-                <span className="text-2xl font-semibold font-mono text-blue-600">
-                  ₹{closingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
+            <div className="flex flex-col items-end bg-white px-8 py-4 rounded border border-slate-300 min-w-[240px] shadow-sm">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Net Closing Balance</span>
+              <span className={`text-[26px] font-bold font-mono ${closingBalance >= 0 ? 'text-link' : 'text-rose-600'}`}>
+                ₹{closingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </span>
             </div>
           </div>
         </div>

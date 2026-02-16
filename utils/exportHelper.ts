@@ -1,5 +1,7 @@
 
 import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export interface ExportConfig {
     companyName: string;
@@ -51,11 +53,146 @@ export const exportToExcel = (
 };
 
 /**
- * Specialized export for Cashbook Entry Sheet with precise formatting:
- * - Specific row heights
- * - Alignments (Center/Left)
- * - Bold text where required
- * - Indentations
+ * Specialized export for Cashbook Entry Sheet with precise formatting for PDF:
+ * - Vertical layout (Income then Expense)
+ * - Exact text formatting and alignments
+ */
+export const exportCashbookEntryToPDF = (
+    incomeRows: any[],
+    expenseRows: any[],
+    config: { companyName: string; date: string }
+) => {
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let currentY = 20;
+
+    // --- 1. Header Section ---
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(config.companyName.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
+    currentY += 10;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`DAILY CASH STATEMENT - DATE: ${config.date}`, pageWidth / 2, currentY, { align: 'center' });
+    currentY += 10;
+
+    // --- 2. Income Section ---
+    autoTable(doc, {
+        startY: currentY,
+        head: [
+            [{ content: 'INCOME (INWARD)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [240, 240, 240] } }],
+            ['SR NO', 'PARTICULARS / SOURCE', 'AMOUNT (INR)']
+        ],
+        body: incomeRows.map((row, i) => [i + 1, row.particulars, parseFloat(row.amount).toFixed(2)]),
+        foot: [['TOTAL', '', incomeRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0).toFixed(2)]],
+        theme: 'grid',
+        styles: { 
+            fontSize: 9, 
+            cellPadding: 3,
+            lineWidth: 0.1,
+            lineColor: [200, 200, 200]
+        },
+        headStyles: { 
+            fillColor: [255, 255, 255], 
+            textColor: [0, 0, 0], 
+            fontStyle: 'bold', 
+            halign: 'left',
+            cellPadding: { left: 5, top: 3, bottom: 3, right: 3 }
+        },
+        columnStyles: {
+            0: { cellWidth: 20 },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 40, halign: 'left' }
+        },
+        footStyles: { 
+            fillColor: [255, 255, 255], 
+            textColor: [0, 0, 0], 
+            fontStyle: 'bold',
+            halign: 'left'
+        },
+        didParseCell: (data) => {
+            if (data.section === 'foot') {
+                if (data.column.index === 0) data.cell.styles.halign = 'center';
+                if (data.column.index === 2) data.cell.styles.cellPadding = { left: 5, top: 3, bottom: 3 };
+            }
+            if (data.section === 'body' || (data.section === 'head' && data.row.index === 1)) {
+                data.cell.styles.cellPadding = { left: 5, top: 3, bottom: 3, right: 3 };
+            }
+        }
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+
+    // --- 3. Expense Section ---
+    autoTable(doc, {
+        startY: currentY,
+        head: [
+            [{ content: 'EXPENSE (OUTWARD)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [240, 240, 240] } }],
+            ['SR NO', 'PARTICULARS / USAGE', 'AMOUNT (INR)']
+        ],
+        body: expenseRows.map((row, i) => [i + 1, row.particulars, parseFloat(row.amount).toFixed(2)]),
+        foot: [['TOTAL', '', expenseRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0).toFixed(2)]],
+        theme: 'grid',
+        styles: { 
+            fontSize: 9, 
+            cellPadding: 3,
+            lineWidth: 0.1,
+            lineColor: [200, 200, 200]
+        },
+        headStyles: { 
+            fillColor: [255, 255, 255], 
+            textColor: [0, 0, 0], 
+            fontStyle: 'bold', 
+            halign: 'left',
+            cellPadding: { left: 5, top: 3, bottom: 3, right: 3 }
+        },
+        columnStyles: {
+            0: { cellWidth: 20 },
+            1: { cellWidth: 'auto' },
+            2: { cellWidth: 40, halign: 'left' }
+        },
+        footStyles: { 
+            fillColor: [255, 255, 255], 
+            textColor: [0, 0, 0], 
+            fontStyle: 'bold',
+            halign: 'left'
+        },
+        didParseCell: (data) => {
+            if (data.section === 'foot') {
+                if (data.column.index === 0) data.cell.styles.halign = 'center';
+                if (data.column.index === 2) data.cell.styles.cellPadding = { left: 5, top: 3, bottom: 3 };
+            }
+            if (data.section === 'body' || (data.section === 'head' && data.row.index === 1)) {
+                data.cell.styles.cellPadding = { left: 5, top: 3, bottom: 3, right: 3 };
+            }
+        }
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 5;
+
+    // --- 4. Closing Balance ---
+    const totalIncome = incomeRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
+    const totalExpense = expenseRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
+    const netBalance = totalIncome - totalExpense;
+
+    autoTable(doc, {
+        startY: currentY,
+        body: [['CLOSING NET BALANCE:', '', netBalance.toFixed(2)]],
+        theme: 'grid',
+        styles: { fontSize: 10, cellPadding: 4, fontStyle: 'normal' },
+        columnStyles: {
+            0: { cellWidth: 'auto', halign: 'center' },
+            1: { cellWidth: 0 }, // dummy to match columns
+            2: { cellWidth: 40, halign: 'left', cellPadding: { left: 5, top: 4, bottom: 4 } }
+        }
+    });
+
+    doc.save(`Daily_Cash_Statement_${config.date.replace(/[\/\-]/g, '_')}.pdf`);
+};
+
+/**
+ * Specialized export for Cashbook Entry Sheet with precise formatting for Excel
  */
 export const exportCashbookEntryToExcel = (
     incomeRows: any[],
@@ -146,83 +283,7 @@ export const exportCashbookEntryToExcel = (
     // Create Worksheet
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-    // Apply specific styles (Alignment, Bold, Indent)
-    // Note: Standard XLSX library might not save all style metadata in community version,
-    // but the object structure follows the standard for compatible viewers/writers.
-    Object.keys(ws).forEach(cellKey => {
-        if (cellKey.startsWith('!')) return;
-        const cell = ws[cellKey];
-        const cellInfo = XLSX.utils.decode_cell(cellKey);
-        const rowIdx = cellInfo.r;
-        const colIdx = cellInfo.c;
-
-        if (!cell.s) cell.s = {};
-        if (!cell.s.alignment) cell.s.alignment = {};
-        if (!cell.s.font) cell.s.font = {};
-
-        // Rules based on user requirements:
-        
-        // 1. Company Header (Row 0)
-        if (rowIdx === 0) {
-            cell.s.alignment.horizontal = 'center';
-            cell.s.font.bold = true;
-            cell.s.font.sz = 14;
-        }
-        
-        // 2. Daily Statement (Row 1)
-        if (rowIdx === 1) {
-            cell.s.alignment.horizontal = 'center';
-            cell.s.font.bold = false;
-        }
-
-        // 3. Section Headers (Income/Expense)
-        if (rowIdx === incomeHeaderIdx || rowIdx === expenseHeaderIdx) {
-            cell.s.alignment.horizontal = 'center';
-            cell.s.font.bold = true;
-        }
-
-        // 4. Sub Headers (Sr No, Particulars, Amount)
-        if (rowIdx === incomeSubHeaderIdx || rowIdx === expenseSubHeaderIdx) {
-            cell.s.font.bold = true;
-            cell.s.alignment.horizontal = 'left';
-            cell.s.alignment.indent = 1;
-        }
-
-        // 5. Data Rows
-        const isDataRow = (rowIdx > incomeSubHeaderIdx && rowIdx < incomeTotalIdx) || 
-                          (rowIdx > expenseSubHeaderIdx && rowIdx < expenseTotalIdx);
-        if (isDataRow) {
-            cell.s.font.bold = false;
-            cell.s.alignment.horizontal = 'left';
-            cell.s.alignment.indent = 1;
-        }
-
-        // 6. Total Rows
-        if (rowIdx === incomeTotalIdx || rowIdx === expenseTotalIdx) {
-            if (colIdx === 0) {
-                cell.s.alignment.horizontal = 'center';
-                cell.s.font.bold = true;
-            } else if (colIdx === 2) {
-                cell.s.alignment.horizontal = 'left';
-                cell.s.alignment.indent = 1;
-                cell.s.font.bold = true;
-            }
-        }
-
-        // 7. Closing Balance Row
-        if (rowIdx === closingIdx) {
-            if (colIdx === 0) {
-                cell.s.alignment.horizontal = 'center';
-                cell.s.font.bold = false;
-            } else if (colIdx === 2) {
-                cell.s.alignment.horizontal = 'left';
-                cell.s.alignment.indent = 1;
-                cell.s.font.bold = false;
-            }
-        }
-    });
-
-    // Final Sheet Config
+    // Styling logic simplified for standard SheetJS compatibility
     ws['!merges'] = merges;
     ws['!rows'] = rowHeights;
     ws['!cols'] = [
