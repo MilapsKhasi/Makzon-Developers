@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Save, Trash2, Loader2, UserPlus, UserRoundPen, ChevronDown } from 'lucide-react';
-import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getSelectedLedgerIds, getAppSettings } from '../utils/helpers';
+import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getSelectedLedgerIds, getAppSettings, formatCurrency } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
 import CustomerForm from './CustomerForm';
@@ -40,11 +40,6 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   const [customers, setCustomers] = useState<any[]>([]);
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [customerModal, setCustomerModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
-
-  const formatCurrency = (val: number, includeSymbol = true) => {
-    const formatted = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
-    return includeSymbol ? `₹ ${formatted}` : formatted;
-  };
 
   const parseNumber = (val: string) => {
     if (!val) return 0;
@@ -210,29 +205,29 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
 
   return (
     <div className="bg-white dark:bg-slate-900 w-full flex flex-col">
-      <Modal isOpen={customerModal.isOpen} onClose={() => setCustomerModal({ ...customerModal, isOpen: false })} title={customerModal.initialData ? "Edit Customer Ledger" : "Register New Customer"} maxWidth="max-w-4xl">
+      <Modal isOpen={customerModal.isOpen} onClose={() => setCustomerModal({ ...customerModal, isOpen: false })} title={customerModal.initialData ? "Edit Customer" : "New Customer"} maxWidth="max-w-4xl">
         <CustomerForm initialData={customerModal.initialData || matchedCustomer} prefilledName={customerModal.prefilledName} onSubmit={(saved) => { setCustomerModal({ ...customerModal, isOpen: false }); loadData().then(() => handleCustomerChange(saved.name)); }} onCancel={() => setCustomerModal({ ...customerModal, isOpen: false })} />
       </Modal>
       <form onSubmit={handleSubmit} className="p-8 space-y-6 bg-white dark:bg-slate-900">
-        <div className="border border-slate-200 dark:border-slate-800 rounded-md p-8 bg-white dark:bg-slate-900 space-y-6">
+        <div className="border border-slate-200 dark:border-slate-800 rounded-md p-8 bg-white dark:bg-slate-900 space-y-6 shadow-sm">
             <div className="grid grid-cols-3 gap-6">
-                <div className="space-y-1.5"><label className="text-[14px] font-normal dark:text-slate-300">Invoice Date</label><input ref={firstInputRef} required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-medium dark:bg-slate-800 dark:text-white" /></div>
-                <div className="space-y-1.5"><label className="text-[14px] font-normal dark:text-slate-300">Invoice No</label><input required value={formData.invoice_number} onChange={e => setFormData({...formData, invoice_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono dark:bg-slate-800 dark:text-white font-bold" /></div>
+                <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Date</label><input ref={firstInputRef} required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-medium dark:bg-slate-800 dark:text-white" /></div>
+                <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Invoice No</label><input required value={formData.invoice_number} onChange={e => setFormData({...formData, invoice_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono dark:bg-slate-800 dark:text-white font-bold uppercase" /></div>
                 <div className="space-y-1.5">
-                    <label className="text-[14px] font-normal dark:text-slate-300">Status</label>
+                    <label className="text-[14px] font-medium dark:text-slate-300 capitalize">Status</label>
                     <div className="relative">
-                        <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] dark:bg-slate-800 dark:text-white appearance-none">
-                            <option value="Pending">Unpaid (Credit)</option>
-                            <option value="Paid">Received (Paid)</option>
+                        <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] dark:bg-slate-800 dark:text-white appearance-none cursor-pointer">
+                            <option value="Pending">Unpaid</option>
+                            <option value="Paid">Received</option>
                         </select>
                         <ChevronDown className="w-3 h-3 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
             </div>
             <div className="space-y-1.5">
-                <label className="text-[14px] font-normal dark:text-slate-300">Customer Name</label>
+                <label className="text-[14px] font-medium dark:text-slate-300 capitalize">Customer Name</label>
                 <div className="flex gap-3">
-                    <input required list="custlist" value={formData.customer_name} onChange={e => handleCustomerChange(e.target.value)} className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] uppercase dark:bg-slate-800 dark:text-white font-bold" placeholder="" />
+                    <input required list="custlist" value={formData.customer_name} onChange={e => handleCustomerChange(e.target.value)} className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] uppercase dark:bg-slate-800 dark:text-white font-bold" />
                     <button type="button" onClick={() => setCustomerModal({ isOpen: true, initialData: matchedCustomer || null, prefilledName: matchedCustomer ? '' : formData.customer_name })} className={`h-10 w-10 flex items-center justify-center rounded border transition-all shrink-0 ${matchedCustomer ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800' : 'bg-primary/20 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}>
                       {matchedCustomer ? <UserRoundPen className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
                     </button>
@@ -240,40 +235,32 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                 <datalist id="custlist">{customers.map(c => <option key={c.id} value={c.name} />)}</datalist>
             </div>
             <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-x-auto bg-white dark:bg-slate-900">
-                <table className="clean-table w-full text-[13px] border-collapse min-w-[800px]">
+                <table className="w-full text-[14px] border-collapse min-w-[800px]">
                     <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold">
                         <tr>
-                            <th className="p-3 text-left border-r border-slate-200 dark:border-slate-700 min-w-[200px] font-normal">Particulars (Item)</th>
-                            <th className="p-3 text-left w-24 border-r border-slate-200 dark:border-slate-700 font-normal">HSN</th>
-                            {appSettings.gstEnabled && <th className="p-3 text-center w-24 border-r border-slate-200 dark:border-slate-700 font-normal">Tax %</th>}
-                            <th className="p-3 text-center w-28 border-r border-slate-200 dark:border-slate-700 font-normal">QTY</th>
-                            <th className="p-3 text-right w-36 border-r border-slate-200 dark:border-slate-700 font-normal">Rate per KG</th>
-                            <th className="p-3 text-right w-32 font-normal">Amount</th>
+                            <th className="p-3 text-left border-r border-slate-200 dark:border-slate-700 min-w-[200px] capitalize">Particulars</th>
+                            <th className="p-3 text-left w-24 border-r border-slate-200 dark:border-slate-700 capitalize">HSN</th>
+                            {appSettings.gstEnabled && <th className="p-3 text-center w-24 border-r border-slate-200 dark:border-slate-700 capitalize">GST %</th>}
+                            <th className="p-3 text-center w-28 border-r border-slate-200 dark:border-slate-700 capitalize">QTY</th>
+                            <th className="p-3 text-right w-36 border-r border-slate-200 dark:border-slate-700 capitalize">Rate</th>
+                            <th className="p-3 text-right w-32 capitalize">Amount</th>
                             <th className="w-10"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {formData.items.map((it: any, idx: number) => (
                             <tr key={it.id}>
-                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input list="itemslist" value={it.itemName} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-9 px-3 outline-none font-medium bg-transparent dark:text-white" /></td>
-                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={it.hsnCode} onChange={e => updateItemRow(idx, 'hsnCode', e.target.value)} className="w-full h-9 px-3 outline-none bg-transparent font-mono text-slate-400 dark:text-slate-500" /></td>
+                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input list="itemslist" value={it.itemName} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-10 px-3 outline-none font-medium bg-transparent dark:text-white" /></td>
+                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={it.hsnCode} onChange={e => updateItemRow(idx, 'hsnCode', e.target.value)} className="w-full h-10 px-3 outline-none bg-transparent font-mono text-slate-400 dark:text-slate-500" /></td>
                                 {appSettings.gstEnabled && (
                                     <td className="p-0 border-r border-slate-100 dark:border-slate-800 text-center">
-                                        <select 
-                                            value={it.tax_rate} 
-                                            onChange={e => updateItemRow(idx, 'tax_rate', e.target.value)}
-                                            className="w-full h-9 px-2 outline-none bg-transparent dark:text-white appearance-none text-center cursor-pointer"
-                                        >
-                                            <option value="0">0%</option>
-                                            <option value="5">5%</option>
-                                            <option value="12">12%</option>
-                                            <option value="18">18%</option>
-                                            <option value="40">40%</option>
+                                        <select value={it.tax_rate} onChange={e => updateItemRow(idx, 'tax_rate', e.target.value)} className="w-full h-10 px-2 outline-none bg-transparent dark:text-white appearance-none text-center cursor-pointer">
+                                            <option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option value="18">18%</option><option value="28">28%</option>
                                         </select>
                                     </td>
                                 )}
-                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input type="text" value={it.qty} onChange={e => updateItemRow(idx, 'qty', e.target.value)} className="w-full h-9 px-2 text-center outline-none bg-transparent font-mono font-bold dark:text-white" /></td>
-                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input type="text" value={it.rate} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-9 px-2 text-right outline-none bg-transparent font-mono font-bold dark:text-white" /></td>
+                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input type="text" value={it.qty} onChange={e => updateItemRow(idx, 'qty', e.target.value)} placeholder="10,000" className="w-full h-10 px-2 text-center outline-none bg-transparent font-mono font-bold dark:text-white" /></td>
+                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input type="text" value={it.rate} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-10 px-2 text-right outline-none bg-transparent font-mono font-bold dark:text-white" /></td>
                                 <td className="p-3 text-right font-bold text-slate-900 dark:text-slate-100 font-mono">{formatCurrency(it.taxableAmount, false)}</td>
                                 <td className="p-2 text-center"><button type="button" onClick={() => setFormData(recalculate({...formData, items: formData.items.filter((_: any, i: number) => i !== idx)}))} className="text-slate-300 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button></td>
                             </tr>
@@ -281,31 +268,31 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                     </tbody>
                 </table>
                 <datalist id="itemslist">{stockItems.map(s => <option key={s.id} value={s.name} />)}</datalist>
-                <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', unit: 'PCS', rate: '', tax_rate: 0, taxableAmount: 0 }]}))} className="w-full py-3 bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-400 uppercase hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-t border-slate-200 dark:border-slate-700">+ Add New Line</button>
+                <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', unit: 'PCS', rate: '', tax_rate: 0, taxableAmount: 0 }]}))} className="w-full py-3 bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-t border-slate-200 dark:border-slate-700">+ Add New Row</button>
             </div>
             <div className="flex justify-between items-start pt-8 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-                <div className="w-1/2 pr-12"><label className="text-[14px] font-normal dark:text-slate-100 mb-2 block">Remark</label><textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-[13px] resize-none h-36 bg-slate-50/30 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-800 transition-all" placeholder="Public or private notes..." /></div>
+                <div className="w-1/2 pr-12"><label className="text-[14px] font-medium dark:text-slate-100 mb-2 block capitalize">Remark</label><textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] resize-none h-36 bg-slate-50/30 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-800 transition-all shadow-inner" placeholder="Public or private notes..." /></div>
                 <div className="flex flex-col items-end space-y-4 w-1/2">
-                    <div className="flex items-center justify-between w-full max-sm text-[14px]"><span className="text-slate-500 font-normal text-right pr-4">Total Taxable</span><input type="text" value={formatWhileTyping(formData.total_without_gst.toString())} onFocus={(e) => { e.target.value = formData.total_without_gst.toString(); e.target.select(); }} onBlur={(e) => { e.target.value = formatWhileTyping(formData.total_without_gst.toString()) }} onChange={e => setFormData(recalculate({...formData}, 'total_without_gst', undefined, e.target.value))} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-slate-900 dark:text-slate-100 text-right w-48 bg-white dark:bg-slate-800" /></div>
+                    <div className="flex items-center justify-between w-full max-sm text-[14px]"><span className="text-slate-500 font-bold uppercase tracking-tight text-right pr-4">Taxable Value</span><input type="text" value={formatWhileTyping(formData.total_without_gst.toString())} onFocus={(e) => { e.target.value = formData.total_without_gst.toString(); e.target.select(); }} onBlur={(e) => { e.target.value = formatWhileTyping(formData.total_without_gst.toString()) }} onChange={e => setFormData(recalculate({...formData}, 'total_without_gst', undefined, e.target.value))} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-slate-900 dark:text-100 text-right w-48 bg-white dark:bg-slate-800" /></div>
                     {formData.duties_and_taxes.map((d: any) => (
                         <div key={d.id} className="flex items-center justify-between w-full max-sm text-[14px]">
-                            <span className="text-slate-500 font-normal text-right pr-4">{d.name}</span>
+                            <span className="text-slate-500 font-bold uppercase tracking-tight text-right pr-4">{d.name}</span>
                             <input 
                               type="text" 
                               value={formatWhileTyping(d.amount.toString())} 
                               onFocus={(e) => { e.target.value = d.amount.toString(); e.target.select(); }} 
                               onBlur={(e) => { e.target.value = formatWhileTyping(d.amount.toString()) }} 
                               onChange={e => setFormData(recalculate({...formData}, undefined, d.id, e.target.value))} 
-                              className={`px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-slate-900 dark:text-slate-100 text-right w-48 ${appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST') ? 'bg-slate-50 dark:bg-slate-800 cursor-not-allowed' : 'bg-white dark:bg-slate-800'}`}
+                              className={`px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-slate-900 dark:text-100 text-right w-48 ${appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST') ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed' : 'bg-white dark:bg-slate-800'}`}
                               readOnly={appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST')}
                             />
                         </div>
                     ))}
-                    <div className="flex items-center justify-between w-full max-sm pt-5 border-t border-slate-100 dark:border-slate-800"><span className="text-slate-900 dark:text-white font-bold uppercase tracking-tight text-right pr-4">Grand Total</span><span className={`font-mono font-bold text-[22px] tracking-tight ${formData.grand_total < 0 ? 'text-red-500 animate-pulse' : 'text-link'}`}>{formatCurrency(formData.grand_total, true)}</span></div>
+                    <div className="flex items-center justify-between w-full max-sm pt-5 border-t border-slate-100 dark:border-slate-800"><span className="text-slate-900 dark:text-white font-bold uppercase tracking-tight text-right pr-4">Net Amount</span><span className={`font-mono font-bold text-[24px] tracking-tight ${formData.grand_total < 0 ? 'text-red-500' : 'text-link'}`}>{formatCurrency(formData.grand_total)}</span></div>
                 </div>
             </div>
         </div>
-        <div className="flex justify-end gap-6 items-center"><button type="button" onClick={onCancel} className="text-[13px] text-slate-500 hover:text-slate-800 transition-none font-normal">Discard</button><button type="submit" disabled={loading} className="bg-link text-white px-10 py-3 rounded font-bold text-[14px] hover:bg-link/90 transition-none flex items-center shadow-lg shadow-link/10">{loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}{initialData ? 'Update Invoice' : 'Generate Invoice'}</button></div>
+        <div className="flex justify-end gap-6 items-center"><button type="button" onClick={onCancel} className="text-[14px] text-slate-500 hover:text-slate-800 transition-none font-medium capitalize">Discard</button><button type="submit" disabled={loading} className="bg-link text-white px-10 py-3 rounded font-bold text-[14px] hover:bg-link/90 transition-none flex items-center shadow-lg capitalize">{loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}{initialData ? 'Update Invoice' : 'Generate Invoice'}</button></div>
       </form>
     </div>
   );

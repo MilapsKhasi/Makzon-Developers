@@ -32,7 +32,7 @@ export const getAppSettings = () => {
 };
 
 export const formatCurrency = (amount: number | undefined | null, includeSymbol: boolean = true) => {
-  if (amount === undefined || amount === null || isNaN(amount)) return '';
+  if (amount === undefined || amount === null || isNaN(amount)) return includeSymbol ? '₹ 0.00' : '0.00';
   const { currency } = getAppSettings();
   const config = CURRENCIES[currency as keyof typeof CURRENCIES] || CURRENCIES.INR;
   
