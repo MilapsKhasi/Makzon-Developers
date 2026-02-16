@@ -42,12 +42,19 @@ const Companies = () => {
     setCreating(true);
 
     try {
+      // 1. Get current authenticated user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Auth Session Not Found");
+
+      // 2. Insert with explicit created_by for RLS
       const { data, error } = await supabase
         .from('companies')
         .insert([{
           name: newCompany.name.trim().toUpperCase(),
           gstin: newCompany.gstin.trim().toUpperCase(),
-          address: newCompany.address.trim()
+          address: newCompany.address.trim(),
+          user_id: user.id,
+          created_by: user.id // Mandatory for the user's RLS policy
         }])
         .select();
 
@@ -58,7 +65,7 @@ const Companies = () => {
         setTimeout(() => navigate('/', { replace: true }), 100);
       }
     } catch (err: any) {
-      alert(`Failed: ${err.message}`);
+      alert(`Registration Failed: ${err.message}`);
     } finally {
       setCreating(false);
     }
@@ -80,7 +87,7 @@ const Companies = () => {
         <div className="flex items-center space-x-2">
           <Logo size={32} />
           <div className="flex items-center px-3 py-1.5 border border-slate-200 rounded-md bg-slate-50">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-2">Workspaces</span>
+            <span className="text-[10px] font-medium text-slate-400 capitalize tracking-widest mr-2">Workspaces</span>
           </div>
         </div>
         <div className="flex-1 max-w-lg mx-8">
@@ -106,11 +113,10 @@ const Companies = () => {
         <div className="max-w-6xl mx-auto space-y-8">
             <div className="flex items-center justify-between border-b border-slate-100 pb-6">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Select Workspace</h1>
-                <p className="text-slate-500 text-sm mt-1">Access your digital finance desk.</p>
+                <h1 className="text-[20px] font-medium text-slate-900 capitalize">Select Workspace</h1>
               </div>
-              <button onClick={() => setIsModalOpen(true)} className="bg-primary text-slate-900 px-8 py-3 rounded-md font-bold text-sm hover:bg-primary-dark shadow-sm active:scale-95 flex items-center">
-                <Plus className="w-4 h-4 mr-2" /> NEW WORKSPACE
+              <button onClick={() => setIsModalOpen(true)} className="bg-primary text-slate-900 px-8 py-3 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize">
+                <Plus className="w-4 h-4 mr-2" /> New Workspace
               </button>
             </div>
 
@@ -122,18 +128,18 @@ const Companies = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCompanies.map((company) => (
                   <div key={company.id} onClick={() => selectCompany(company)}
-                    className="group p-6 bg-white border border-slate-200 rounded-lg hover:border-slate-400 hover:bg-slate-50 cursor-pointer transition-all">
+                    className="group p-6 bg-white border border-slate-200 rounded-lg hover:border-slate-400 hover:bg-slate-50 cursor-pointer transition-none">
                     <div className="flex items-start justify-between mb-4">
                       <div className="w-12 h-12 bg-white border border-slate-200 rounded-lg flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-colors">
                         <Building2 className="w-6 h-6 text-slate-400 group-hover:text-slate-900" />
                       </div>
                       <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
                     </div>
-                    <h3 className="font-bold text-lg uppercase truncate">{company.name}</h3>
-                    <p className="text-[11px] font-mono text-slate-400 mb-4">{company.gstin || 'UNREGISTERED'}</p>
-                    <div className="flex items-center text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                      <span className="bg-white border border-slate-200 px-2 py-0.5 rounded mr-2">ACCOUNT OK</span>
-                      <span>ENTER DESK</span>
+                    <h3 className="font-medium text-lg capitalize truncate">{company.name}</h3>
+                    <p className="text-[11px] font-mono text-slate-400 mb-4">{company.gstin || 'Unregistered'}</p>
+                    <div className="flex items-center text-[10px] font-medium text-slate-400 capitalize tracking-tighter">
+                      <span className="bg-white border border-slate-200 px-2 py-0.5 rounded mr-2">Account Ok</span>
+                      <span>Enter Desk</span>
                     </div>
                   </div>
                 ))}
@@ -145,25 +151,25 @@ const Companies = () => {
         <form onSubmit={handleCreateCompany} className="p-8 space-y-6 bg-white">
           <div className="space-y-6 border border-slate-200 rounded-md p-8 bg-white">
             <div className="space-y-1.5">
-              <label className="text-sm font-bold uppercase text-slate-400">Legal Business Name</label>
+              <label className="text-sm font-medium capitalize text-slate-400">Legal Business Name</label>
               <input required type="text" value={newCompany.name} onChange={(e) =>
-                setNewCompany({ ...newCompany, name: e.target.value })} className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-base font-bold uppercase focus:border-slate-400" placeholder="e.g. ACME SOLUTIONS" />
+                setNewCompany({ ...newCompany, name: e.target.value })} className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-base font-medium capitalize focus:border-slate-400" placeholder="e.g. Acme Solutions" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-bold uppercase text-slate-400">GSTIN Identification</label>
+              <label className="text-sm font-medium capitalize text-slate-400">Gstin Identification</label>
               <input type="text" value={newCompany.gstin} onChange={(e) =>
                 setNewCompany({ ...newCompany, gstin: e.target.value.toUpperCase() })} className="w-full px-4 py-3 border border-slate-200 rounded outline-none font-mono text-sm uppercase focus:border-slate-400" placeholder="27AAAAA0000A1Z5" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-bold uppercase text-slate-400">Registered Office Address</label>
+              <label className="text-sm font-medium capitalize text-slate-400">Registered Office Address</label>
               <textarea value={newCompany.address} onChange={(e) =>
                 setNewCompany({ ...newCompany, address: e.target.value })} rows={3} className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-sm focus:border-slate-400 resize-none" placeholder="Enter complete office address..." />
             </div>
           </div>
           <div className="flex items-center justify-end space-x-6 pt-4">
-            <button type="submit" disabled={creating} className="bg-primary text-slate-900 px-10 py-3 rounded-md font-bold text-sm hover:bg-primary-dark shadow-lg active:scale-95 disabled:opacity-50 flex items-center">
+            <button type="submit" disabled={creating} className="bg-primary text-slate-900 px-10 py-3 rounded-md font-medium text-sm hover:bg-primary-dark shadow-sm disabled:opacity-50 flex items-center capitalize">
               {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-              {creating ? 'REGISTERING...' : 'SAVE WORKSPACE'}
+              {creating ? 'Registering...' : 'Save Workspace'}
             </button>
           </div>
         </form>

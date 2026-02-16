@@ -84,7 +84,17 @@ CREATE TABLE public.profiles (
 );
 
 -- 2. Create Core Tables
-CREATE TABLE public.companies (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, name text NOT NULL, gstin text, address text, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now(), user_id uuid DEFAULT auth.uid());
+CREATE TABLE public.companies (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY, 
+  name text NOT NULL, 
+  gstin text, 
+  address text, 
+  is_deleted boolean DEFAULT false, 
+  created_at timestamptz DEFAULT now(), 
+  user_id uuid DEFAULT auth.uid(),
+  created_by uuid DEFAULT auth.uid()
+);
+
 CREATE TABLE public.vendors (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, name text NOT NULL, email text, phone text, gstin text, pan text, state text, account_number text, account_name text, ifsc_code text, address text, balance numeric DEFAULT 0, party_type text DEFAULT 'vendor', is_customer boolean DEFAULT false, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());
 CREATE TABLE public.bills (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, vendor_name text NOT NULL, bill_number text NOT NULL, date date NOT NULL DEFAULT CURRENT_DATE, total_without_gst numeric DEFAULT 0, total_gst numeric DEFAULT 0, grand_total numeric DEFAULT 0, status text DEFAULT 'Pending', is_deleted boolean DEFAULT false, description text, items jsonb DEFAULT '{}'::jsonb, round_off numeric DEFAULT 0, created_at timestamptz DEFAULT now());
 CREATE TABLE public.sales_invoices (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, customer_name text NOT NULL, invoice_number text NOT NULL, date date NOT NULL DEFAULT CURRENT_DATE, total_without_gst numeric DEFAULT 0, total_gst numeric DEFAULT 0, grand_total numeric DEFAULT 0, status text DEFAULT 'Pending', is_deleted boolean DEFAULT false, description text, items jsonb DEFAULT '{}'::jsonb, round_off numeric DEFAULT 0, created_at timestamptz DEFAULT now());
@@ -104,13 +114,13 @@ ALTER TABLE public.cashbooks ENABLE ROW LEVEL SECURITY;
 
 -- 4. Set Policies
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL TO authenticated USING (auth.uid() = id);
-CREATE POLICY "Manage own companies" ON public.companies FOR ALL TO authenticated USING (auth.uid() = user_id);
-CREATE POLICY "Manage company data" ON public.vendors FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE user_id = auth.uid()));
-CREATE POLICY "Manage company bills" ON public.bills FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE user_id = auth.uid()));
-CREATE POLICY "Manage company sales" ON public.sales_invoices FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE user_id = auth.uid()));
-CREATE POLICY "Manage company stock" ON public.stock_items FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE user_id = auth.uid()));
-CREATE POLICY "Manage company taxes" ON public.duties_taxes FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE user_id = auth.uid()));
-CREATE POLICY "Manage company cashbook" ON public.cashbooks FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE user_id = auth.uid()));
+CREATE POLICY "Manage own companies" ON public.companies FOR ALL TO authenticated USING (auth.uid() = created_by);
+CREATE POLICY "Manage company data" ON public.vendors FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
+CREATE POLICY "Manage company bills" ON public.bills FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
+CREATE POLICY "Manage company sales" ON public.sales_invoices FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
+CREATE POLICY "Manage company stock" ON public.stock_items FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
+CREATE POLICY "Manage company taxes" ON public.duties_taxes FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
+CREATE POLICY "Manage company cashbook" ON public.cashbooks FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
     `.trim();
     navigator.clipboard.writeText(sql);
     setCopied(true);
@@ -132,19 +142,19 @@ CREATE POLICY "Manage company cashbook" ON public.cashbooks FOR ALL TO authentic
           <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
             <Database className="w-8 h-8 text-amber-500" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Database Setup Required</h1>
-          <p className="text-slate-500 mb-8">Required tables (including 'profiles') haven't been created yet.</p>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2 capitalize">Database Setup Required</h1>
+          <p className="text-slate-500 mb-8 capitalize">Required tables haven't been created yet.</p>
           <div className="bg-slate-900 rounded-lg p-6 text-left mb-6 relative group">
             <pre className="text-[10px] text-slate-300 font-mono overflow-x-auto whitespace-pre-wrap">
               {`CREATE TABLE public.profiles (...);\nCREATE TABLE public.companies (...);\n...`}
             </pre>
-            <button onClick={copySql} className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded text-xs font-bold flex items-center">
+            <button onClick={copySql} className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center capitalize">
               {copied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
-              {copied ? 'Copied!' : 'Copy SQL'}
+              {copied ? 'Copied!' : 'Copy Sql'}
             </button>
           </div>
-          <button onClick={() => window.location.reload()} className="px-8 py-3 bg-primary text-slate-900 font-bold rounded-lg hover:bg-primary-dark">
-            Refresh After Running SQL
+          <button onClick={() => window.location.reload()} className="px-8 py-3 bg-primary text-slate-900 font-medium rounded-lg hover:bg-primary-dark capitalize">
+            Refresh After Running Sql
           </button>
         </div>
       </div>
