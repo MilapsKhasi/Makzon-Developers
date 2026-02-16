@@ -13,6 +13,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
@@ -33,6 +34,7 @@
                 700: '#334155',
                 800: '#1E293B',
                 900: '#0F172A',
+                950: '#020617',
               }
             },
             borderRadius: {
@@ -47,6 +49,16 @@
       }
     </script>
 
+    <script>
+      // Initial theme setup to avoid FOUC
+      const theme = localStorage.getItem('app_theme') || 'light';
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -57,6 +69,10 @@
         color: #334155;
         font-size: 13px;
         -webkit-font-smoothing: antialiased;
+      }
+      .dark body {
+        background-color: #020617;
+        color: #f1f5f9;
       }
       * {
         font-family: 'Poppins', sans-serif !important;
@@ -75,6 +91,9 @@
         background: #CBD5E1;
         border-radius: 10px;
       }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #334155;
+      }
       
       html, body, #root {
         height: 100%;
@@ -87,6 +106,9 @@
         border-collapse: collapse;
         background: white;
       }
+      .dark .clean-table {
+        background: #0F172A;
+      }
       .clean-table th {
         background-color: #f1f5f9;
         color: #475569;
@@ -97,13 +119,25 @@
         border: 1px solid #e2e8f0;
         text-align: left;
       }
+      .dark .clean-table th {
+        background-color: #1e293b;
+        color: #94a3b8;
+        border-color: #334155;
+      }
       .clean-table td {
         padding: 10px 14px;
         border: 1px solid #e2e8f0;
         color: #334155;
       }
+      .dark .clean-table td {
+        border-color: #334155;
+        color: #cbd5e1;
+      }
       .clean-table tr:hover td {
         background-color: #f8fafc;
+      }
+      .dark .clean-table tr:hover td {
+        background-color: #1e293b;
       }
 
       input, select, textarea {
@@ -151,7 +185,7 @@
 }
 </script>
 </head>
-  <body>
+  <body class="dark:bg-slate-950 dark:text-slate-100">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
