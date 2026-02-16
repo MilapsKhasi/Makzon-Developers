@@ -7,11 +7,20 @@ import { supabase } from '../lib/supabase';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 const Settings = () => {
+  const navigate = useNavigate();
+  const cid = getActiveCompanyId();
+
+  // Lazy initialize states from localStorage to prevent resets on reload
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [workspaceInfo, setWorkspaceInfo] = useState({ name: '', gstin: '', address: '' });
-  const [theme, setTheme] = useState(localStorage.getItem('app_theme') || 'light');
-  const [gstConfig, setGstConfig] = useState({ enabled: false, type: 'CGST - SGST' });
+  const [theme, setTheme] = useState(() => localStorage.getItem('app_theme') || 'light');
+  
+  const [gstConfig, setGstConfig] = useState(() => {
+    const s = getAppSettings();
+    return { enabled: s.gstEnabled, type: s.gstType || 'CGST - SGST' };
+  });
+
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [licenseId, setLicenseId] = useState('FP-26112');
   
@@ -19,8 +28,6 @@ const Settings = () => {
   const [recycleTab, setRecycleTab] = useState('All');
   const [deletedItems, setDeletedItems] = useState<any[]>([]);
   const [recycleLoading, setRecycleLoading] = useState(false);
-  
-  const navigate = useNavigate();
 
   const recycleTabs = [
     'All', 'Workspace', 'Sales Invoices', 'Purchase Bills', 
@@ -28,45 +35,48 @@ const Settings = () => {
   ];
 
   const loadProfile = async () => {
+    if (!cid) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const cid = getActiveCompanyId();
-      if (cid) {
-        const { data, error } = await supabase.from('companies').select('*').eq('id', cid).single();
-        if (error) throw error;
-        if (data) setWorkspaceInfo({ name: data.name || '', gstin: data.gstin || '', address: data.address || '' });
-
-        const settings = getAppSettings();
-        setGstConfig({
-            enabled: settings.gstEnabled || false,
-            type: settings.gstType || 'CGST - SGST'
-        });
-        
-        // Calculate License ID
-        const { data: allCompanies } = await supabase
-          .from('companies')
-          .select('id, created_at')
-          .eq('is_deleted', false)
-          .order('created_at', { ascending: true });
-        
-        if (allCompanies) {
-          const index = allCompanies.findIndex(c => c.id === cid);
-          if (index !== -1) {
-            setLicenseId(`FP-${26112 + index}`);
-          }
-        }
-
-        await fetchRecycleData();
+      const { data, error } = await supabase.from('companies').select('*').eq('id', cid).single();
+      if (error) throw error;
+      if (data) {
+        setWorkspaceInfo({ name: data.name || '', gstin: data.gstin || '', address: data.address || '' });
       }
+
+      // Re-sync local settings from storage just in case
+      const settings = getAppSettings();
+      setGstConfig({
+          enabled: settings.gstEnabled,
+          type: settings.gstType || 'CGST - SGST'
+      });
+      
+      // Calculate License ID based on creation order
+      const { data: allCompanies } = await supabase
+        .from('companies')
+        .select('id, created_at')
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: true });
+      
+      if (allCompanies) {
+        const index = allCompanies.findIndex(c => c.id === cid);
+        if (index !== -1) {
+          setLicenseId(`FP-${26112 + index}`);
+        }
+      }
+
+      await fetchRecycleData();
     } catch (err) {
-      console.error(err);
+      console.error("Settings load error:", err);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchRecycleData = async () => {
-    const cid = getActiveCompanyId();
     if (!cid) return;
     setRecycleLoading(true);
     
@@ -83,7 +93,6 @@ const Settings = () => {
       ];
 
       const results = await Promise.all(queries);
-      
       const allItems: any[] = [];
       
       results[0].data?.forEach(i => allItems.push({ ...i, origin: 'Workspace', label: i.name, table: 'companies' }));
@@ -106,7 +115,7 @@ const Settings = () => {
     }
   };
 
-  useEffect(() => { loadProfile(); }, []);
+  useEffect(() => { loadProfile(); }, [cid]);
 
   const handleRecover = async (item: any) => {
     try {
@@ -141,14 +150,39 @@ const Settings = () => {
     window.dispatchEvent(new Event('appSettingsChanged'));
   };
 
+  /**
+   * FIX: Toggle function now saves state IMMEDIATELY to localStorage
+   * to prevent it from resetting on reload.
+   */
+  const toggleGST = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    const newEnabled = !gstConfig.enabled;
+    const newConfig = { ...gstConfig, enabled: newEnabled };
+    setGstConfig(newConfig);
+    
+    // Immediate Persistence
+    if (cid) {
+        const currentSettings = getAppSettings();
+        const updatedSettings = { 
+          ...currentSettings, 
+          gstEnabled: newEnabled, 
+          gstType: newConfig.type 
+        };
+        localStorage.setItem(`appSettings_${cid}`, JSON.stringify(updatedSettings));
+        window.dispatchEvent(new Event('appSettingsChanged'));
+    }
+  };
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!cid) return;
     setSaving(true);
     try {
-      const cid = getActiveCompanyId();
+      // Save Workspace Info to Supabase
       await safeSupabaseSave('companies', workspaceInfo, cid);
       localStorage.setItem('activeCompanyName', workspaceInfo.name);
 
+      // Save GST Type to localStorage
       const currentSettings = getAppSettings();
       const updatedSettings = { 
         ...currentSettings, 
@@ -157,6 +191,7 @@ const Settings = () => {
       };
       localStorage.setItem(`appSettings_${cid}`, JSON.stringify(updatedSettings));
 
+      // Auto-create tax ledgers if needed
       if (gstConfig.enabled) {
         const ledgersToEnsure = gstConfig.type === 'CGST - SGST' ? ['CGST', 'SGST'] : ['IGST'];
         for (const name of ledgersToEnsure) {
@@ -179,7 +214,6 @@ const Settings = () => {
   };
 
   const handleDeleteWorkspace = async () => {
-    const cid = getActiveCompanyId();
     if (!cid) return;
     try {
       const { error } = await supabase.from('companies').update({ is_deleted: true }).eq('id', cid);
@@ -258,9 +292,13 @@ const Settings = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Enable GST</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Turn on GST calculations and automatic tax ledger generation.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Turn on GST calculations and automatic tax ledger generation. (Saves Automatically)</p>
               </div>
-              <button type="button" onClick={() => setGstConfig({ ...gstConfig, enabled: !gstConfig.enabled })} className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${gstConfig.enabled ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}>
+              <button 
+                type="button" 
+                onClick={toggleGST} 
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${gstConfig.enabled ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
+              >
                 <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${gstConfig.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>
             </div>
@@ -268,7 +306,11 @@ const Settings = () => {
                 <div className="animate-in slide-in-from-top-2 duration-300 grid grid-cols-1 md:grid-cols-2 gap-8 items-center border-t border-slate-100 dark:border-slate-800 pt-8">
                     <div><h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Select GST Type</h4><p className="text-xs text-slate-500 dark:text-slate-400">Ledgers will be created automatically based on your choice.</p></div>
                     <div className="relative">
-                        <select value={gstConfig.type} onChange={(e) => setGstConfig({ ...gstConfig, type: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded text-sm font-medium outline-none focus:border-slate-400 dark:focus:border-slate-500 appearance-none">
+                        <select 
+                            value={gstConfig.type} 
+                            onChange={(e) => setGstConfig({ ...gstConfig, type: e.target.value })} 
+                            className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded text-sm font-medium outline-none focus:border-slate-400 dark:focus:border-slate-500 appearance-none"
+                        >
                             <option value="CGST - SGST">CGST - SGST (Intra-State)</option>
                             <option value="IGST">IGST (Inter-State)</option>
                         </select>

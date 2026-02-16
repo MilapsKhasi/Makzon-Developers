@@ -16,7 +16,7 @@ export const getAppSettings = () => {
   const defaultSettings = { 
     currency: 'INR', 
     borderStyle: 'rounded', 
-    dateFormat: 'DD/MM/YYYY',
+    dateFormat: 'DD/MM/YY',
     gstEnabled: false,
     gstType: 'CGST - SGST'
   };
@@ -25,7 +25,14 @@ export const getAppSettings = () => {
   
   const s = localStorage.getItem(`appSettings_${cid}`);
   try {
-    return s ? { ...defaultSettings, ...JSON.parse(s) } : defaultSettings;
+    if (!s) return defaultSettings;
+    const parsed = JSON.parse(s);
+    return {
+      ...defaultSettings,
+      ...parsed,
+      // Ensure boolean type for gstEnabled
+      gstEnabled: parsed.gstEnabled === true || parsed.gstEnabled === 'true'
+    };
   } catch (e) {
     return defaultSettings;
   }
@@ -47,7 +54,6 @@ export const formatCurrency = (amount: number | undefined | null, includeSymbol:
     options.style = 'decimal';
   }
   
-  // Standardizing to Indian numbering system for high-scale readability
   return new Intl.NumberFormat('en-IN', options).format(amount);
 };
 
@@ -56,7 +62,9 @@ export const formatDate = (iso: any) => {
   const parts = iso.split('-');
   if (parts.length !== 3) return iso;
   const [y, m, d] = parts;
-  return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+  // Using 2-digit year as requested
+  const shortYear = y.length === 4 ? y.substring(2) : y;
+  return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${shortYear}`;
 };
 
 export const parseDateFromInput = (input: string): string | null => {
