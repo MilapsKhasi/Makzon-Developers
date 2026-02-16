@@ -51,10 +51,10 @@ export const exportToExcel = (
 };
 
 /**
- * Specialized export for Cashbook Entry Sheet with precise formatting for PDF:
- * - Vertical layout (Income then Expense)
- * - Includes Opening Balance contextually from the record's raw_data
- * - Styled with specific colors for financial totals
+ * Specialized export for Cashbook Entry Sheet matching the visual reference:
+ * - High-impact colored headers
+ * - Unified column widths for vertical alignment
+ * - Bottom summary ledger
  */
 export const exportCashbookEntryToPDF = (
     incomeRows: any[],
@@ -63,102 +63,105 @@ export const exportCashbookEntryToPDF = (
 ) => {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
-    let currentY = 25;
+    let currentY = 20;
 
-    // Shared Column Definitions for consistency across tables
+    const incomeTotal = incomeRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
+    const expenseTotal = expenseRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
+    const netClosing = config.openingBalance + incomeTotal - expenseTotal;
+
+    // Shared Column Styles to ensure perfectly matched widths between tables
     const sharedColumnStyles: any = {
         0: { cellWidth: 20, halign: 'center' }, // SR NO
-        1: { cellWidth: 'auto' },               // PARTICULARS
-        2: { cellWidth: 45, halign: 'right' }   // AMOUNT
+        1: { cellWidth: 'auto', halign: 'left' }, // PARTICULARS
+        2: { cellWidth: 35, halign: 'right' }  // AMOUNT
     };
 
     // 1. Company Header
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
+    doc.setFontSize(18);
     doc.text(config.companyName.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
-    currentY += 8;
+    currentY += 10;
 
-    // 2. Daily Cash Statement
+    // 2. Report Sub-header
+    doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
     doc.text(`DAILY CASH STATEMENT - DATE: ${config.date}`, pageWidth / 2, currentY, { align: 'center' });
     currentY += 12;
 
-    // 3. Opening Balance Section
+    // 3. Opening Balance Block (Reference image style)
     autoTable(doc, {
         startY: currentY,
         body: [
-            [`OPENING BALANCE OF DATE ${config.openingDateText}:`, config.openingBalance.toFixed(2)]
+            [`OPENING BALANCE FOR DATE ${config.openingDateText}`, config.openingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })]
         ],
         theme: 'grid',
-        styles: { fontSize: 10, fontStyle: 'bold', cellPadding: 5, textColor: [0, 0, 0], lineWidth: 0.2 },
+        styles: { fontSize: 11, fontStyle: 'bold', cellPadding: 5, textColor: [0, 0, 0], lineWidth: 0.15, lineColor: [200, 200, 200] },
         columnStyles: {
             0: { halign: 'left', cellWidth: 'auto' },
-            1: { halign: 'right', cellWidth: 45 }
+            1: { halign: 'right', cellWidth: 35 }
         }
     });
 
-    currentY = (doc as any).lastAutoTable.finalY + 10;
+    currentY = (doc as any).lastAutoTable.finalY + 12;
 
-    // 4. Income Section
+    // 4. Income Section (Emerald Green)
     autoTable(doc, {
         startY: currentY,
         head: [
-            [{ content: 'INCOME (INWARD)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [240, 240, 240] } }],
-            ['SR NO', 'PARTICULARS / SOURCE', 'AMOUNT (INR)']
+            [{ content: 'INCOME (INWARDS)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [0, 185, 93], textColor: [255, 255, 255], fontSize: 12 } }],
+            ['SR NO', 'PARTICULARS', 'AMOUNT']
         ],
-        body: incomeRows.map((row, i) => [i + 1, row.particulars, parseFloat(row.amount).toFixed(2)]),
-        foot: [['TOTAL INWARD', '', incomeRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0).toFixed(2)]],
+        body: incomeRows.map((row, i) => [i + 1, row.particulars.toUpperCase(), parseFloat(row.amount).toFixed(2)]),
+        foot: [['', 'GRAND TOTAL', incomeTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })]],
         theme: 'grid',
-        styles: { fontSize: 9, cellPadding: 4, lineWidth: 0.1, lineColor: [150, 150, 150] },
+        styles: { fontSize: 9, cellPadding: 4, lineWidth: 0.1, lineColor: [220, 220, 220] },
+        headStyles: { fillColor: [245, 245, 245], textColor: [80, 80, 80], fontStyle: 'bold', fontSize: 8 },
         columnStyles: sharedColumnStyles,
-        footStyles: { 
-            fontStyle: 'bold', 
-            fillColor: [245, 255, 245], 
-            textColor: [0, 128, 0] // Dark Green for Income Total
-        }
+        footStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 128, 0], fontSize: 10 }
     });
 
-    currentY = (doc as any).lastAutoTable.finalY + 10;
+    currentY = (doc as any).lastAutoTable.finalY + 12;
 
-    // 5. Expense Section
+    // 5. Expense Section (Orange/Red)
     autoTable(doc, {
         startY: currentY,
         head: [
-            [{ content: 'EXPENSE (OUTWARD)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [240, 240, 240] } }],
-            ['SR NO', 'PARTICULARS / USAGE', 'AMOUNT (INR)']
+            [{ content: 'EXPENSE (OUTWARDS)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [255, 121, 32], textColor: [255, 255, 255], fontSize: 12 } }],
+            ['SR NO', 'PARTICULARS', 'AMOUNT']
         ],
-        body: expenseRows.map((row, i) => [i + 1, row.particulars, parseFloat(row.amount).toFixed(2)]),
-        foot: [['TOTAL OUTWARD', '', expenseRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0).toFixed(2)]],
+        body: expenseRows.map((row, i) => [i + 1, row.particulars.toUpperCase(), parseFloat(row.amount).toFixed(2)]),
+        foot: [['', 'GRAND TOTAL', expenseTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })]],
         theme: 'grid',
-        styles: { fontSize: 9, cellPadding: 4, lineWidth: 0.1, lineColor: [150, 150, 150] },
+        styles: { fontSize: 9, cellPadding: 4, lineWidth: 0.1, lineColor: [220, 220, 220] },
+        headStyles: { fillColor: [245, 245, 245], textColor: [80, 80, 80], fontStyle: 'bold', fontSize: 8 },
         columnStyles: sharedColumnStyles,
-        footStyles: { 
-            fontStyle: 'bold', 
-            fillColor: [255, 245, 245], 
-            textColor: [200, 0, 0] // Clear Red for Expense Total
-        }
+        footStyles: { fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [200, 0, 0], fontSize: 10 }
     });
 
-    currentY = (doc as any).lastAutoTable.finalY + 10;
+    currentY = (doc as any).lastAutoTable.finalY + 15;
 
-    // 6. Final Summary
-    const totalIn = incomeRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
-    const totalOut = expenseRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
-    const net = config.openingBalance + totalIn - totalOut;
-
+    // 6. Bottom Summary Ledger
     autoTable(doc, {
         startY: currentY,
         body: [
-            ['NET CLOSING BALANCE:', net.toFixed(2)]
+            ['TOTAL INCOME', incomeTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })],
+            ['TOTAL EXPENSE', expenseTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })],
+            [`CLOSING BALANCE FOR DATE ${config.date}`, netClosing.toLocaleString('en-IN', { minimumFractionDigits: 2 })]
         ],
         theme: 'grid',
-        styles: { fontSize: 12, fontStyle: 'bold', cellPadding: 6, fillColor: [255, 255, 255] },
+        styles: { fontSize: 12, fontStyle: 'bold', cellPadding: 5, textColor: [0, 0, 0], lineWidth: 0.15, lineColor: [200, 200, 200] },
         columnStyles: {
-            0: { halign: 'right' },
-            1: { halign: 'right', cellWidth: 45 }
+            0: { halign: 'left', cellWidth: 'auto' },
+            1: { halign: 'right', cellWidth: 50 }
         }
     });
+
+    // 7. Page Footer
+    const footerText = "GENERATED BY FINDESK PRIME";
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.setFont('helvetica', 'normal');
+    doc.text(footerText, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
 
     doc.save(`Cashbook_${config.date}.pdf`);
 };
@@ -173,8 +176,7 @@ export const exportCashbookEntryToExcel = (
     ws_data.push([`DAILY CASH STATEMENT - DATE: ${config.date}`]);
     ws_data.push([]);
     
-    // Explicit Opening Balance Row
-    ws_data.push([`OPENING BALANCE OF DATE ${config.openingDateText}`, "", config.openingBalance]);
+    ws_data.push([`OPENING BALANCE FOR DATE ${config.openingDateText}`, "", config.openingBalance]);
     ws_data.push([]);
 
     ws_data.push(["INCOME (INWARD)"]);
