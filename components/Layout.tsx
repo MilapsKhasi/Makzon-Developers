@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import Logo from './Logo';
@@ -136,16 +136,27 @@ const Layout = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden font-sans transition-colors duration-300">
-      <aside className={`${isSidebarOpen ? 'w-56' : 'w-16'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-50 transition-all duration-300`}>
-        <div className="h-12 flex items-center px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-          <Logo size={28} />
+      <aside className={`${isSidebarOpen ? 'w-64' : 'w-16'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-50 transition-all duration-300`}>
+        <div className="h-16 flex items-center px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+          <div className="flex items-center space-x-3">
+            <Logo size={32} />
+            {isSidebarOpen && (
+              <div className="flex flex-col animate-in fade-in slide-in-from-left-2 duration-500">
+                <div className="flex items-center space-x-2">
+                  <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">Findesk Prime</span>
+                  <span className="bg-slate-900 dark:bg-primary text-primary dark:text-slate-900 text-[8px] font-black uppercase px-1.5 py-0.5 rounded shadow-sm">Licensed</span>
+                </div>
+                <span className="text-[9px] text-slate-400 font-medium tracking-tighter mt-0.5">Finance Operating System</span>
+              </div>
+            )}
+          </div>
         </div>
         
         {/* Gateway of Findesk Header */}
-        <div className={`bg-slate-100 dark:bg-slate-800/50 flex items-center transition-all duration-300 shrink-0 border-b border-slate-200 dark:border-slate-800 ${isSidebarOpen ? 'px-4 py-2.5 h-10' : 'h-1.5 justify-center'}`}>
+        <div className={`bg-slate-50 dark:bg-slate-800/40 flex items-center transition-all duration-300 shrink-0 border-b border-slate-100 dark:border-slate-800 ${isSidebarOpen ? 'px-4 py-2.5 h-10' : 'h-1.5 justify-center'}`}>
           {isSidebarOpen && (
-            <span className="text-slate-900 dark:text-slate-100 font-medium text-[12px] capitalize tracking-tight whitespace-nowrap animate-in fade-in duration-500">
-              Gateway of Findesk
+            <span className="text-slate-500 dark:text-slate-400 font-bold text-[10px] capitalize tracking-wide whitespace-nowrap">
+              Gateway Of Findesk
             </span>
           )}
         </div>
@@ -155,8 +166,8 @@ const Layout = () => {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center px-3 py-2 rounded transition-colors ${location.pathname === item.path
-                ? 'bg-primary text-slate-900 font-medium'
+              className={`flex items-center px-3 py-2.5 rounded transition-colors ${location.pathname === item.path
+                ? 'bg-primary text-slate-900 font-bold'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
                 }`}
             >

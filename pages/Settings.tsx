@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor, Percent, CheckCircle2, RotateCcw, Trash, Filter } from 'lucide-react';
+import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor, Percent, CheckCircle2, RotateCcw, Trash, Filter, ShieldCheck, BadgeCheck } from 'lucide-react';
 import { getActiveCompanyId, safeSupabaseSave, getAppSettings, formatDate } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -13,6 +13,7 @@ const Settings = () => {
   const [theme, setTheme] = useState(localStorage.getItem('app_theme') || 'light');
   const [gstConfig, setGstConfig] = useState({ enabled: false, type: 'CGST - SGST' });
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [licenseId, setLicenseId] = useState('FP-26112');
   
   // Recycle Bin State
   const [recycleTab, setRecycleTab] = useState('All');
@@ -41,6 +42,20 @@ const Settings = () => {
             type: settings.gstType || 'CGST - SGST'
         });
         
+        // Calculate License ID
+        const { data: allCompanies } = await supabase
+          .from('companies')
+          .select('id, created_at')
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: true });
+        
+        if (allCompanies) {
+          const index = allCompanies.findIndex(c => c.id === cid);
+          if (index !== -1) {
+            setLicenseId(`FP-${26112 + index}`);
+          }
+        }
+
         await fetchRecycleData();
       }
     } catch (err) {
@@ -57,8 +72,8 @@ const Settings = () => {
     
     try {
       const queries = [
-        supabase.from('companies').select('id, name, created_at').eq('is_deleted', true).eq('id', cid), // Current workspace if deleted (unlikely to see here but for logic)
-        supabase.from('companies').select('id, name, created_at').eq('is_deleted', true).not('id', 'eq', cid), // Other workspaces
+        supabase.from('companies').select('id, name, created_at').eq('is_deleted', true).eq('id', cid), 
+        supabase.from('companies').select('id, name, created_at').eq('is_deleted', true).not('id', 'eq', cid), 
         supabase.from('sales_invoices').select('id, invoice_number, customer_name, date').eq('is_deleted', true).eq('company_id', cid),
         supabase.from('bills').select('id, bill_number, vendor_name, date').eq('is_deleted', true).eq('company_id', cid),
         supabase.from('vendors').select('id, name, party_type, is_customer').eq('is_deleted', true).eq('company_id', cid),
@@ -71,7 +86,6 @@ const Settings = () => {
       
       const allItems: any[] = [];
       
-      // Map and combine
       results[0].data?.forEach(i => allItems.push({ ...i, origin: 'Workspace', label: i.name, table: 'companies' }));
       results[1].data?.forEach(i => allItems.push({ ...i, origin: 'Workspace', label: i.name, table: 'companies' }));
       results[2].data?.forEach(i => allItems.push({ ...i, origin: 'Sales Invoices', label: `${i.invoice_number} (${i.customer_name})`, table: 'sales_invoices' }));
@@ -190,6 +204,32 @@ const Settings = () => {
       </div>
 
       <form onSubmit={handleUpdate} className="space-y-6">
+        {/* License Information Section */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">
+            <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">License Information</h3>
+          </div>
+          <div className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20">
+                  <ShieldCheck className="w-6 h-6 text-primary-dark" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Plan - <span className="text-link">Licensed</span></h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider font-mono">License ID: {licenseId}</p>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 px-4 py-2 rounded-lg flex items-center">
+                  <BadgeCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mr-2" />
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-tighter">Status: Active & Valid</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Appearance Section */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">
@@ -201,7 +241,7 @@ const Settings = () => {
                 <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Visual Theme</h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Choose between light, dark, or system-default appearance.</p>
               </div>
-              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg w-fit">
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg w-fit ml-auto">
                 <button type="button" onClick={() => applyTheme('light')} className={`flex items-center px-4 py-2 rounded-md text-xs font-bold transition-all ${theme === 'light' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Sun className="w-3.5 h-3.5 mr-2" /> Light</button>
                 <button type="button" onClick={() => applyTheme('dark')} className={`flex items-center px-4 py-2 rounded-md text-xs font-bold transition-all ${theme === 'dark' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}><Moon className="w-3.5 h-3.5 mr-2" /> Dark</button>
               </div>
