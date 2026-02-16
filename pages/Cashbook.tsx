@@ -52,15 +52,15 @@ const Cashbook = () => {
     return () => window.removeEventListener('appSettingsChanged', handleSettingsChange);
   }, [activeCompany?.id, companyLoading]);
 
-  // Logic for Forwarding Balance Card
+  // Logic for Forwarding Balance Card (Hidden in UI but logic preserved)
   const openingBalanceData = useMemo(() => {
     const latest = entries[0]; // Entries are sorted date desc, created_at desc
     if (!latest) {
-      return { amount: 0, subtext: 'Initial Balance' };
+      return { amount: 0, subtext: 'Initial Setup' };
     }
     return { 
       amount: Number(latest.balance) || 0, 
-      subtext: `Carried forward from ${formatDate(latest.date)}` 
+      subtext: formatDate(latest.date)
     };
   }, [entries]);
 
@@ -194,21 +194,23 @@ const Cashbook = () => {
                 </button>
             </div>
 
-            {/* Current Opening Balance Card - Placed Upward Right */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl min-w-[320px] relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <Landmark className="w-20 h-20 text-white" />
-                </div>
-                <div className="relative z-10">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Current Forwarding Balance</span>
-                    <div className="text-[28px] font-bold text-white font-mono leading-none mb-2">
-                        {formatCurrency(openingBalanceData.amount)}
-                    </div>
-                    <div className="flex items-center text-[10px] font-medium text-slate-500 uppercase tracking-tighter">
-                        <Calendar className="w-3 h-3 mr-1" />
-                        {openingBalanceData.subtext}
-                    </div>
-                </div>
+            {/* Current Forwarding Balance logic source - hidden as requested */}
+            <div className="hidden">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl min-w-[320px] relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                      <Landmark className="w-20 h-20 text-white" />
+                  </div>
+                  <div className="relative z-10">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Current Forwarding Balance</span>
+                      <div className="text-[28px] font-bold text-white font-mono leading-none mb-2">
+                          {formatCurrency(openingBalanceData.amount)}
+                      </div>
+                      <div className="flex items-center text-[10px] font-medium text-slate-500 uppercase tracking-tighter">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          Carried forward from {openingBalanceData.subtext}
+                      </div>
+                  </div>
+              </div>
             </div>
         </div>
       </div>
