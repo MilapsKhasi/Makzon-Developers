@@ -283,7 +283,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                               onFocus={(e) => { e.target.value = d.amount.toString(); e.target.select(); }} 
                               onBlur={(e) => { e.target.value = formatWhileTyping(d.amount.toString()) }} 
                               onChange={e => setFormData(recalculate({...formData}, undefined, d.id, e.target.value))} 
-                              className={`px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-slate-900 dark:text-100 text-right w-48 ${appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST') ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed' : 'bg-white dark:bg-slate-800'}`}
+                              className={`px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-right w-48 ${appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST') ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed' : 'bg-white dark:bg-slate-800'}`}
                               readOnly={appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST')}
                             />
                         </div>

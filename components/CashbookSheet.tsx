@@ -36,6 +36,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
       return;
     }
 
+    // Find the most recent entry BEFORE the current report date
     const previousEntries = existingEntries
       .filter(e => e.date < dateStr && e.id !== initialData?.id)
       .sort((a, b) => b.date.localeCompare(a.date));
@@ -162,12 +163,12 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
   const closingBalance = openingBalance + incomeTotal - expenseTotal;
 
   const OpeningBalanceRow = () => (
-    <tr className="bg-slate-100/80 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-700">
+    <tr className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-700">
       <td className="w-14 py-2 px-3 border-r border-slate-200 dark:border-slate-700"></td>
-      <td className="py-2 px-4 text-slate-500 dark:text-slate-400 font-bold italic text-[11px] uppercase tracking-tight select-none">
-        Opening Balance Of {lastDate || 'Initial Setup'}
+      <td className="py-2 px-4 text-slate-400 dark:text-slate-500 font-bold italic text-[11px] uppercase tracking-tight select-none">
+        Opening Balance of {lastDate || 'Initial Setup'}
       </td>
-      <td className="w-36 py-2 px-4 text-right border-l border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-500 dark:text-slate-400 select-none">
+      <td className="w-36 py-2 px-4 text-right border-l border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-400 dark:text-slate-500 select-none">
         {formatCurrency(openingBalance, false)}
       </td>
     </tr>
@@ -231,7 +232,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
             
             <div className="flex items-center space-x-4">
               <div className="bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded border border-slate-100 dark:border-slate-700">
-                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Entry Ledger Active</span>
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Digital Audit Log Active</span>
               </div>
             </div>
         </div>
