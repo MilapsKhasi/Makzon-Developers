@@ -51,94 +51,189 @@ export const exportToExcel = (
 };
 
 /**
- * Specialized export for Cashbook Entry Sheet with vertical stacked layout
- * as per requested format: Company Header -> Date -> Income Section -> Expense Section -> Closing Balance
+ * Specialized export for Cashbook Entry Sheet with precise formatting:
+ * - Specific row heights
+ * - Alignments (Center/Left)
+ * - Bold text where required
+ * - Indentations
  */
 export const exportCashbookEntryToExcel = (
     incomeRows: any[],
     expenseRows: any[],
     config: { companyName: string; date: string }
 ) => {
-    const sheetData: any[][] = [];
-    const merges: any[] = [];
-    
-    // 1. Branding Headers
-    sheetData.push([]); // Padding top
-    sheetData.push(["", config.companyName.toUpperCase()]);
-    merges.push({ s: { r: 1, c: 1 }, e: { r: 1, c: 3 } });
-    
-    sheetData.push(["", `DAILY CASH STATEMENT - DATE: ${config.date}`]);
-    merges.push({ s: { r: 2, c: 1 }, e: { r: 2, c: 3 } });
-    
-    sheetData.push([]); // Spacer row
+    const ws_data: any[][] = [];
+    const merges: XLSX.Range[] = [];
+    const rowHeights: any[] = [];
 
-    // 2. INCOME SECTION
-    sheetData.push(["", "INCOME (INWARD)"]);
-    merges.push({ s: { r: 4, c: 1 }, e: { r: 4, c: 3 } });
-    
-    sheetData.push(["", "SR NO", "PARTICULARS / SOURCE", "AMOUNT (INR)"]);
-    
+    // --- 1. Company Header ---
+    ws_data.push([config.companyName.toUpperCase(), null, null]);
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } });
+    rowHeights.push({ hpt: 25.50 }); // Height 25.50
+
+    // --- 2. Daily Cash Statement Header ---
+    ws_data.push([`DAILY CASH STATEMENT - DATE: ${config.date}`, null, null]);
+    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
+    rowHeights.push({ hpt: 18.75 }); // Height 18.75
+
+    // --- 3. Spacer ---
+    ws_data.push([]);
+    rowHeights.push({ hpt: 12 });
+
+    // --- 4. INCOME SECTION ---
+    const incomeHeaderIdx = ws_data.length;
+    ws_data.push(["INCOME (INWARD)", null, null]);
+    merges.push({ s: { r: incomeHeaderIdx, c: 0 }, e: { r: incomeHeaderIdx, c: 2 } });
+    rowHeights.push({ hpt: 20.25 }); // Height 20.25
+
+    const incomeSubHeaderIdx = ws_data.length;
+    ws_data.push(["SR NO", "PARTICULARS / SOURCE", "AMOUNT (INR)"]);
+    rowHeights.push({ hpt: 20.25 }); // Height 20.25
+
     let totalIncome = 0;
     const cleanIncome = incomeRows.filter(r => r.particulars.trim() !== '' || r.amount !== '');
-    
     cleanIncome.forEach((row, idx) => {
         const amt = parseFloat(row.amount) || 0;
         totalIncome += amt;
-        sheetData.push(["", idx + 1, row.particulars, amt]);
+        ws_data.push([idx + 1, row.particulars, amt]);
+        rowHeights.push({ hpt: 17.75 }); // Height 17.75
     });
-    
-    // Income Total row
-    const incomeTotalRowIndex = sheetData.length;
-    sheetData.push(["", "TOTAL", "", totalIncome]);
-    merges.push({ s: { r: incomeTotalRowIndex, c: 1 }, e: { r: incomeTotalRowIndex, c: 2 } });
-    
-    sheetData.push([]); // Spacer row between sections
 
-    // 3. EXPENSE SECTION
-    const expenseHeaderIndex = sheetData.length;
-    sheetData.push(["", "EXPENSE (OUTWARD)"]);
-    merges.push({ s: { r: expenseHeaderIndex, c: 1 }, e: { r: expenseHeaderIndex, c: 3 } });
-    
-    sheetData.push(["", "SR NO", "PARTICULARS / USAGE", "AMOUNT (INR)"]);
-    
+    const incomeTotalIdx = ws_data.length;
+    ws_data.push(["TOTAL", null, totalIncome]);
+    merges.push({ s: { r: incomeTotalIdx, c: 0 }, e: { r: incomeTotalIdx, c: 1 } });
+    rowHeights.push({ hpt: 18.75 }); // Height 18.75
+
+    // --- 5. Spacer ---
+    ws_data.push([]);
+    rowHeights.push({ hpt: 12 });
+
+    // --- 6. EXPENSE SECTION ---
+    const expenseHeaderIdx = ws_data.length;
+    ws_data.push(["EXPENSE (OUTWARD)", null, null]);
+    merges.push({ s: { r: expenseHeaderIdx, c: 0 }, e: { r: expenseHeaderIdx, c: 2 } });
+    rowHeights.push({ hpt: 20.25 }); // Height 20.25
+
+    const expenseSubHeaderIdx = ws_data.length;
+    ws_data.push(["SR NO", "PARTICULARS / USAGE", "AMOUNT (INR)"]);
+    rowHeights.push({ hpt: 20.25 }); // Height 20.25
+
     let totalExpense = 0;
     const cleanExpense = expenseRows.filter(r => r.particulars.trim() !== '' || r.amount !== '');
-    
     cleanExpense.forEach((row, idx) => {
         const amt = parseFloat(row.amount) || 0;
         totalExpense += amt;
-        sheetData.push(["", idx + 1, row.particulars, amt]);
+        ws_data.push([idx + 1, row.particulars, amt]);
+        rowHeights.push({ hpt: 17.75 }); // Height 17.75
     });
-    
-    // Expense Total row
-    const expenseTotalRowIndex = sheetData.length;
-    sheetData.push(["", "TOTAL", "", totalExpense]);
-    merges.push({ s: { r: expenseTotalRowIndex, c: 1 }, e: { r: expenseTotalRowIndex, c: 2 } });
-    
-    sheetData.push([]); // Spacer row before summary
 
-    // 4. SUMMARY SECTION (Closing Net Balance)
-    const summaryRowIndex = sheetData.length;
+    const expenseTotalIdx = ws_data.length;
+    ws_data.push(["TOTAL", null, totalExpense]);
+    merges.push({ s: { r: expenseTotalIdx, c: 0 }, e: { r: expenseTotalIdx, c: 1 } });
+    rowHeights.push({ hpt: 18.75 }); // Height 18.75
+
+    // --- 7. Spacer ---
+    ws_data.push([]);
+    rowHeights.push({ hpt: 12 });
+
+    // --- 8. CLOSING SUMMARY ---
     const netBalance = totalIncome - totalExpense;
-    sheetData.push(["", "CLOSING NET BALANCE:", "", netBalance]);
-    merges.push({ s: { r: summaryRowIndex, c: 1 }, e: { r: summaryRowIndex, c: 2 } });
+    const closingIdx = ws_data.length;
+    ws_data.push(["CLOSING NET BALANCE:", null, netBalance]);
+    merges.push({ s: { r: closingIdx, c: 0 }, e: { r: closingIdx, c: 1 } });
+    rowHeights.push({ hpt: 18.75 }); // Height 18.75
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    // Create Worksheet
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-    // Apply merges
+    // Apply specific styles (Alignment, Bold, Indent)
+    // Note: Standard XLSX library might not save all style metadata in community version,
+    // but the object structure follows the standard for compatible viewers/writers.
+    Object.keys(ws).forEach(cellKey => {
+        if (cellKey.startsWith('!')) return;
+        const cell = ws[cellKey];
+        const cellInfo = XLSX.utils.decode_cell(cellKey);
+        const rowIdx = cellInfo.r;
+        const colIdx = cellInfo.c;
+
+        if (!cell.s) cell.s = {};
+        if (!cell.s.alignment) cell.s.alignment = {};
+        if (!cell.s.font) cell.s.font = {};
+
+        // Rules based on user requirements:
+        
+        // 1. Company Header (Row 0)
+        if (rowIdx === 0) {
+            cell.s.alignment.horizontal = 'center';
+            cell.s.font.bold = true;
+            cell.s.font.sz = 14;
+        }
+        
+        // 2. Daily Statement (Row 1)
+        if (rowIdx === 1) {
+            cell.s.alignment.horizontal = 'center';
+            cell.s.font.bold = false;
+        }
+
+        // 3. Section Headers (Income/Expense)
+        if (rowIdx === incomeHeaderIdx || rowIdx === expenseHeaderIdx) {
+            cell.s.alignment.horizontal = 'center';
+            cell.s.font.bold = true;
+        }
+
+        // 4. Sub Headers (Sr No, Particulars, Amount)
+        if (rowIdx === incomeSubHeaderIdx || rowIdx === expenseSubHeaderIdx) {
+            cell.s.font.bold = true;
+            cell.s.alignment.horizontal = 'left';
+            cell.s.alignment.indent = 1;
+        }
+
+        // 5. Data Rows
+        const isDataRow = (rowIdx > incomeSubHeaderIdx && rowIdx < incomeTotalIdx) || 
+                          (rowIdx > expenseSubHeaderIdx && rowIdx < expenseTotalIdx);
+        if (isDataRow) {
+            cell.s.font.bold = false;
+            cell.s.alignment.horizontal = 'left';
+            cell.s.alignment.indent = 1;
+        }
+
+        // 6. Total Rows
+        if (rowIdx === incomeTotalIdx || rowIdx === expenseTotalIdx) {
+            if (colIdx === 0) {
+                cell.s.alignment.horizontal = 'center';
+                cell.s.font.bold = true;
+            } else if (colIdx === 2) {
+                cell.s.alignment.horizontal = 'left';
+                cell.s.alignment.indent = 1;
+                cell.s.font.bold = true;
+            }
+        }
+
+        // 7. Closing Balance Row
+        if (rowIdx === closingIdx) {
+            if (colIdx === 0) {
+                cell.s.alignment.horizontal = 'center';
+                cell.s.font.bold = false;
+            } else if (colIdx === 2) {
+                cell.s.alignment.horizontal = 'left';
+                cell.s.alignment.indent = 1;
+                cell.s.font.bold = false;
+            }
+        }
+    });
+
+    // Final Sheet Config
     ws['!merges'] = merges;
-
-    // Set Column Widths: A(Padding: 2), B(Sr: 10), C(Particulars: 60), D(Amount: 20)
+    ws['!rows'] = rowHeights;
     ws['!cols'] = [
-        { wch: 2 },  // A: Left gutter
-        { wch: 10 }, // B: Sr
-        { wch: 60 }, // C: Particulars
-        { wch: 20 }  // D: Amount
+        { wch: 15 }, // Sr No
+        { wch: 65 }, // Particulars
+        { wch: 25 }  // Amount
     ];
 
-    XLSX.utils.book_append_sheet(wb, ws, "Cashbook_Report");
-    XLSX.writeFile(wb, `Cashbook_${config.date.replace(/[\/\-]/g, '_')}.xlsx`);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Statement");
+    XLSX.writeFile(wb, `Cashbook_Statement_${config.date.replace(/[\/\-]/g, '_')}.xlsx`);
 };
 
 export const exportToCSV = (headers: string[], rows: any[][], config: ExportConfig) => {
