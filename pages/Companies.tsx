@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Plus, Search, Loader2, LogOut, ArrowRight } from 'lucide-react';
+// Fixed: Added Save to the lucide-react imports
+import { Building2, Plus, Search, Loader2, LogOut, ArrowRight, Edit, Trash2, Save } from 'lucide-react';
 import Modal from '../components/Modal';
 import Logo from '../components/Logo';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { supabase } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 
@@ -12,10 +14,16 @@ const Companies = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newCompany, setNewCompany] = useState({ name: '', gstin: '', address: '' });
+  const [editingCompany, setEditingCompany] = useState<any>(null);
+  const [formData, setFormData] = useState({ name: '', gstin: '', address: '' });
   const [creating, setCreating] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; company: any | null }>({
+    isOpen: false,
+    company: null
+  });
+  
   const navigate = useNavigate();
-  const { setCompany } = useCompany();
+  const { activeCompany, setCompany } = useCompany();
 
   const loadData = async () => {
     setLoading(true);
@@ -36,38 +44,81 @@ const Companies = () => {
 
   useEffect(() => { loadData(); }, []);
 
-  const handleCreateCompany = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingCompany(null);
+    setFormData({ name: '', gstin: '', address: '' });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (e: React.MouseEvent, company: any) => {
+    e.stopPropagation();
+    setEditingCompany(company);
+    setFormData({ name: company.name, gstin: company.gstin || '', address: company.address || '' });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenDelete = (e: React.MouseEvent, company: any) => {
+    e.stopPropagation();
+    setDeleteDialog({ isOpen: true, company });
+  };
+
+  const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCompany.name.trim()) return;
+    if (!formData.name.trim()) return;
     setCreating(true);
 
     try {
-      // 1. Get current authenticated user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Auth Session Not Found");
 
-      // 2. Insert with explicit created_by for RLS
-      const { data, error } = await supabase
-        .from('companies')
-        .insert([{
-          name: newCompany.name.trim().toUpperCase(),
-          gstin: newCompany.gstin.trim().toUpperCase(),
-          address: newCompany.address.trim(),
-          user_id: user.id,
-          created_by: user.id // Mandatory for the user's RLS policy
-        }])
-        .select();
+      const payload = {
+        name: formData.name.trim().toUpperCase(),
+        gstin: formData.gstin.trim().toUpperCase(),
+        address: formData.address.trim(),
+        user_id: user.id,
+        created_by: user.id
+      };
+
+      let error;
+      if (editingCompany) {
+        const { error: err } = await supabase.from('companies').update(payload).eq('id', editingCompany.id);
+        error = err;
+      } else {
+        const { error: err } = await supabase.from('companies').insert([payload]).select();
+        error = err;
+      }
 
       if (error) throw error;
-
-      if (data && data[0]) {
-        await setCompany(data[0]);
-        setTimeout(() => navigate('/', { replace: true }), 100);
-      }
+      
+      setIsModalOpen(false);
+      loadData();
     } catch (err: any) {
-      alert(`Registration Failed: ${err.message}`);
+      alert(`Operation Failed: ${err.message}`);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialog.company) return;
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .update({ is_deleted: true })
+        .eq('id', deleteDialog.company.id);
+      
+      if (error) throw error;
+      
+      if (activeCompany?.id === deleteDialog.company.id) {
+          localStorage.removeItem('activeCompanyId');
+          localStorage.removeItem('activeCompanyName');
+      }
+      
+      loadData();
+    } catch (err: any) {
+      alert(`Delete Failed: ${err.message}`);
+    } finally {
+      setDeleteDialog({ isOpen: false, company: null });
     }
   };
 
@@ -115,7 +166,7 @@ const Companies = () => {
               <div>
                 <h1 className="text-[20px] font-medium text-slate-900 capitalize">Select Workspace</h1>
               </div>
-              <button onClick={() => setIsModalOpen(true)} className="bg-primary text-slate-900 px-8 py-3 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize">
+              <button onClick={handleOpenCreate} className="bg-primary text-slate-900 px-8 py-3 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize">
                 <Plus className="w-4 h-4 mr-2" /> New Workspace
               </button>
             </div>
@@ -128,12 +179,20 @@ const Companies = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCompanies.map((company) => (
                   <div key={company.id} onClick={() => selectCompany(company)}
-                    className="group p-6 bg-white border border-slate-200 rounded-lg hover:border-slate-400 hover:bg-slate-50 cursor-pointer transition-none">
+                    className="group p-6 bg-white border border-slate-200 rounded-lg hover:border-slate-400 hover:bg-slate-50 cursor-pointer transition-none relative">
                     <div className="flex items-start justify-between mb-4">
                       <div className="w-12 h-12 bg-white border border-slate-200 rounded-lg flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-colors">
                         <Building2 className="w-6 h-6 text-slate-400 group-hover:text-slate-900" />
                       </div>
-                      <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
+                      <div className="flex items-center space-x-2">
+                        <button onClick={(e) => handleOpenEdit(e, company)} className="p-2 text-slate-300 hover:text-slate-900 hover:bg-white rounded transition-colors">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button onClick={(e) => handleOpenDelete(e, company)} className="p-2 text-slate-300 hover:text-red-600 hover:bg-white rounded transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
+                      </div>
                     </div>
                     <h3 className="font-medium text-lg capitalize truncate">{company.name}</h3>
                     <p className="text-[11px] font-mono text-slate-400 mb-4">{company.gstin || 'Unregistered'}</p>
@@ -147,29 +206,38 @@ const Companies = () => {
             )}
         </div>
       </div>
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Register Business Workspace" maxWidth="max-w-2xl">
-        <form onSubmit={handleCreateCompany} className="p-8 space-y-6 bg-white">
+      
+      <ConfirmDialog 
+        isOpen={deleteDialog.isOpen} 
+        onClose={() => setDeleteDialog({ isOpen: false, company: null })} 
+        onConfirm={confirmDelete} 
+        title="Delete Workspace" 
+        message={`Are you sure you want to delete "${deleteDialog.company?.name}" forever? This action cannot be undone.`} 
+      />
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCompany ? "Edit Business Workspace" : "Register Business Workspace"} maxWidth="max-w-2xl">
+        <form onSubmit={handleCreateOrUpdate} className="p-8 space-y-6 bg-white">
           <div className="space-y-6 border border-slate-200 rounded-md p-8 bg-white">
             <div className="space-y-1.5">
               <label className="text-sm font-medium capitalize text-slate-400">Legal Business Name</label>
-              <input required type="text" value={newCompany.name} onChange={(e) =>
-                setNewCompany({ ...newCompany, name: e.target.value })} className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-base font-medium capitalize focus:border-slate-400" placeholder="e.g. Acme Solutions" />
+              <input required type="text" value={formData.name} onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-base font-medium capitalize focus:border-slate-400" placeholder="e.g. Acme Solutions" />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium capitalize text-slate-400">Gstin Identification</label>
-              <input type="text" value={newCompany.gstin} onChange={(e) =>
-                setNewCompany({ ...newCompany, gstin: e.target.value.toUpperCase() })} className="w-full px-4 py-3 border border-slate-200 rounded outline-none font-mono text-sm uppercase focus:border-slate-400" placeholder="27AAAAA0000A1Z5" />
+              <input type="text" value={formData.gstin} onChange={(e) =>
+                setFormData({ ...formData, gstin: e.target.value.toUpperCase() })} className="w-full px-4 py-3 border border-slate-200 rounded outline-none font-mono text-sm uppercase focus:border-slate-400" placeholder="27AAAAA0000A1Z5" />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium capitalize text-slate-400">Registered Office Address</label>
-              <textarea value={newCompany.address} onChange={(e) =>
-                setNewCompany({ ...newCompany, address: e.target.value })} rows={3} className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-sm focus:border-slate-400 resize-none" placeholder="Enter complete office address..." />
+              <textarea value={formData.address} onChange={(e) =>
+                setFormData({ ...formData, address: e.target.value })} rows={3} className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-sm focus:border-slate-400 resize-none" placeholder="Enter complete office address..." />
             </div>
           </div>
           <div className="flex items-center justify-end space-x-6 pt-4">
             <button type="submit" disabled={creating} className="bg-primary text-slate-900 px-10 py-3 rounded-md font-medium text-sm hover:bg-primary-dark shadow-sm disabled:opacity-50 flex items-center capitalize">
-              {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-              {creating ? 'Registering...' : 'Save Workspace'}
+              {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : editingCompany ? <Save className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              {creating ? 'Processing...' : editingCompany ? 'Save Changes' : 'Save Workspace'}
             </button>
           </div>
         </form>
