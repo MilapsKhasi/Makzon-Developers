@@ -22,7 +22,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
   const [reportDate, setReportDate] = useState(''); // ISO Format (YYYY-MM-DD)
   const [displayDate, setDisplayDate] = useState(''); // UI Format (DD/MM/YY)
   const [openingBalance, setOpeningBalance] = useState(0);
-  const [lastDate, setLastDate] = useState('');
+  const [lastDateText, setLastDateText] = useState('');
   
   const createEmptyRow = () => ({ id: Math.random().toString(36).substr(2, 9), particulars: '', amount: '' });
 
@@ -32,21 +32,25 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
   const findPreviousBalance = (dateStr: string) => {
     if (!dateStr || !existingEntries.length) {
       setOpeningBalance(0);
-      setLastDate('');
+      setLastDateText('Initial Setup');
       return;
     }
 
-    // Find the most recent entry BEFORE the current report date
+    // Find the latest existing entry before the current report date
     const previousEntries = existingEntries
       .filter(e => e.date < dateStr && e.id !== initialData?.id)
-      .sort((a, b) => b.date.localeCompare(a.date));
+      .sort((a, b) => {
+        const dateComp = b.date.localeCompare(a.date);
+        if (dateComp !== 0) return dateComp;
+        return (b.created_at || '').localeCompare(a.created_at || '');
+      });
 
     if (previousEntries.length > 0) {
       setOpeningBalance(Number(previousEntries[0].balance) || 0);
-      setLastDate(formatDate(previousEntries[0].date));
+      setLastDateText(formatDate(previousEntries[0].date));
     } else {
       setOpeningBalance(0);
-      setLastDate('');
+      setLastDateText('Initial Setup');
     }
   };
 
@@ -66,7 +70,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
       setIncomeRows(inc);
       setExpenseRows(exp);
       setOpeningBalance(Number(raw.openingBalance) || 0);
-      setLastDate(raw.lastDate || '');
+      setLastDateText(raw.lastDateText || '');
     } else {
       const todayIso = new Date().toISOString().split('T')[0];
       setReportDate(todayIso);
@@ -166,7 +170,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     <tr className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-700">
       <td className="w-14 py-2 px-3 border-r border-slate-200 dark:border-slate-700"></td>
       <td className="py-2 px-4 text-slate-400 dark:text-slate-500 font-bold italic text-[11px] uppercase tracking-tight select-none">
-        Opening Balance of {lastDate || 'Initial Setup'}
+        Opening Balance of Date {lastDateText}
       </td>
       <td className="w-36 py-2 px-4 text-right border-l border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-400 dark:text-slate-500 select-none">
         {formatCurrency(openingBalance, false)}
@@ -199,7 +203,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
                 id: initialData?.id,
                 date: reportDate,
                 openingBalance,
-                lastDate,
+                lastDateText,
                 incomeTotal,
                 expenseTotal,
                 balance: closingBalance,

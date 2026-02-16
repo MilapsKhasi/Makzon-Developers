@@ -48,7 +48,8 @@ export const formatCurrency = (amount: number | undefined | null, includeSymbol:
     options.style = 'decimal';
   }
   
-  return new Intl.NumberFormat(config.locale, options).format(amount);
+  // Enforce en-IN for professional comma spacing in India (1,00,000 style)
+  return new Intl.NumberFormat('en-IN', options).format(amount);
 };
 
 export const formatDate = (iso: any) => {
