@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, Loader2, Save, ArrowLeft, Trash2, FileSpreadsheet, FileText } from 'lucide-react';
+import { ChevronDown, Loader2, Save, ArrowLeft, Trash2, FileSpreadsheet, FileText, Calendar } from 'lucide-react';
 import { exportCashbookEntryToExcel, exportCashbookEntryToPDF } from '../utils/exportHelper';
 import { formatDate, parseDateFromInput, formatCurrency } from '../utils/helpers';
 
@@ -36,6 +36,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
       return;
     }
 
+    // Find the latest existing entry before the current report date
     const previousEntries = existingEntries
       .filter(e => e.date < dateStr && e.id !== initialData?.id)
       .sort((a, b) => {
@@ -190,7 +191,8 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50 dark:bg-slate-950 flex flex-col space-y-4 custom-scrollbar">
-        <div className="bg-white dark:bg-slate-900 px-6 py-4 border border-slate-200 dark:border-slate-800 rounded flex items-center justify-between shadow-sm">
+        {/* Header with Statement Date and Opening Balance Card */}
+        <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-6 py-6 border border-slate-200 dark:border-slate-800 rounded shadow-sm">
             <div className="flex items-center space-x-4">
               <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Statement Date</label>
               <input 
@@ -203,13 +205,16 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
               />
             </div>
             
-            <div className="flex items-center space-x-10">
-                <div className="flex flex-col items-end">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Source Opening</span>
-                    <span className="text-[14px] font-bold text-slate-500 font-mono italic">
-                        {formatCurrency(openingBalance)}
-                    </span>
-                </div>
+            {/* Opening Balance Card - Top Right, Styled same as Net Closing Balance */}
+            <div className="flex flex-col items-end bg-white dark:bg-slate-900 px-8 py-4 rounded border border-slate-300 dark:border-slate-700 min-w-[280px] shadow-sm">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Opening Balance</span>
+              <span className="text-[26px] font-bold font-mono text-slate-900 dark:text-white leading-none">
+                {formatCurrency(openingBalance)}
+              </span>
+              <div className="flex items-center text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter mt-2">
+                <Calendar className="w-3 h-3 mr-1 opacity-50" />
+                Carried forward from {lastDateText}
+              </div>
             </div>
         </div>
 
