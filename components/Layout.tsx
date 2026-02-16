@@ -144,9 +144,8 @@ const Layout = () => {
               <div className="flex flex-col animate-in fade-in slide-in-from-left-2 duration-500">
                 <div className="flex items-center space-x-2">
                   <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">Findesk Prime</span>
-                  <span className="bg-slate-900 dark:bg-primary text-primary dark:text-slate-900 text-[8px] font-black uppercase px-1.5 py-0.5 rounded shadow-sm">Licensed</span>
+                  <span className="bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-[8px] font-bold uppercase px-1.5 py-0.5 rounded tracking-tighter">Licensed</span>
                 </div>
-                <span className="text-[9px] text-slate-400 font-medium tracking-tighter mt-0.5">Finance Operating System</span>
               </div>
             )}
           </div>
