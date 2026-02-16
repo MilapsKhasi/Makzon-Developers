@@ -34,11 +34,9 @@ export const exportToExcel = (
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-    // Auto-size columns based on headers
     const colWidths = headers.map(h => ({ wch: Math.max(h.length + 5, 12) }));
     ws['!cols'] = colWidths;
 
-    // Merges for the header
     const lastColIndex = headers.length - 1;
     if (lastColIndex > 0) {
         ws['!merges'] = [
@@ -64,24 +62,25 @@ export const exportCashbookEntryToPDF = (
 ) => {
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
-    let currentY = 20;
+    let currentY = 25; // Initial Y position
 
-    // --- 1. Header Section ---
+    // 1. Company Header (Centered, Bold, simulating vertical height via margin)
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.text(config.companyName.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
-    currentY += 10;
+    currentY += 8;
 
+    // 2. Daily Cash Statement (Centered, Normal)
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.text(`DAILY CASH STATEMENT - DATE: ${config.date}`, pageWidth / 2, currentY, { align: 'center' });
-    currentY += 10;
+    currentY += 12;
 
-    // --- 2. Income Section ---
+    // 3. Income Section
     autoTable(doc, {
         startY: currentY,
         head: [
-            [{ content: 'INCOME (INWARD)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [240, 240, 240] } }],
+            [{ content: 'INCOME (INWARD)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] } }],
             ['SR NO', 'PARTICULARS / SOURCE', 'AMOUNT (INR)']
         ],
         body: incomeRows.map((row, i) => [i + 1, row.particulars, parseFloat(row.amount).toFixed(2)]),
@@ -89,46 +88,50 @@ export const exportCashbookEntryToPDF = (
         theme: 'grid',
         styles: { 
             fontSize: 9, 
-            cellPadding: 3,
-            lineWidth: 0.1,
-            lineColor: [200, 200, 200]
+            cellPadding: 4, 
+            lineWidth: 0.1, 
+            lineColor: [0, 0, 0],
+            textColor: [0, 0, 0],
+            font: 'helvetica'
         },
         headStyles: { 
             fillColor: [255, 255, 255], 
             textColor: [0, 0, 0], 
             fontStyle: 'bold', 
             halign: 'left',
-            cellPadding: { left: 5, top: 3, bottom: 3, right: 3 }
+            cellPadding: { left: 6, top: 4, bottom: 4, right: 4 }
         },
         columnStyles: {
-            0: { cellWidth: 20 },
-            1: { cellWidth: 'auto' },
-            2: { cellWidth: 40, halign: 'left' }
+            0: { cellWidth: 25, halign: 'left' },
+            1: { cellWidth: 'auto', halign: 'left' },
+            2: { cellWidth: 45, halign: 'left' }
         },
         footStyles: { 
             fillColor: [255, 255, 255], 
             textColor: [0, 0, 0], 
             fontStyle: 'bold',
-            halign: 'left'
+            halign: 'left',
+            cellPadding: { left: 6, top: 4, bottom: 4 }
         },
         didParseCell: (data) => {
-            if (data.section === 'foot') {
-                if (data.column.index === 0) data.cell.styles.halign = 'center';
-                if (data.column.index === 2) data.cell.styles.cellPadding = { left: 5, top: 3, bottom: 3 };
+            // Apply custom alignment for footer 'TOTAL' label
+            if (data.section === 'foot' && data.column.index === 0) {
+                data.cell.styles.halign = 'center';
             }
-            if (data.section === 'body' || (data.section === 'head' && data.row.index === 1)) {
-                data.cell.styles.cellPadding = { left: 5, top: 3, bottom: 3, right: 3 };
+            // Indent effect for body rows
+            if (data.section === 'body') {
+                data.cell.styles.cellPadding = { left: 6, top: 4, bottom: 4, right: 4 };
             }
         }
     });
 
     currentY = (doc as any).lastAutoTable.finalY + 10;
 
-    // --- 3. Expense Section ---
+    // 4. Expense Section
     autoTable(doc, {
         startY: currentY,
         head: [
-            [{ content: 'EXPENSE (OUTWARD)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [240, 240, 240] } }],
+            [{ content: 'EXPENSE (OUTWARD)', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold', fillColor: [255, 255, 255], textColor: [0, 0, 0] } }],
             ['SR NO', 'PARTICULARS / USAGE', 'AMOUNT (INR)']
         ],
         body: expenseRows.map((row, i) => [i + 1, row.particulars, parseFloat(row.amount).toFixed(2)]),
@@ -136,42 +139,44 @@ export const exportCashbookEntryToPDF = (
         theme: 'grid',
         styles: { 
             fontSize: 9, 
-            cellPadding: 3,
-            lineWidth: 0.1,
-            lineColor: [200, 200, 200]
+            cellPadding: 4, 
+            lineWidth: 0.1, 
+            lineColor: [0, 0, 0],
+            textColor: [0, 0, 0],
+            font: 'helvetica'
         },
         headStyles: { 
             fillColor: [255, 255, 255], 
             textColor: [0, 0, 0], 
             fontStyle: 'bold', 
             halign: 'left',
-            cellPadding: { left: 5, top: 3, bottom: 3, right: 3 }
+            cellPadding: { left: 6, top: 4, bottom: 4, right: 4 }
         },
         columnStyles: {
-            0: { cellWidth: 20 },
-            1: { cellWidth: 'auto' },
-            2: { cellWidth: 40, halign: 'left' }
+            0: { cellWidth: 25, halign: 'left' },
+            1: { cellWidth: 'auto', halign: 'left' },
+            2: { cellWidth: 45, halign: 'left' }
         },
         footStyles: { 
             fillColor: [255, 255, 255], 
             textColor: [0, 0, 0], 
             fontStyle: 'bold',
-            halign: 'left'
+            halign: 'left',
+            cellPadding: { left: 6, top: 4, bottom: 4 }
         },
         didParseCell: (data) => {
-            if (data.section === 'foot') {
-                if (data.column.index === 0) data.cell.styles.halign = 'center';
-                if (data.column.index === 2) data.cell.styles.cellPadding = { left: 5, top: 3, bottom: 3 };
+            if (data.section === 'foot' && data.column.index === 0) {
+                data.cell.styles.halign = 'center';
             }
-            if (data.section === 'body' || (data.section === 'head' && data.row.index === 1)) {
-                data.cell.styles.cellPadding = { left: 5, top: 3, bottom: 3, right: 3 };
+            if (data.section === 'body') {
+                data.cell.styles.cellPadding = { left: 6, top: 4, bottom: 4, right: 4 };
             }
         }
     });
 
-    currentY = (doc as any).lastAutoTable.finalY + 5;
+    currentY = (doc as any).lastAutoTable.finalY + 8;
 
-    // --- 4. Closing Balance ---
+    // 5. Closing Net Balance (Centered Text, Left Aligned Amount with Indent)
     const totalIncome = incomeRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
     const totalExpense = expenseRows.reduce((a, b) => a + (parseFloat(b.amount) || 0), 0);
     const netBalance = totalIncome - totalExpense;
@@ -180,20 +185,23 @@ export const exportCashbookEntryToPDF = (
         startY: currentY,
         body: [['CLOSING NET BALANCE:', '', netBalance.toFixed(2)]],
         theme: 'grid',
-        styles: { fontSize: 10, cellPadding: 4, fontStyle: 'normal' },
+        styles: { 
+            fontSize: 10, 
+            cellPadding: 4, 
+            fontStyle: 'normal',
+            lineWidth: 0.1,
+            lineColor: [0, 0, 0]
+        },
         columnStyles: {
             0: { cellWidth: 'auto', halign: 'center' },
-            1: { cellWidth: 0 }, // dummy to match columns
-            2: { cellWidth: 40, halign: 'left', cellPadding: { left: 5, top: 4, bottom: 4 } }
+            1: { cellWidth: 0 }, 
+            2: { cellWidth: 45, halign: 'left', cellPadding: { left: 6, top: 4, bottom: 4 } }
         }
     });
 
-    doc.save(`Daily_Cash_Statement_${config.date.replace(/[\/\-]/g, '_')}.pdf`);
+    doc.save(`Cashbook_Statement_${config.date.replace(/[\/\-]/g, '_')}.pdf`);
 };
 
-/**
- * Specialized export for Cashbook Entry Sheet with precise formatting for Excel
- */
 export const exportCashbookEntryToExcel = (
     incomeRows: any[],
     expenseRows: any[],
@@ -206,12 +214,12 @@ export const exportCashbookEntryToExcel = (
     // --- 1. Company Header ---
     ws_data.push([config.companyName.toUpperCase(), null, null]);
     merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } });
-    rowHeights.push({ hpt: 25.50 }); // Height 25.50
+    rowHeights.push({ hpt: 25.50 });
 
     // --- 2. Daily Cash Statement Header ---
     ws_data.push([`DAILY CASH STATEMENT - DATE: ${config.date}`, null, null]);
     merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
-    rowHeights.push({ hpt: 18.75 }); // Height 18.75
+    rowHeights.push({ hpt: 18.75 });
 
     // --- 3. Spacer ---
     ws_data.push([]);
@@ -221,11 +229,11 @@ export const exportCashbookEntryToExcel = (
     const incomeHeaderIdx = ws_data.length;
     ws_data.push(["INCOME (INWARD)", null, null]);
     merges.push({ s: { r: incomeHeaderIdx, c: 0 }, e: { r: incomeHeaderIdx, c: 2 } });
-    rowHeights.push({ hpt: 20.25 }); // Height 20.25
+    rowHeights.push({ hpt: 20.25 });
 
     const incomeSubHeaderIdx = ws_data.length;
     ws_data.push(["SR NO", "PARTICULARS / SOURCE", "AMOUNT (INR)"]);
-    rowHeights.push({ hpt: 20.25 }); // Height 20.25
+    rowHeights.push({ hpt: 20.25 });
 
     let totalIncome = 0;
     const cleanIncome = incomeRows.filter(r => r.particulars.trim() !== '' || r.amount !== '');
@@ -233,13 +241,13 @@ export const exportCashbookEntryToExcel = (
         const amt = parseFloat(row.amount) || 0;
         totalIncome += amt;
         ws_data.push([idx + 1, row.particulars, amt]);
-        rowHeights.push({ hpt: 17.75 }); // Height 17.75
+        rowHeights.push({ hpt: 17.75 });
     });
 
     const incomeTotalIdx = ws_data.length;
     ws_data.push(["TOTAL", null, totalIncome]);
     merges.push({ s: { r: incomeTotalIdx, c: 0 }, e: { r: incomeTotalIdx, c: 1 } });
-    rowHeights.push({ hpt: 18.75 }); // Height 18.75
+    rowHeights.push({ hpt: 18.75 });
 
     // --- 5. Spacer ---
     ws_data.push([]);
@@ -249,11 +257,11 @@ export const exportCashbookEntryToExcel = (
     const expenseHeaderIdx = ws_data.length;
     ws_data.push(["EXPENSE (OUTWARD)", null, null]);
     merges.push({ s: { r: expenseHeaderIdx, c: 0 }, e: { r: expenseHeaderIdx, c: 2 } });
-    rowHeights.push({ hpt: 20.25 }); // Height 20.25
+    rowHeights.push({ hpt: 20.25 });
 
     const expenseSubHeaderIdx = ws_data.length;
     ws_data.push(["SR NO", "PARTICULARS / USAGE", "AMOUNT (INR)"]);
-    rowHeights.push({ hpt: 20.25 }); // Height 20.25
+    rowHeights.push({ hpt: 20.25 });
 
     let totalExpense = 0;
     const cleanExpense = expenseRows.filter(r => r.particulars.trim() !== '' || r.amount !== '');
@@ -261,13 +269,13 @@ export const exportCashbookEntryToExcel = (
         const amt = parseFloat(row.amount) || 0;
         totalExpense += amt;
         ws_data.push([idx + 1, row.particulars, amt]);
-        rowHeights.push({ hpt: 17.75 }); // Height 17.75
+        rowHeights.push({ hpt: 17.75 });
     });
 
     const expenseTotalIdx = ws_data.length;
     ws_data.push(["TOTAL", null, totalExpense]);
     merges.push({ s: { r: expenseTotalIdx, c: 0 }, e: { r: expenseTotalIdx, c: 1 } });
-    rowHeights.push({ hpt: 18.75 }); // Height 18.75
+    rowHeights.push({ hpt: 18.75 });
 
     // --- 7. Spacer ---
     ws_data.push([]);
@@ -278,18 +286,16 @@ export const exportCashbookEntryToExcel = (
     const closingIdx = ws_data.length;
     ws_data.push(["CLOSING NET BALANCE:", null, netBalance]);
     merges.push({ s: { r: closingIdx, c: 0 }, e: { r: closingIdx, c: 1 } });
-    rowHeights.push({ hpt: 18.75 }); // Height 18.75
+    rowHeights.push({ hpt: 18.75 });
 
-    // Create Worksheet
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-    // Styling logic simplified for standard SheetJS compatibility
     ws['!merges'] = merges;
     ws['!rows'] = rowHeights;
     ws['!cols'] = [
-        { wch: 15 }, // Sr No
-        { wch: 65 }, // Particulars
-        { wch: 25 }  // Amount
+        { wch: 15 }, 
+        { wch: 65 }, 
+        { wch: 25 }  
     ];
 
     const wb = XLSX.utils.book_new();
