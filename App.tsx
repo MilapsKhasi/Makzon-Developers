@@ -95,6 +95,15 @@ CREATE TABLE public.companies (
   created_by uuid DEFAULT auth.uid()
 );
 
+-- 2.1 Create OTP Verification Table
+CREATE TABLE public.login_verifications (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  otp text NOT NULL,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
 CREATE TABLE public.vendors (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, name text NOT NULL, email text, phone text, gstin text, pan text, state text, account_number text, account_name text, ifsc_code text, address text, balance numeric DEFAULT 0, party_type text DEFAULT 'vendor', is_customer boolean DEFAULT false, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());
 CREATE TABLE public.bills (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, vendor_name text NOT NULL, bill_number text NOT NULL, date date NOT NULL DEFAULT CURRENT_DATE, total_without_gst numeric DEFAULT 0, total_gst numeric DEFAULT 0, grand_total numeric DEFAULT 0, status text DEFAULT 'Pending', is_deleted boolean DEFAULT false, description text, items jsonb DEFAULT '{}'::jsonb, round_off numeric DEFAULT 0, created_at timestamptz DEFAULT now());
 CREATE TABLE public.sales_invoices (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, customer_name text NOT NULL, invoice_number text NOT NULL, date date NOT NULL DEFAULT CURRENT_DATE, total_without_gst numeric DEFAULT 0, total_gst numeric DEFAULT 0, grand_total numeric DEFAULT 0, status text DEFAULT 'Pending', is_deleted boolean DEFAULT false, description text, items jsonb DEFAULT '{}'::jsonb, round_off numeric DEFAULT 0, created_at timestamptz DEFAULT now());
@@ -111,6 +120,7 @@ ALTER TABLE public.sales_invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.stock_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.duties_taxes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cashbooks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.login_verifications ENABLE ROW LEVEL SECURITY;
 
 -- 4. Set Policies
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL TO authenticated USING (auth.uid() = id);
@@ -121,6 +131,7 @@ CREATE POLICY "Manage company sales" ON public.sales_invoices FOR ALL TO authent
 CREATE POLICY "Manage company stock" ON public.stock_items FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
 CREATE POLICY "Manage company taxes" ON public.duties_taxes FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
 CREATE POLICY "Manage company cashbook" ON public.cashbooks FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
+CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authenticated USING (auth.uid() = user_id);
     `.trim();
     navigator.clipboard.writeText(sql);
     setCopied(true);
@@ -161,13 +172,17 @@ CREATE POLICY "Manage company cashbook" ON public.cashbooks FOR ALL TO authentic
     );
   }
 
+  // Security Guard: Check for session AND OTP verification flag
+  const isVerified = localStorage.getItem('is_verified') === 'true';
+  const authenticated = !!session && isVerified;
+
   return (
     <div className="animate-in fade-in duration-500">
       <Routes>
-        <Route path="/setup" element={session ? <Navigate to="/companies" replace /> : <Auth />} />
-        <Route path="/companies" element={session ? <Companies /> : <Navigate to="/setup" replace />} />
+        <Route path="/setup" element={authenticated ? <Navigate to="/companies" replace /> : <Auth />} />
+        <Route path="/companies" element={authenticated ? <Companies /> : <Navigate to="/setup" replace />} />
         
-        <Route path="/" element={session ? (activeCompany ? <Layout /> : <Navigate to="/companies" replace />) : (<Navigate to="/setup" replace />)}>
+        <Route path="/" element={authenticated ? (activeCompany ? <Layout /> : <Navigate to="/companies" replace />) : (<Navigate to="/setup" replace />)}>
           <Route index element={<Dashboard />} />
           <Route path="masters" element={<Masters />} />
           <Route path="purchases" element={<Purchases />} />
