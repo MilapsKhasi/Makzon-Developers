@@ -172,9 +172,8 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
     );
   }
 
-  // Security Guard: Check for session AND OTP verification flag
-  const isVerified = localStorage.getItem('is_verified') === 'true';
-  const authenticated = !!session && isVerified;
+  // Simplified Authentication Guard: Just check for session
+  const authenticated = !!session;
 
   return (
     <div className="animate-in fade-in duration-500">
