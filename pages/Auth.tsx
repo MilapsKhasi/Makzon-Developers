@@ -18,9 +18,10 @@ const Auth = () => {
   const otpInputs = useRef<(HTMLInputElement | null)[]>([]);
   const navigate = useNavigate();
 
-  // Initialize EmailJS
+  // Initialize EmailJS with Public Key
   useEffect(() => {
     emailjs.init("R89O2UBELbx1ZXQt_");
+    console.log("[AUTH] EmailJS Initialized");
   }, []);
 
   // Timer logic for OTP expiration
@@ -57,21 +58,26 @@ const Auth = () => {
     if (otpError) throw otpError;
     
     // Trigger EmailJS notification
+    console.log(`[AUTH] Attempting to send OTP to ${email}...`);
     try {
-      await emailjs.send(
+      const templateParams = {
+        to_email: email,
+        otp_code: otp,
+      };
+
+      const response = await emailjs.send(
         "service_l4zqli2",
         "template_h6x2yee",
-        {
-          to_email: email,
-          otp_code: otp,
-        },
+        templateParams,
         "R89O2UBELbx1ZXQt_"
       );
+      
+      console.log("[AUTH] EmailJS Success Response:", response.status, response.text);
       console.log(`[AUTH] OTP Email successfully triggered for ${email}`);
     } catch (mailErr: any) {
-      console.error("[AUTH] EmailJS failure:", mailErr);
-      // We still log to console as a fallback for the user if email fails
-      console.log(`[FALLBACK] Verification Code: ${otp}`);
+      console.error("[AUTH] EmailJS Error Details:", mailErr);
+      // Fallback log for development/testing if email delivery fails
+      console.log(`[FALLBACK] Verification Code for ${email}: ${otp}`);
     }
 
     return otp;
@@ -180,7 +186,8 @@ const Auth = () => {
               {otpValue.map((digit, idx) => (
                 <input
                   key={idx}
-                  ref={(el) => (otpInputs.current[idx] = el)}
+                  // Fix: Wrapped assignment in braces to ensure the ref callback returns void, fixing the TypeScript assignability error.
+                  ref={(el) => { otpInputs.current[idx] = el; }}
                   type="text"
                   inputMode="numeric"
                   maxLength={1}
