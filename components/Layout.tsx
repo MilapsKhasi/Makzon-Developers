@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import Logo from './Logo';
@@ -16,7 +16,7 @@ const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Edit/Delete Workspace States
+  // Edit/Create Workspace States
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingWs, setEditingWs] = useState<any>(null);
   const [wsFormData, setWsFormData] = useState({ name: '', gstin: '', address: '' });
@@ -57,6 +57,13 @@ const Layout = () => {
     }
   };
 
+  const handleOpenCreateWs = () => {
+    setEditingWs(null);
+    setWsFormData({ name: '', gstin: '', address: '' });
+    setIsEditModalOpen(true);
+    setShowWorkspaceMenu(false);
+  };
+
   const openEditWs = (e: React.MouseEvent, ws: any) => {
     e.stopPropagation();
     setEditingWs(ws);
@@ -71,29 +78,43 @@ const Layout = () => {
     setShowWorkspaceMenu(false);
   };
 
-  const handleUpdateWs = async (e: React.FormEvent) => {
+  const handleSaveWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!wsFormData.name.trim() || !editingWs) return;
+    if (!wsFormData.name.trim()) return;
+    
     try {
-      const { error } = await supabase
-        .from('companies')
-        .update({ 
-          name: wsFormData.name.trim().toUpperCase(),
-          gstin: wsFormData.gstin.trim().toUpperCase(),
-          address: wsFormData.address.trim()
-        })
-        .eq('id', editingWs.id);
-      
-      if (error) throw error;
-      
-      if (activeCompany?.id === editingWs.id) {
-          await setCompany({ ...editingWs, ...wsFormData, name: wsFormData.name.toUpperCase() });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Auth session not found");
+
+      const payload = {
+        name: wsFormData.name.trim().toUpperCase(),
+        gstin: wsFormData.gstin.trim().toUpperCase(),
+        address: wsFormData.address.trim(),
+        user_id: user.id,
+        created_by: user.id
+      };
+
+      if (editingWs) {
+        const { error } = await supabase
+          .from('companies')
+          .update(payload)
+          .eq('id', editingWs.id);
+        if (error) throw error;
+        
+        if (activeCompany?.id === editingWs.id) {
+            await setCompany({ ...editingWs, ...payload, name: payload.name });
+        }
+      } else {
+        const { error } = await supabase
+          .from('companies')
+          .insert([payload]);
+        if (error) throw error;
       }
-      
+
       setIsEditModalOpen(false);
       loadWorkspaces();
     } catch (err: any) {
-      alert(`Update Failed: ${err.message}`);
+      alert(`Operation Failed: ${err.message}`);
     }
   };
 
@@ -216,6 +237,13 @@ const Layout = () => {
                   </div>
                   <div className="border-t border-slate-100 dark:border-slate-800 py-1 bg-slate-50/50 dark:bg-slate-900/50">
                     <button
+                      onClick={handleOpenCreateWs}
+                      className="w-full flex items-center px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-2" />
+                      <span className="capitalize">Create New Workspace</span>
+                    </button>
+                    <button
                       onClick={handleSignOut}
                       className="w-full flex items-center px-4 py-2.5 text-left text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
                     >
@@ -233,9 +261,9 @@ const Layout = () => {
         </main>
       </div>
 
-      {/* Edit Modal */}
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Workspace Configuration" maxWidth="max-w-xl">
-        <form onSubmit={handleUpdateWs} className="p-6 space-y-6">
+      {/* Workspace Modal */}
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={editingWs ? "Workspace Configuration" : "New Business Workspace"} maxWidth="max-w-xl">
+        <form onSubmit={handleSaveWorkspace} className="p-6 space-y-6">
             <div className="space-y-4 border border-slate-200 dark:border-slate-800 rounded-md p-6">
                 <div className="space-y-1.5">
                     <label className="text-xs font-medium text-slate-400 capitalize">Workspace Name</label>
@@ -252,7 +280,7 @@ const Layout = () => {
             </div>
             <div className="flex justify-end pt-2">
                 <button type="submit" className="bg-primary text-slate-900 px-8 py-2.5 rounded font-medium text-xs hover:bg-primary-dark capitalize shadow-sm flex items-center">
-                    <Save className="w-3.5 h-3.5 mr-2" /> Update Workspace
+                    <Save className="w-3.5 h-3.5 mr-2" /> {editingWs ? 'Update Workspace' : 'Create Workspace'}
                 </button>
             </div>
         </form>
