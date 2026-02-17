@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, Lock, Loader2, ShieldCheck, RefreshCcw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import emailjs from '@emailjs/browser';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -16,6 +17,11 @@ const Auth = () => {
   const [timer, setTimer] = useState(300); // 5 minutes in seconds
   const otpInputs = useRef<(HTMLInputElement | null)[]>([]);
   const navigate = useNavigate();
+
+  // Initialize EmailJS
+  useEffect(() => {
+    emailjs.init("R89O2UBELbx1ZXQt_");
+  }, []);
 
   // Timer logic for OTP expiration
   useEffect(() => {
@@ -50,9 +56,24 @@ const Auth = () => {
 
     if (otpError) throw otpError;
     
-    // In a real app, you'd trigger a Supabase Edge Function to send an email here.
-    // For this implementation, we assume the user checks their "email" (or the console for testing).
-    console.log(`[DEBUG] Verification Code for ${email}: ${otp}`);
+    // Trigger EmailJS notification
+    try {
+      await emailjs.send(
+        "service_l4zqli2",
+        "template_h6x2yee",
+        {
+          to_email: email,
+          otp_code: otp,
+        },
+        "R89O2UBELbx1ZXQt_"
+      );
+      console.log(`[AUTH] OTP Email successfully triggered for ${email}`);
+    } catch (mailErr: any) {
+      console.error("[AUTH] EmailJS failure:", mailErr);
+      // We still log to console as a fallback for the user if email fails
+      console.log(`[FALLBACK] Verification Code: ${otp}`);
+    }
+
     return otp;
   };
 
