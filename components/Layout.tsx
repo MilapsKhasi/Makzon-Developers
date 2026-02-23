@@ -7,6 +7,7 @@ import { useCompany } from '../context/CompanyContext';
 import Logo from './Logo';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
+import UpdateNotification from './UpdateNotification';
 
 const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -294,6 +295,8 @@ const Layout = () => {
         title="Delete Workspace" 
         message={`This will permanently remove "${deleteConfirm.ws?.name}" and all its data. Are you sure?`} 
       />
+      
+      <UpdateNotification />
     </div>
   );
 };
