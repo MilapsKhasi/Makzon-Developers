@@ -150,8 +150,8 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="max-w-2xl w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
-          <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Database className="w-8 h-8 text-amber-500" />
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Database className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900 mb-2 capitalize">Database Setup Required</h1>
           <p className="text-slate-500 mb-8 capitalize">Required tables haven't been created yet.</p>
@@ -164,7 +164,7 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
               {copied ? 'Copied!' : 'Copy Sql'}
             </button>
           </div>
-          <button onClick={() => window.location.reload()} className="px-8 py-3 bg-primary text-slate-900 font-medium rounded-lg hover:bg-primary-dark capitalize">
+          <button onClick={() => window.location.reload()} className="px-8 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark capitalize">
             Refresh After Running Sql
           </button>
         </div>

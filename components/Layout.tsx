@@ -164,7 +164,7 @@ const Layout = () => {
             {isSidebarOpen && (
               <div className="flex flex-col animate-in fade-in slide-in-from-left-2 duration-500">
                 <div className="flex items-center space-x-2">
-                  <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">Findesk Prime</span>
+                  <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">ZenterPrime</span>
                   <span className="bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 text-[8px] font-bold uppercase px-1.5 py-0.5 rounded tracking-tighter">Licensed</span>
                 </div>
               </div>
@@ -172,11 +172,11 @@ const Layout = () => {
           </div>
         </div>
         
-        {/* Gateway of Findesk Header */}
+        {/* Gateway of ZenterPrime Header */}
         <div className={`bg-slate-50 dark:bg-slate-800/40 flex items-center transition-all duration-300 shrink-0 border-b border-slate-100 dark:border-slate-800 ${isSidebarOpen ? 'px-4 py-2.5 h-10' : 'h-1.5 justify-center'}`}>
           {isSidebarOpen && (
             <span className="text-slate-500 dark:text-slate-400 font-bold text-[10px] capitalize tracking-wide whitespace-nowrap">
-              Gateway Of Findesk
+              Gateway Of ZenterPrime
             </span>
           )}
         </div>
@@ -187,11 +187,11 @@ const Layout = () => {
               key={item.path}
               to={item.path}
               className={`flex items-center px-3 py-2.5 rounded transition-colors ${location.pathname === item.path
-                ? 'bg-primary text-slate-900 font-bold'
+                ? 'bg-primary text-white font-bold'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
                 }`}
             >
-              <item.icon className={`w-4 h-4 shrink-0 ${location.pathname === item.path ? 'text-slate-900' : 'text-slate-400 dark:text-slate-500'}`} />
+              <item.icon className={`w-4 h-4 shrink-0 ${location.pathname === item.path ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
               {isSidebarOpen && <span className="ml-3 text-[13px] whitespace-nowrap capitalize">{item.label}</span>}
             </Link>
           ))}
@@ -279,7 +279,7 @@ const Layout = () => {
                 </div>
             </div>
             <div className="flex justify-end pt-2">
-                <button type="submit" className="bg-primary text-slate-900 px-8 py-2.5 rounded font-medium text-xs hover:bg-primary-dark capitalize shadow-sm flex items-center">
+                <button type="submit" className="bg-primary text-white px-8 py-2.5 rounded font-medium text-xs hover:bg-primary-dark capitalize shadow-sm flex items-center">
                     <Save className="w-3.5 h-3.5 mr-2" /> {editingWs ? 'Update Workspace' : 'Create Workspace'}
                 </button>
             </div>

@@ -26,8 +26,8 @@ const EmptyState: React.FC<EmptyStateProps> = ({
         {/* Custom Illustration SVG inspired by the user prompt */}
         <div className="relative w-64 h-64 flex items-center justify-center">
             <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-sm">
-                <rect x="40" y="80" width="120" height="80" rx="4" fill="#ffea79" />
-                <path d="M40 85 L160 85 L160 160 L40 160 Z" fill="#f0db69" />
+                <rect x="40" y="80" width="120" height="80" rx="4" fill="#7c3aed" />
+                <path d="M40 85 L160 85 L160 160 L40 160 Z" fill="#6d28d9" />
                 <rect x="60" y="50" width="80" height="40" rx="2" fill="white" stroke="#E2E8F0" strokeWidth="1" />
                 <circle cx="85" cy="65" r="3" fill="#94A3B8" />
                 <circle cx="115" cy="65" r="3" fill="#94A3B8" />
@@ -50,7 +50,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       {onAction && actionLabel && (
         <button 
           onClick={onAction}
-          className="bg-primary text-slate-900 px-8 py-3 rounded-md font-bold text-sm hover:bg-primary-dark transition-all flex items-center shadow-lg active:scale-95 capitalize"
+          className="bg-primary text-white px-8 py-3 rounded-md font-bold text-sm hover:bg-primary-dark transition-all flex items-center shadow-lg active:scale-95 capitalize"
         >
           <Plus className="w-4 h-4 mr-2" />
           {actionLabel}

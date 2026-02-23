@@ -37,10 +37,10 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f9f9f9] flex items-center justify-center p-6 font-sans">
-      <div className="w-full max-w-sm bg-[#ffea79] rounded-[10px] p-2 animate-in zoom-in-95 duration-700 border border-slate-200/20 shadow-none">
+    <div className="min-h-screen bg-[#f5f3ff] flex items-center justify-center p-6 font-sans">
+      <div className="w-full max-w-sm bg-primary rounded-[10px] p-2 animate-in zoom-in-95 duration-700 border border-slate-200/20 shadow-none">
         <div className="text-center py-8">
-          <h2 className="text-2xl font-semibold text-slate-900">
+          <h2 className="text-2xl font-semibold text-white">
             {isLogin ? 'Welcome Back' : 'Create Account'}
           </h2>
         </div>
@@ -61,7 +61,7 @@ const Auth = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-slate-400 font-medium text-slate-900 transition-all placeholder:text-slate-300 text-sm shadow-none"
+                  className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-primary font-medium text-slate-900 transition-all placeholder:text-slate-300 text-sm shadow-none"
                   placeholder="Your Email Address"
                 />
               </div>
@@ -73,7 +73,7 @@ const Auth = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-slate-400 font-medium text-slate-900 transition-all placeholder:text-slate-300 text-sm shadow-none"
+                  className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-primary font-medium text-slate-900 transition-all placeholder:text-slate-300 text-sm shadow-none"
                   placeholder="Your Password"
                 />
               </div>
@@ -83,7 +83,7 @@ const Auth = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-[10px] font-bold bg-[#ffea79] text-slate-900 hover:bg-[#f0db69] transition-all flex items-center justify-center disabled:opacity-50 text-xs tracking-[0.15em] border border-transparent active:scale-[0.98] shadow-none"
+                className="w-full py-3.5 rounded-[10px] font-bold bg-primary text-white hover:bg-primary-dark transition-all flex items-center justify-center disabled:opacity-50 text-xs tracking-[0.15em] border border-transparent active:scale-[0.98] shadow-none"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : 'GET STARTED'} 
               </button>
@@ -94,9 +94,9 @@ const Auth = () => {
                 className="w-full text-center text-[10px] text-slate-400 font-medium"
               >
                 {isLogin ? (
-                  <>Don't have an account? <span className="text-[#38b6ff] font-bold uppercase ml-1">SIGN UP</span></>
+                  <>Don't have an account? <span className="text-primary font-bold uppercase ml-1">SIGN UP</span></>
                 ) : (
-                  <>Already have an account? <span className="text-[#38b6ff] font-bold uppercase ml-1">LOGIN</span></>
+                  <>Already have an account? <span className="text-primary font-bold uppercase ml-1">LOGIN</span></>
                 )}
               </button>
             </div>

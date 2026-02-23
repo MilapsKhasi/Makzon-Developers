@@ -25,7 +25,7 @@ const Sidebar = () => {
             className={({ isActive }) =>
               `flex items-center px-6 py-3 text-[14px] font-medium transition-none ${
                 isActive
-                  ? 'bg-primary text-slate-900 border-r-4 border-slate-900'
+                  ? 'bg-primary text-white border-r-4 border-white'
                   : 'text-slate-600 hover:bg-slate-50'
               }`
             }
