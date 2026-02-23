@@ -325,7 +325,7 @@ const Settings = () => {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm text-left">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-900/50">
             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Business Information</h3>
-            <button type="submit" disabled={saving} className="bg-primary text-slate-950 px-8 py-2 rounded-md font-bold text-[13px] capitalize hover:bg-primary-dark disabled:opacity-50 flex items-center shadow-sm">
+            <button type="submit" disabled={saving} className="bg-primary text-white px-8 py-2 rounded-md font-bold text-[13px] capitalize hover:bg-primary-dark disabled:opacity-50 flex items-center shadow-sm">
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />} Save Changes
             </button>
           </div>

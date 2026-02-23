@@ -102,7 +102,7 @@ const Dashboard = () => {
         <h1 className="text-[20px] font-medium text-slate-900 capitalize">Executive Summary</h1>
         <div className="flex items-center space-x-2">
           <DateFilter onFilterChange={setDateRange} />
-          <button onClick={() => setIsPurchaseModalOpen(true)} className="px-4 py-2 bg-primary text-slate-900 font-medium text-xs rounded capitalize hover:bg-primary-dark">New Purchase</button>
+          <button onClick={() => setIsPurchaseModalOpen(true)} className="px-4 py-2 bg-primary text-white font-medium text-xs rounded capitalize hover:bg-primary-dark">New Purchase</button>
         </div>
       </div>
 

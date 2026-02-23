@@ -191,7 +191,7 @@ const Bills = () => {
             <button 
                 ref={newEntryBtnRef}
                 onClick={() => { setEditingBill(null); setIsModalOpen(true); }}
-                className={`bg-primary text-slate-900 px-6 py-2 rounded-md font-medium text-sm transition-none capitalize border-2 ${headerFocusIdx === 2 ? 'border-slate-900 ring-2 ring-primary ring-offset-2' : 'border-transparent hover:bg-primary-dark'}`}
+                className={`bg-primary text-white px-6 py-2 rounded-md font-medium text-sm transition-none capitalize border-2 ${headerFocusIdx === 2 ? 'border-slate-900 ring-2 ring-primary ring-offset-2' : 'border-transparent hover:bg-primary-dark'}`}
             >
                 New Entry
             </button>

@@ -221,7 +221,7 @@ const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ isOpen, onClose, title,
         <div className="pt-4 mt-2 flex justify-end">
             <button 
                 onClick={handleCreate}
-                className="flex items-center px-6 py-2 bg-primary text-slate-900 font-bold rounded-md hover:bg-yellow-400 transition-colors shadow-sm"
+                className="flex items-center px-6 py-2 bg-primary text-white font-bold rounded-md hover:bg-yellow-400 transition-colors shadow-sm"
             >
                 <Check className="w-4 h-4 mr-2" />
                 Create Entries

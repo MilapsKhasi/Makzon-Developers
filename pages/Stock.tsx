@@ -125,7 +125,7 @@ const Stock = () => {
       <div className="flex items-center justify-between shrink-0">
         <h1 className="text-[20px] font-medium text-slate-900 capitalize">Inventory Control</h1>
         {items.length > 0 && (
-          <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-slate-900 px-8 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-all capitalize flex items-center shadow-sm">
+          <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-white px-8 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-all capitalize flex items-center shadow-sm">
               <Plus className="w-4 h-4 mr-2" /> New SKU Item
           </button>
         )}
@@ -159,11 +159,11 @@ const Stock = () => {
                     const isSelected = String(selectedId) === String(item.id);
 
                     return (
-                    <div key={item.id} onClick={() => setSelectedId(String(item.id))} className={`p-4 border rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-primary border-slate-900' : 'bg-white border-slate-100 hover:bg-slate-50'}`}>
-                        <h3 className={`font-medium capitalize text-[11px] truncate mb-1 ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>{item.name}</h3>
+                    <div key={item.id} onClick={() => setSelectedId(String(item.id))} className={`p-4 border rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-primary border-slate-900 text-white' : 'bg-white border-slate-100 hover:bg-slate-50'}`}>
+                        <h3 className={`font-medium capitalize text-[11px] truncate mb-1 ${isSelected ? 'text-white' : 'text-slate-700'}`}>{item.name}</h3>
                         <div className="flex justify-between items-end">
                             <span className="text-[10px] font-medium text-slate-400 capitalize tracking-tighter">Hsn: {item.hsn || 'N/A'}</span>
-                            <span className={`font-mono text-lg font-bold leading-none ${isSelected ? 'text-slate-900' : 'text-link'}`}>
+                            <span className={`font-mono text-lg font-bold leading-none ${isSelected ? 'text-white' : 'text-link'}`}>
                                 {currentBalance.toFixed(0)} <span className="text-[10px] opacity-60 font-sans">{item.unit || 'PCS'}</span>
                             </span>
                         </div>

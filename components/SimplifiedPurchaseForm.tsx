@@ -151,7 +151,7 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
 
       <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
         <button type="button" onClick={onCancel} className="px-6 py-2.5 text-slate-400 font-bold uppercase text-[10px] tracking-widest">Cancel</button>
-        <button type="submit" disabled={loading} className="px-10 py-2.5 bg-primary text-slate-800 font-bold uppercase text-[10px] tracking-widest rounded border border-slate-200 hover:bg-primary-dark transition-all shadow-sm flex items-center disabled:opacity-50">
+        <button type="submit" disabled={loading} className="px-10 py-2.5 bg-primary text-white font-bold uppercase text-[10px] tracking-widest rounded border border-slate-200 hover:bg-primary-dark transition-all shadow-sm flex items-center disabled:opacity-50">
           {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
           Save Purchase
         </button>

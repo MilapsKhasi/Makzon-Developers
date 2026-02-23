@@ -138,7 +138,7 @@ const Vendors = () => {
         {vendors.length > 0 && (
           <button 
             onClick={() => { setEditingVendor(null); setIsFormOpen(true); }} 
-            className="bg-primary text-slate-900 px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize"
+            className="bg-primary text-white px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize"
           >
             <Plus className="w-4 h-4 mr-2" /> New Vendor
           </button>
@@ -175,10 +175,10 @@ const Vendors = () => {
                         onClick={() => setSelectedVendorId(String(vendor.id))} 
                         className={`p-4 border rounded-md cursor-pointer transition-none group ${isSelected ? 'bg-primary border-slate-900' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
                     >
-                        <h3 className={`text-xs font-medium capitalize truncate mb-1 ${isSelected ? 'text-slate-900' : 'text-slate-700'}`}>{vendor.name}</h3>
+                        <h3 className={`text-xs font-medium capitalize truncate mb-1 ${isSelected ? 'text-white' : 'text-slate-700'}`}>{vendor.name}</h3>
                         <div className="flex justify-between items-center text-[10px] font-medium text-slate-400">
-                        <span className={isSelected ? 'text-slate-900/60' : ''}>{vendor.gstin || 'No Gstin'}</span>
-                        <span className={isSelected ? 'text-slate-900 font-medium' : 'text-slate-900'}>₹{(Number(vendor.balance) || 0).toFixed(0)}</span>
+                        <span className={isSelected ? 'text-white/80' : ''}>{vendor.gstin || 'No Gstin'}</span>
+                        <span className={isSelected ? 'text-white font-medium' : 'text-slate-900'}>₹{(Number(vendor.balance) || 0).toFixed(0)}</span>
                         </div>
                     </div>
                     );

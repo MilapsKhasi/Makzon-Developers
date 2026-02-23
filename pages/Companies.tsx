@@ -167,7 +167,7 @@ const Companies = () => {
                 <h1 className="text-[20px] font-medium text-slate-900 capitalize">Select Workspace</h1>
               </div>
               {companies.length > 0 && (
-                <button onClick={handleOpenCreate} className="bg-primary text-slate-900 px-8 py-3 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize">
+                <button onClick={handleOpenCreate} className="bg-primary text-white px-8 py-3 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize">
                   <Plus className="w-4 h-4 mr-2" /> New Workspace
                 </button>
               )}
@@ -244,7 +244,7 @@ const Companies = () => {
             </div>
           </div>
           <div className="flex items-center justify-end space-x-6 pt-4">
-            <button type="submit" disabled={creating} className="bg-primary text-slate-900 px-10 py-3 rounded-md font-medium text-sm hover:bg-primary-dark shadow-sm disabled:opacity-50 flex items-center capitalize">
+            <button type="submit" disabled={creating} className="bg-primary text-white px-10 py-3 rounded-md font-medium text-sm hover:bg-primary-dark shadow-sm disabled:opacity-50 flex items-center capitalize">
               {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : editingCompany ? <Save className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               {creating ? 'Processing...' : editingCompany ? 'Save Changes' : 'Save Workspace'}
             </button>

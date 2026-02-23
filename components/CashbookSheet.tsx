@@ -249,7 +249,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
               });
             }}
             disabled={loading}
-            className="bg-primary text-slate-900 px-8 py-1.5 rounded font-bold text-[12px] hover:bg-primary-dark transition-all flex items-center ml-2 uppercase shadow-sm"
+            className="bg-primary text-white px-8 py-1.5 rounded font-bold text-[12px] hover:bg-primary-dark transition-all flex items-center ml-2 uppercase shadow-sm"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             {initialData ? 'Update Entry' : 'Save Statement'}

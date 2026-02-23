@@ -72,7 +72,7 @@ const Invoices = () => {
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Sales Invoice Register</h1>
         </div>
         <div className="flex items-center space-x-4">
-          <button onClick={() => { setEditingInvoice(null); setIsModalOpen(true); }} className="bg-primary text-slate-900 px-8 py-3 rounded-lg font-bold text-sm border border-primary hover:bg-primary-dark shadow-md transition-all active:scale-95 flex items-center">
+          <button onClick={() => { setEditingInvoice(null); setIsModalOpen(true); }} className="bg-primary text-white px-8 py-3 rounded-lg font-bold text-sm border border-primary hover:bg-primary-dark shadow-md transition-all active:scale-95 flex items-center">
             <Plus className="w-4.5 h-4.5 mr-2" /> Generate Sales Invoice
           </button>
         </div>

@@ -195,7 +195,7 @@ const Cashbook = () => {
                 </button>
                 <button 
                   onClick={() => { setEditingEntry(null); setViewState('entry'); }} 
-                  className="bg-primary text-slate-900 px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center shadow-sm"
+                  className="bg-primary text-white px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center shadow-sm"
                 >
                 <Plus className="w-4 h-4 mr-2" /> Create Statement
                 </button>

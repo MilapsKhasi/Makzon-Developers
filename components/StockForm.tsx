@@ -156,7 +156,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
 
             <div className="pt-6 border-t border-slate-100 flex justify-end space-x-6">
                 <button type="button" onClick={onCancel} className="text-[13px] text-slate-400 font-normal hover:text-slate-700 transition-none">Discard Changes</button>
-                <button type="submit" className="bg-primary text-slate-900 px-10 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center">
+                <button type="submit" className="bg-primary text-white px-10 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center">
                     <Save className="w-4 h-4 mr-2" /> {initialData ? 'Update Record' : 'Create Item'}
                 </button>
             </div>

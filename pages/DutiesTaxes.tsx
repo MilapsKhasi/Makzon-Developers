@@ -154,7 +154,7 @@ const DutiesTaxes = () => {
                         <button 
                             type="submit"
                             disabled={saving}
-                            className="bg-primary text-slate-900 px-8 py-2.5 rounded font-medium text-[14px] hover:bg-primary-dark transition-none flex items-center capitalize"
+                            className="bg-primary text-white px-8 py-2.5 rounded font-medium text-[14px] hover:bg-primary-dark transition-none flex items-center capitalize"
                         >
                             {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                             Save Ledger
@@ -170,7 +170,7 @@ const DutiesTaxes = () => {
         {taxes.length > 0 && (
           <button 
             onClick={() => { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); }} 
-            className="bg-primary text-slate-900 px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-none capitalize"
+            className="bg-primary text-white px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-none capitalize"
           >
             New Ledger
           </button>

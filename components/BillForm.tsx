@@ -270,7 +270,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
         <div className="flex items-center justify-end space-x-6">
             <button type="button" onClick={onCancel} className="text-[14px] text-slate-400 hover:text-slate-800 font-medium capitalize">Discard</button>
-            <button type="submit" disabled={loading} className="bg-primary text-slate-900 px-10 py-3 rounded font-bold text-[14px] hover:bg-primary-dark shadow-lg active:scale-95 flex items-center capitalize">
+            <button type="submit" disabled={loading} className="bg-primary text-white px-10 py-3 rounded font-bold text-[14px] hover:bg-primary-dark shadow-lg active:scale-95 flex items-center capitalize">
                 {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}{initialData ? 'Update Bill' : 'Save Statement'}
             </button>
         </div>

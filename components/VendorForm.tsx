@@ -136,7 +136,7 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, prefilledName, onS
             <button 
                 type="submit"
                 disabled={loading}
-                className="bg-primary text-slate-900 px-8 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center"
+                className="bg-primary text-white px-8 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center"
             >
                 {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                 Create Statement
