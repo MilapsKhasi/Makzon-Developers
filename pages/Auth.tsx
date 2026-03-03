@@ -30,7 +30,14 @@ const Auth = () => {
         alert('Check your email for the confirmation link!');
       }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+      console.error("Auth error details:", err);
+      let errorMessage = err.message || 'Authentication failed';
+      
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || err.name === 'TypeError') {
+        errorMessage = "Connection Error: Unable to reach the server. Please check your internet connection or ensure the Supabase project is active.";
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

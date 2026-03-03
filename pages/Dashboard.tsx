@@ -20,7 +20,7 @@ const Dashboard = () => {
   const [recentVouchers, setRecentVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
-  const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
+  const [dateRange, setDateRange] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadData = async () => {

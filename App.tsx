@@ -41,11 +41,18 @@ const AppContent = () => {
       if (!sess) return;
       try {
         const { error } = await supabase.from('companies').select('id').limit(1);
-        if (error && (error.message.includes('not found') || error.message.includes('does not exist'))) {
-          setDbError("SCHEMA_MISSING");
+        if (error) {
+          if (error.message.includes('not found') || error.message.includes('does not exist')) {
+            setDbError("SCHEMA_MISSING");
+          } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+            setDbError("CONNECTION_ERROR");
+          }
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error("Schema check error:", e);
+        if (e.message?.includes('Failed to fetch')) {
+          setDbError("CONNECTION_ERROR");
+        }
       }
     };
 
@@ -146,26 +153,37 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
     </div>
   );
 
-  if (session && dbError === "SCHEMA_MISSING") {
+  if (session && (dbError === "SCHEMA_MISSING" || dbError === "CONNECTION_ERROR")) {
+    const isConnectionError = dbError === "CONNECTION_ERROR";
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="max-w-2xl w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Database className="w-8 h-8 text-primary" />
+            {isConnectionError ? <AlertCircle className="w-8 h-8 text-red-500" /> : <Database className="w-8 h-8 text-primary" />}
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2 capitalize">Database Setup Required</h1>
-          <p className="text-slate-500 mb-8 capitalize">Required tables haven't been created yet.</p>
-          <div className="bg-slate-900 rounded-lg p-6 text-left mb-6 relative group">
-            <pre className="text-[10px] text-slate-300 font-mono overflow-x-auto whitespace-pre-wrap">
-              {`CREATE TABLE public.profiles (...);\nCREATE TABLE public.companies (...);\n...`}
-            </pre>
-            <button onClick={copySql} className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center capitalize">
-              {copied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
-              {copied ? 'Copied!' : 'Copy Sql'}
-            </button>
-          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2 capitalize">
+            {isConnectionError ? "Connection Error" : "Database Setup Required"}
+          </h1>
+          <p className="text-slate-500 mb-8 capitalize">
+            {isConnectionError 
+              ? "Unable to reach the server. Please check your internet connection or ensure the Supabase project is active." 
+              : "Required tables haven't been created yet."}
+          </p>
+          
+          {!isConnectionError && (
+            <div className="bg-slate-900 rounded-lg p-6 text-left mb-6 relative group">
+              <pre className="text-[10px] text-slate-300 font-mono overflow-x-auto whitespace-pre-wrap">
+                {`CREATE TABLE public.profiles (...);\nCREATE TABLE public.companies (...);\n...`}
+              </pre>
+              <button onClick={copySql} className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center capitalize">
+                {copied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+                {copied ? 'Copied!' : 'Copy Sql'}
+              </button>
+            </div>
+          )}
+          
           <button onClick={() => window.location.reload()} className="px-8 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark capitalize">
-            Refresh After Running Sql
+            {isConnectionError ? "Retry Connection" : "Refresh After Running Sql"}
           </button>
         </div>
       </div>

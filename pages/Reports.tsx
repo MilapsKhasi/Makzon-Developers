@@ -10,7 +10,7 @@ const Reports = () => {
   const [activeTab, setActiveTab] = useState('Purchases');
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
+  const [dateRange, setDateRange] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
   const [searchQuery, setSearchQuery] = useState('');
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [companyInfo, setCompanyInfo] = useState<any>(null);

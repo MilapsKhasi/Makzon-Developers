@@ -17,7 +17,7 @@ const Bills = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateRange, setDateRange] = useState({ startDate: null, endDate: null });
+  const [dateRange, setDateRange] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
   
   const [headerFocusIdx, setHeaderFocusIdx] = useState<number | null>(0); 
   const [selectedRowIdx, setSelectedRowIdx] = useState<number | null>(null);

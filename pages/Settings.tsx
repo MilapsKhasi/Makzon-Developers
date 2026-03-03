@@ -92,20 +92,20 @@ const Settings = () => {
         supabase.from('duties_taxes').select('id, name').eq('is_deleted', true).eq('company_id', cid)
       ];
 
-      const results = await Promise.all(queries);
+      const results = await Promise.all(queries) as any[];
       const allItems: any[] = [];
       
-      results[0].data?.forEach(i => allItems.push({ ...i, origin: 'Workspace', label: i.name, table: 'companies' }));
-      results[1].data?.forEach(i => allItems.push({ ...i, origin: 'Workspace', label: i.name, table: 'companies' }));
-      results[2].data?.forEach(i => allItems.push({ ...i, origin: 'Sales Invoices', label: `${i.invoice_number} (${i.customer_name})`, table: 'sales_invoices' }));
-      results[3].data?.forEach(i => allItems.push({ ...i, origin: 'Purchase Bills', label: `${i.bill_number} (${i.vendor_name})`, table: 'bills' }));
-      results[4].data?.forEach(i => {
+      results[0].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Workspace', label: i.name, table: 'companies' }));
+      results[1].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Workspace', label: i.name, table: 'companies' }));
+      results[2].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Sales Invoices', label: `${i.invoice_number} (${i.customer_name})`, table: 'sales_invoices' }));
+      results[3].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Purchase Bills', label: `${i.bill_number} (${i.vendor_name})`, table: 'bills' }));
+      results[4].data?.forEach((i: any) => {
         const type = (i.is_customer || i.party_type === 'customer') ? 'Customers' : 'Vendors';
         allItems.push({ ...i, origin: type, label: i.name, table: 'vendors' });
       });
-      results[5].data?.forEach(i => allItems.push({ ...i, origin: 'Stock Master', label: i.name, table: 'stock_items' }));
-      results[6].data?.forEach(i => allItems.push({ ...i, origin: 'Cashbook', label: `Statement ${i.date}`, table: 'cashbooks' }));
-      results[7].data?.forEach(i => allItems.push({ ...i, origin: 'Duties & Taxes', label: i.name, table: 'duties_taxes' }));
+      results[5].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Stock Master', label: i.name, table: 'stock_items' }));
+      results[6].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Cashbook', label: `Statement ${i.date}`, table: 'cashbooks' }));
+      results[7].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Duties & Taxes', label: i.name, table: 'duties_taxes' }));
 
       setDeletedItems(allItems);
     } catch (err) {

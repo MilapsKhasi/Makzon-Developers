@@ -39,7 +39,7 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
       const rawTotal = taxable + gst;
       const rounded = Math.round(rawTotal);
       const ro = parseFloat((rounded - rawTotal).toFixed(2));
-      setFormData(prev => ({ ...prev, total_without_gst: taxable, total_gst: gst, round_off: ro, grand_total: rounded }));
+      setFormData((prev: any) => ({ ...prev, total_without_gst: taxable, total_gst: gst, round_off: ro, grand_total: rounded }));
   };
 
   const handleDateBlur = () => {

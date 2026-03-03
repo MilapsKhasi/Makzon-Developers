@@ -125,7 +125,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     const activeDuties = (allDuties || []).filter(d => d.is_default || selectedIds.includes(d.id));
 
     if (!initialData) {
-      setFormData(prev => {
+      setFormData((prev: any) => {
         if (prev.duties_and_taxes.length > 0) return prev;
         return recalculate({ ...prev, duties_and_taxes: activeDuties.map(d => ({ ...d, bill_rate: d.rate, bill_fixed_amount: d.fixed_amount, amount: 0 }))});
       });

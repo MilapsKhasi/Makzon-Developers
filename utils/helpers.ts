@@ -228,9 +228,9 @@ export const syncTransactionToCashbook = async (transaction: any) => {
     if (isSale) incomeRows.push(newRow); else expenseRows.push(newRow);
     const payload = {
       company_id, date,
-      income_total: incomeRows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0),
-      expense_total: expenseRows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0),
-      balance: incomeRows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0) - expenseRows.reduce((acc, r) => acc + (Number(r.amount) || 0), 0),
+      income_total: incomeRows.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0),
+      expense_total: expenseRows.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0),
+      balance: incomeRows.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0) - expenseRows.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0),
       raw_data: { incomeRows, expenseRows, date },
       is_deleted: false
     };
