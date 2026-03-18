@@ -39,7 +39,7 @@ const UpdateNotification = () => {
         </div>
         
         <div className="p-8">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">ZenterPrime - Version {CURRENT_VERSION} Released!</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">ZenterPrime - Version 26.2.13 Released!</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Experience the next evolution of your digital finance desk with our latest update.</p>
             
             <div className="space-y-4 mb-8">
