@@ -191,7 +191,7 @@ const Companies = () => {
                     className="group p-6 bg-white border border-slate-200 rounded-lg hover:border-slate-400 hover:bg-slate-50 cursor-pointer transition-none relative">
                     <div className="flex items-start justify-between mb-4">
                       <div className="w-12 h-12 bg-white border border-slate-200 rounded-lg flex items-center justify-center group-hover:bg-primary group-hover:border-primary transition-colors">
-                        <Building2 className="w-6 h-6 text-slate-400 group-hover:text-slate-900" />
+                        <Building2 className="w-6 h-6 text-slate-400 group-hover:text-white" />
                       </div>
                       <div className="flex items-center space-x-2">
                         <button onClick={(e) => handleOpenEdit(e, company)} className="p-2 text-slate-300 hover:text-slate-900 hover:bg-white rounded transition-colors">
