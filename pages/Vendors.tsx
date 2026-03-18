@@ -9,9 +9,9 @@ import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '.
 import { supabase } from '../lib/supabase';
 
 const StatCard = ({ label, value, colorClass = "text-slate-900" }: { label: string, value: string, colorClass?: string }) => (
-  <div className="bg-white p-6 border border-slate-200 rounded-xl hover:border-slate-300 transition-all">
-    <p className="text-[10px] font-medium text-slate-400 capitalize tracking-widest mb-1">{label}</p>
-    <p className={`text-xl font-medium ${colorClass} tracking-tight font-mono`}>{value}</p>
+  <div className="bg-white dark:bg-slate-800 p-6 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-slate-300 dark:hover:border-slate-600 transition-all">
+    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest mb-1">{label}</p>
+    <p className={`text-xl font-medium ${colorClass} dark:text-white tracking-tight font-mono`}>{value}</p>
   </div>
 );
 
@@ -134,7 +134,7 @@ const Vendors = () => {
       />
 
       <div className="flex justify-between items-center shrink-0">
-        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Vendors Directory</h1>
+        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Vendors Directory</h1>
         {vendors.length > 0 && (
           <button 
             onClick={() => { setEditingVendor(null); setIsFormOpen(true); }} 
@@ -163,7 +163,7 @@ const Vendors = () => {
                     value={searchQuery} 
                     onChange={(e) => setSearchQuery(e.target.value)} 
                     placeholder="Search parties..." 
-                    className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-md text-xs outline-none focus:border-slate-300" 
+                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 text-slate-900 dark:text-slate-100" 
                 />
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
@@ -173,12 +173,12 @@ const Vendors = () => {
                     <div 
                         key={vendor.id} 
                         onClick={() => setSelectedVendorId(String(vendor.id))} 
-                        className={`p-4 border rounded-md cursor-pointer transition-none group ${isSelected ? 'bg-primary border-slate-900' : 'bg-white border-slate-100 hover:bg-slate-50'}`}
+                        className={`p-4 border rounded-md cursor-pointer transition-none group ${isSelected ? 'bg-primary border-slate-900 dark:border-slate-700' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
                     >
-                        <h3 className={`text-xs font-medium capitalize truncate mb-1 ${isSelected ? 'text-white' : 'text-slate-700'}`}>{vendor.name}</h3>
-                        <div className="flex justify-between items-center text-[10px] font-medium text-slate-400">
+                        <h3 className={`text-xs font-medium capitalize truncate mb-1 ${isSelected ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{vendor.name}</h3>
+                        <div className="flex justify-between items-center text-[10px] font-medium text-slate-400 dark:text-slate-500">
                         <span className={isSelected ? 'text-white/80' : ''}>{vendor.gstin || 'No Gstin'}</span>
-                        <span className={isSelected ? 'text-white font-medium' : 'text-slate-900'}>₹{(Number(vendor.balance) || 0).toFixed(0)}</span>
+                        <span className={isSelected ? 'text-white font-medium' : 'text-slate-900 dark:text-slate-100'}>₹{(Number(vendor.balance) || 0).toFixed(0)}</span>
                         </div>
                     </div>
                     );
@@ -187,27 +187,27 @@ const Vendors = () => {
             </div>
             )}
 
-            <div className={`flex-1 bg-white border border-slate-200 rounded-md flex flex-col overflow-hidden ${isFullScreen ? 'fixed inset-4 z-[150] m-0' : ''}`}>
+            <div className={`flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md flex flex-col overflow-hidden ${isFullScreen ? 'fixed inset-4 z-[150] m-0 shadow-2xl' : ''}`}>
             {selectedVendor ? (
                 <div className="flex flex-col h-full">
-                <div className="px-8 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <div className="px-8 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
                     <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-slate-50 rounded flex items-center justify-center border border-slate-200">
-                        <Landmark className="w-5 h-5 text-slate-400" />
+                    <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                        <Landmark className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-medium text-slate-900 capitalize leading-none">{selectedVendor.name}</h2>
-                        <p className="text-[10px] font-medium text-slate-400 capitalize tracking-tighter mt-1">Id: {selectedVendor.id.split('-')[0]}</p>
+                        <h2 className="text-lg font-medium text-slate-900 dark:text-white capitalize leading-none">{selectedVendor.name}</h2>
+                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-tighter mt-1">Id: {selectedVendor.id.split('-')[0]}</p>
                     </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                    <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded" title="Toggle Fullscreen">
+                    <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 rounded" title="Toggle Fullscreen">
                         {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                     </button>
-                    <button onClick={() => { setEditingVendor(selectedVendor); setIsFormOpen(true); }} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded" title="Edit Profile">
+                    <button onClick={() => { setEditingVendor(selectedVendor); setIsFormOpen(true); }} className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 rounded" title="Edit Profile">
                         <Edit className="w-4 h-4" />
                     </button>
-                    <button onClick={() => setDeleteDialog({ isOpen: true, vendor: selectedVendor })} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded" title="Archive Vendor">
+                    <button onClick={() => setDeleteDialog({ isOpen: true, vendor: selectedVendor })} className="p-2 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded" title="Archive Vendor">
                         <Trash2 className="w-4 h-4" />
                     </button>
                     </div>
@@ -217,40 +217,40 @@ const Vendors = () => {
                     <StatCard label="Ledger Balance" value={formatCurrency(stats.balance)} colorClass="text-slate-900" />
                     <StatCard label="Total Purchases" value={formatCurrency(stats.totalPurchased)} colorClass="text-slate-500" />
                     <StatCard label="Settled Amount" value={formatCurrency(stats.totalPaid)} colorClass="text-green-600" />
-                    <StatCard label="Status" value={selectedVendor.status || 'Active'} colorClass="text-primary-dark font-medium" />
+                    <StatCard label="Status" value={selectedVendor.status || 'Active'} colorClass="text-primary-dark dark:text-primary font-medium" />
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-                    <div className="bg-slate-50/50 p-6 rounded-xl border border-slate-100 space-y-4">
-                        <h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center"><ShieldCheck className="w-3.5 h-3.5 mr-2" /> Kyc & Identity</h4>
+                    <div className="bg-slate-50/50 dark:bg-slate-800/30 p-6 rounded-xl border border-slate-100 dark:border-slate-800 space-y-4">
+                        <h4 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest flex items-center"><ShieldCheck className="w-3.5 h-3.5 mr-2" /> Kyc & Identity</h4>
                         <div className="space-y-3">
-                        <div><p className="text-[10px] text-slate-400 font-medium capitalize">Gstin</p><p className="text-sm font-mono font-medium text-slate-800 tracking-tight">{selectedVendor.gstin || 'Not Registered'}</p></div>
-                        <div><p className="text-[10px] text-slate-400 font-medium capitalize">Pan</p><p className="text-sm font-mono font-medium text-slate-800 tracking-tight">{selectedVendor.pan || 'N/A'}</p></div>
+                        <div><p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium capitalize">Gstin</p><p className="text-sm font-mono font-medium text-slate-800 dark:text-slate-200 tracking-tight">{selectedVendor.gstin || 'Not Registered'}</p></div>
+                        <div><p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium capitalize">Pan</p><p className="text-sm font-mono font-medium text-slate-800 dark:text-slate-200 tracking-tight">{selectedVendor.pan || 'N/A'}</p></div>
                         </div>
                     </div>
-                    <div className="bg-slate-50/50 p-6 rounded-xl border border-slate-100 space-y-4">
-                        <h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center"><CreditCard className="w-3.5 h-3.5 mr-2" /> Banking Profile</h4>
+                    <div className="bg-slate-50/50 dark:bg-slate-800/30 p-6 rounded-xl border border-slate-100 dark:border-slate-800 space-y-4">
+                        <h4 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest flex items-center"><CreditCard className="w-3.5 h-3.5 mr-2" /> Banking Profile</h4>
                         <div className="space-y-3">
-                        <div><p className="text-[10px] text-slate-400 font-medium capitalize">A/C Number</p><p className="text-sm font-mono font-medium text-slate-800">{selectedVendor.account_number || 'N/A'}</p></div>
-                        <div><p className="text-[10px] text-slate-400 font-medium capitalize">Ifsc Code</p><p className="text-sm font-mono font-medium text-slate-800">{selectedVendor.ifsc_code || 'N/A'}</p></div>
+                        <div><p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium capitalize">A/C Number</p><p className="text-sm font-mono font-medium text-slate-800 dark:text-slate-200">{selectedVendor.account_number || 'N/A'}</p></div>
+                        <div><p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium capitalize">Ifsc Code</p><p className="text-sm font-mono font-medium text-slate-800 dark:text-slate-200">{selectedVendor.ifsc_code || 'N/A'}</p></div>
                         </div>
                     </div>
-                    <div className="bg-slate-50/50 p-6 rounded-xl border border-slate-100 space-y-4">
-                        <h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center"><ExternalLink className="w-3.5 h-3.5 mr-2" /> Contact Details</h4>
+                    <div className="bg-slate-50/50 dark:bg-slate-800/30 p-6 rounded-xl border border-slate-100 dark:border-slate-800 space-y-4">
+                        <h4 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest flex items-center"><ExternalLink className="w-3.5 h-3.5 mr-2" /> Contact Details</h4>
                         <div className="space-y-2">
-                        <div className="flex items-center text-xs text-slate-600"><Phone className="w-3.5 h-3.5 mr-2 text-slate-300" /> {selectedVendor.phone || 'No Phone'}</div>
-                        <div className="flex items-center text-xs text-slate-600"><Mail className="w-3.5 h-3.5 mr-2 text-slate-300" /> {selectedVendor.email || 'No Email'}</div>
-                        <div className="flex items-start text-xs text-slate-600"><MapPin className="w-3.5 h-3.5 mr-2 text-slate-300 mt-0.5 shrink-0" /> <span className="truncate">{selectedVendor.address || 'No Address'}</span></div>
+                        <div className="flex items-center text-xs text-slate-600 dark:text-slate-400"><Phone className="w-3.5 h-3.5 mr-2 text-slate-300 dark:text-slate-600" /> {selectedVendor.phone || 'No Phone'}</div>
+                        <div className="flex items-center text-xs text-slate-600 dark:text-slate-400"><Mail className="w-3.5 h-3.5 mr-2 text-slate-300 dark:text-slate-600" /> {selectedVendor.email || 'No Email'}</div>
+                        <div className="flex items-start text-xs text-slate-600 dark:text-slate-400"><MapPin className="w-3.5 h-3.5 mr-2 text-slate-300 dark:text-slate-600 mt-0.5 shrink-0" /> <span className="truncate">{selectedVendor.address || 'No Address'}</span></div>
                         </div>
                     </div>
                     </div>
                     <div className="space-y-4">
-                    <div className="flex items-center justify-between"><h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center"><History className="w-4 h-4 mr-2 text-slate-300" /> Transaction Register</h4></div>
-                    <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
+                    <div className="flex items-center justify-between"><h4 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest flex items-center"><History className="w-4 h-4 mr-2 text-slate-300 dark:text-slate-600" /> Transaction Register</h4></div>
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
                         <table className="clean-table">
-                        <thead><tr><th className="font-medium capitalize">Date</th><th className="font-medium capitalize">Bill No</th><th className="text-right font-medium capitalize">Without Gst</th><th className="text-right font-medium capitalize">Tax</th><th className="text-right font-medium capitalize">Total</th><th className="text-center font-medium capitalize">Status</th></tr></thead>
-                        <tbody>
+                        <thead><tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800"><th className="font-medium capitalize text-slate-400 dark:text-slate-500">Date</th><th className="font-medium capitalize text-slate-400 dark:text-slate-500">Bill No</th><th className="text-right font-medium capitalize text-slate-400 dark:text-slate-500">Without Gst</th><th className="text-right font-medium capitalize text-slate-400 dark:text-slate-500">Tax</th><th className="text-right font-medium capitalize text-slate-400 dark:text-slate-500">Total</th><th className="text-center font-medium capitalize text-slate-400 dark:text-slate-500">Status</th></tr></thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {stats.transactions.map((bill) => (
-                            <tr key={bill.id} className="hover:bg-slate-50 transition-none group"><td className="text-slate-500 font-medium">{formatDate(bill.date)}</td><td className="font-mono font-medium text-slate-900">{bill.bill_number}</td><td className="text-right font-mono text-slate-500">{(Number(bill.total_without_gst) || 0).toFixed(2)}</td><td className="text-right font-mono text-slate-500">{(Number(bill.total_gst) || 0).toFixed(2)}</td><td className="text-right font-mono font-medium text-slate-900">{(Number(bill.grand_total) || 0).toFixed(2)}</td><td className="text-center"><span className={`text-[10px] font-medium px-2 py-0.5 rounded-sm capitalize ${bill.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>{bill.status}</span></td></tr>
+                            <tr key={bill.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-none group"><td className="text-slate-500 dark:text-slate-400 font-medium">{formatDate(bill.date)}</td><td className="font-mono font-medium text-slate-900 dark:text-slate-100">{bill.bill_number}</td><td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(bill.total_without_gst) || 0).toFixed(2)}</td><td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(bill.total_gst) || 0).toFixed(2)}</td><td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{(Number(bill.grand_total) || 0).toFixed(2)}</td><td className="text-center"><span className={`text-[10px] font-medium px-2 py-0.5 rounded-sm capitalize ${bill.status === 'Paid' ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'}`}>{bill.status}</span></td></tr>
                             ))}
                         </tbody>
                         </table>
@@ -259,7 +259,7 @@ const Vendors = () => {
                 </div>
                 </div>
             ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-300 italic py-20"><Landmark className="w-16 h-16 opacity-5 mb-4" /><p className="text-sm font-medium">Select a vendor from the list to view profile and history.</p></div>
+                <div className="h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 italic py-20"><Landmark className="w-16 h-16 opacity-5 mb-4" /><p className="text-sm font-medium">Select a vendor from the list to view profile and history.</p></div>
             )}
             </div>
         </div>

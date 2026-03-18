@@ -82,13 +82,13 @@ const Dashboard = () => {
   }).slice(0, 10);
 
   const StatBox = ({ label, value, subLabel, icon: Icon }: any) => (
-    <div className="bg-white border border-slate-200 p-4 rounded hover:border-slate-300">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded hover:border-slate-300 dark:hover:border-slate-700">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[11px] font-medium text-slate-500 capitalize tracking-tight">{label}</span>
-        <Icon className="w-3.5 h-3.5 text-slate-300" />
+        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 capitalize tracking-tight">{label}</span>
+        <Icon className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600" />
       </div>
-      <div className="text-xl font-medium text-slate-900 leading-none mb-1">{value}</div>
-      {subLabel && <div className="text-[10px] text-slate-400 font-medium capitalize">{subLabel}</div>}
+      <div className="text-xl font-medium text-slate-900 dark:text-white leading-none mb-1">{value}</div>
+      {subLabel && <div className="text-[10px] text-slate-400 dark:text-slate-500 font-medium capitalize">{subLabel}</div>}
     </div>
   );
 
@@ -99,7 +99,7 @@ const Dashboard = () => {
       </Modal>
 
       <div className="flex items-center justify-between">
-        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Executive Summary</h1>
+        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Executive Summary</h1>
         <div className="flex items-center space-x-2">
           <DateFilter onFilterChange={setDateRange} />
           <button onClick={() => setIsPurchaseModalOpen(true)} className="px-4 py-2 bg-primary text-white font-medium text-xs rounded capitalize hover:bg-primary-dark">New Purchase</button>
@@ -113,12 +113,12 @@ const Dashboard = () => {
         <StatBox label="Inventory" value={stats.stockItems} subLabel="Registered SKU Items" icon={Package} />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-          <h2 className="text-sm font-medium text-slate-700 capitalize">Recent Transactions</h2>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+          <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">Recent Transactions</h2>
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 w-3.5 h-3.5" />
-            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filter list..." className="pl-7 pr-3 py-1 border border-slate-200 rounded text-xs outline-none focus:border-slate-300 w-48" />
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-3.5 h-3.5" />
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filter list..." className="pl-7 pr-3 py-1 border border-slate-200 dark:border-slate-700 rounded text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 w-48 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
           </div>
         </div>
         
@@ -138,13 +138,13 @@ const Dashboard = () => {
               <tr><td colSpan={6} className="text-center py-20 text-slate-400 capitalize text-[10px] font-medium tracking-widest">Refreshing Data...</td></tr>
             ) : filteredVouchers.map((v) => (
               <tr key={v.id}>
-                <td className="text-slate-500">{formatDate(v.date)}</td>
-                <td className={`text-[10px] font-medium capitalize ${v.type === 'Sale' ? 'text-blue-600' : 'text-rose-600'}`}>{v.type}</td>
-                <td className="font-mono font-medium">{v.bill_number}</td>
-                <td className="capitalize font-medium text-slate-700">{v.vendor_name || v.customer_name}</td>
-                <td className="text-right font-mono font-medium">{formatCurrency(v.grand_total, false)}</td>
+                <td className="text-slate-500 dark:text-slate-400">{formatDate(v.date)}</td>
+                <td className={`text-[10px] font-medium capitalize ${v.type === 'Sale' ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}>{v.type}</td>
+                <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{v.bill_number}</td>
+                <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{v.vendor_name || v.customer_name}</td>
+                <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{formatCurrency(v.grand_total, false)}</td>
                 <td className="text-center">
-                  <span className={`text-[9px] px-2 py-0.5 rounded-sm font-medium capitalize ${v.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>{v.status}</span>
+                  <span className={`text-[9px] px-2 py-0.5 rounded-sm font-medium capitalize ${v.status === 'Paid' ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>{v.status}</span>
                 </td>
               </tr>
             ))}

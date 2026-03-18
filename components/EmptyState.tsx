@@ -42,8 +42,8 @@ const EmptyState: React.FC<EmptyStateProps> = ({
         </div>
       </div>
       
-      <h3 className="text-xl font-semibold text-slate-900 mb-2 capitalize">{title}</h3>
-      <p className="text-slate-500 text-sm max-w-sm mx-auto mb-8 font-medium leading-relaxed">
+      <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2 capitalize">{title}</h3>
+      <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm mx-auto mb-8 font-medium leading-relaxed">
         {message}
       </p>
       

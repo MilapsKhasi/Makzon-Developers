@@ -66,10 +66,10 @@ const Invoices = () => {
 
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 bg-white border border-slate-200 rounded-xl flex items-center justify-center shadow-sm">
-            <ReceiptText className="w-6 h-6 text-slate-400" />
+          <div className="w-12 h-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center shadow-sm">
+            <ReceiptText className="w-6 h-6 text-slate-400 dark:text-slate-500" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Sales Invoice Register</h1>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Sales Invoice Register</h1>
         </div>
         <div className="flex items-center space-x-4">
           <button onClick={() => { setEditingInvoice(null); setIsModalOpen(true); }} className="bg-primary text-white px-8 py-3 rounded-lg font-bold text-sm border border-primary hover:bg-primary-dark shadow-md transition-all active:scale-95 flex items-center">
@@ -80,40 +80,40 @@ const Invoices = () => {
 
       <div className="space-y-6">
         <div className="relative">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
-          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by Invoice Number or Customer Name..." className="w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-xl text-base outline-none focus:border-slate-400 shadow-sm transition-all" />
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-5 h-5" />
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by Invoice Number or Customer Name..." className="w-full pl-14 pr-6 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base outline-none focus:border-slate-400 dark:focus:border-slate-600 shadow-sm transition-all text-slate-900 dark:text-slate-100" />
         </div>
         
-        <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white">
+        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-slate-900">
           {loading ? (
-            <div className="py-40 flex flex-col items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary mb-4" /><p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Loading Register...</p></div>
+            <div className="py-40 flex flex-col items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary mb-4" /><p className="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest text-[10px]">Loading Register...</p></div>
           ) : (
             <table className="w-full text-left text-base border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                  <th className="py-5 px-8 border-r border-slate-200">Invoice Date</th>
-                  <th className="py-5 px-8 border-r border-slate-200">Invoice No</th>
-                  <th className="py-5 px-8 border-r border-slate-200">Customer / Party Name</th>
-                  <th className="py-5 px-8 border-r border-slate-200 text-right">Net Receivable</th>
+              <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                <tr className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  <th className="py-5 px-8 border-r border-slate-200 dark:border-slate-800">Invoice Date</th>
+                  <th className="py-5 px-8 border-r border-slate-200 dark:border-slate-800">Invoice No</th>
+                  <th className="py-5 px-8 border-r border-slate-200 dark:border-slate-800">Customer / Party Name</th>
+                  <th className="py-5 px-8 border-r border-slate-200 dark:border-slate-800 text-right">Net Receivable</th>
                   <th className="py-5 px-8 text-center">Manage</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filtered.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-slate-50 group transition-all duration-200">
-                    <td className="py-5 px-8 border-r border-slate-100 font-bold text-slate-600">{formatDate(inv.date)}</td>
-                    <td className="py-5 px-8 border-r border-slate-100 font-mono font-bold text-slate-900">{inv.invoice_number}</td>
-                    <td className="py-5 px-8 border-r border-slate-100 font-bold text-slate-900 truncate max-w-[300px]">{inv.customer_name}</td>
-                    <td className="py-5 px-8 border-r border-slate-100 text-right font-bold text-slate-900 text-lg">{formatCurrency(inv.grand_total)}</td>
+                  <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 group transition-all duration-200">
+                    <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-400">{formatDate(inv.date)}</td>
+                    <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 font-mono font-bold text-slate-900 dark:text-slate-100">{inv.invoice_number}</td>
+                    <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 font-bold text-slate-900 dark:text-slate-100 truncate max-w-[300px]">{inv.customer_name}</td>
+                    <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 text-right font-bold text-slate-900 dark:text-slate-100 text-lg">{formatCurrency(inv.grand_total)}</td>
                     <td className="py-5 px-8 text-center">
                       <div className="flex justify-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"><Edit className="w-5 h-5" /></button>
-                          <button onClick={() => setDeleteDialog({ isOpen: true, invoice: inv })} className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"><Trash2 className="w-5 h-5" /></button>
+                          <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"><Edit className="w-5 h-5" /></button>
+                          <button onClick={() => setDeleteDialog({ isOpen: true, invoice: inv })} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all"><Trash2 className="w-5 h-5" /></button>
                       </div>
                     </td>
                   </tr>
                 ))}
-                {filtered.length === 0 && <tr><td colSpan={5} className="py-40 text-center"><ReceiptText className="w-16 h-16 text-slate-100 mx-auto mb-4" /><p className="text-slate-300 italic font-medium">No sales invoices found.</p></td></tr>}
+                {filtered.length === 0 && <tr><td colSpan={5} className="py-40 text-center"><ReceiptText className="w-16 h-16 text-slate-100 dark:text-slate-800 mx-auto mb-4" /><p className="text-slate-300 dark:text-slate-700 italic font-medium">No sales invoices found.</p></td></tr>}
               </tbody>
             </table>
           )}

@@ -184,14 +184,14 @@ const Bills = () => {
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, bill: null })} onConfirm={confirmDelete} title="Archive Bill" message={`Are you sure you want to delete bill ${deleteDialog.bill?.bill_number}? (Press Shift + D again to confirm)`} />
 
       <div className="flex items-center justify-between">
-        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Purchase Bills Ledger</h1>
+        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Purchase Bills Ledger</h1>
         <div className="flex items-center space-x-2">
           <DateFilter ref={dateFilterRef} onFilterChange={setDateRange} />
           {bills.length > 0 && (
             <button 
                 ref={newEntryBtnRef}
                 onClick={() => { setEditingBill(null); setIsModalOpen(true); }}
-                className={`bg-primary text-white px-6 py-2 rounded-md font-medium text-sm transition-none capitalize border-2 ${headerFocusIdx === 2 ? 'border-slate-900 ring-2 ring-primary ring-offset-2' : 'border-transparent hover:bg-primary-dark'}`}
+                className={`bg-primary text-white px-6 py-2 rounded-md font-medium text-sm transition-none capitalize border-2 ${headerFocusIdx === 2 ? 'border-slate-900 dark:border-white ring-2 ring-primary ring-offset-2' : 'border-transparent hover:bg-primary-dark'}`}
             >
                 New Entry
             </button>
@@ -208,28 +208,28 @@ const Bills = () => {
         />
       ) : (
         <>
-            <div className="bg-white border border-slate-200 rounded-md p-5 inline-block min-w-[200px]">
-                <span className="text-[11px] text-slate-500 font-medium capitalize tracking-tight mb-1 block">Total Purchase</span>
-                <span className="text-[24px] font-medium text-slate-900 leading-none">{totalPurchase.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 inline-block min-w-[200px]">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium capitalize tracking-tight mb-1 block">Total Purchase</span>
+                <span className="text-[24px] font-medium text-slate-900 dark:text-white leading-none">{totalPurchase.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
 
             <div className="space-y-4">
                 <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-4 h-4" />
                 <input 
                     ref={searchInputRef}
                     type="text" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search anything..." 
-                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-slate-300"
+                    className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                 />
                 </div>
                 
-                <div className="border border-slate-200 rounded-md overflow-hidden bg-white">
+                <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900">
                 <table className="clean-table">
                     <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-medium text-slate-400 capitalize tracking-widest">
+                    <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest">
                         <th className="w-16">Sr No</th>
                         <th className="capitalize">Date</th>
                         <th className="capitalize">Bill No</th>
@@ -243,29 +243,29 @@ const Bills = () => {
                     </thead>
                     <tbody>
                     {loading ? (
-                        <tr><td colSpan={9} className="text-center py-20 text-slate-400 font-medium capitalize tracking-widest text-[10px]">Loading register...</td></tr>
+                        <tr><td colSpan={9} className="text-center py-20 text-slate-400 dark:text-slate-500 font-medium capitalize tracking-widest text-[10px]">Loading register...</td></tr>
                     ) : filtered.map((b, i) => (
                         <tr 
                             key={b.id} 
-                            className={`transition-colors cursor-pointer ${selectedRowIdx === i ? 'bg-slate-50 border-l-4 border-primary' : 'hover:bg-slate-50/50'}`}
+                            className={`transition-colors cursor-pointer ${selectedRowIdx === i ? 'bg-slate-50 dark:bg-slate-800 border-l-4 border-primary' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50'}`}
                             onClick={() => setSelectedRowIdx(i)}
                         >
-                        <td>{i + 1}</td>
-                        <td>{formatDate(b.date)}</td>
-                        <td className="font-mono font-medium text-slate-900">{b.bill_number}</td>
-                        <td className="capitalize font-medium text-slate-700">{b.vendor_name}</td>
-                        <td className="text-right font-mono text-slate-500">{(Number(b.total_without_gst) || 0).toFixed(2)}</td>
-                        <td className="text-right font-mono text-slate-500">{(Number(b.total_gst) || 0).toFixed(2)}</td>
-                        <td className="text-right font-mono font-medium text-slate-900">{(Number(b.grand_total) || 0).toFixed(2)}</td>
+                        <td className="text-slate-500 dark:text-slate-400">{i + 1}</td>
+                        <td className="text-slate-500 dark:text-slate-400">{formatDate(b.date)}</td>
+                        <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{b.bill_number}</td>
+                        <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{b.vendor_name}</td>
+                        <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(b.total_without_gst) || 0).toFixed(2)}</td>
+                        <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(b.total_gst) || 0).toFixed(2)}</td>
+                        <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{(Number(b.grand_total) || 0).toFixed(2)}</td>
                         <td className="text-center">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-sm capitalize ${b.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-sm capitalize ${b.status === 'Paid' ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>
                             {b.status}
                             </span>
                         </td>
                         <td className="text-center">
                             <div className="flex justify-center space-x-2">
-                                <button onClick={(e) => { e.stopPropagation(); setEditingBill(b); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded transition-all"><Edit className="w-4 h-4" /></button>
-                                <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, bill: b }); }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"><Trash2 className="w-4 h-4" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); setEditingBill(b); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all"><Edit className="w-4 h-4" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, bill: b }); }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-rose-900/20 rounded transition-all"><Trash2 className="w-4 h-4" /></button>
                             </div>
                         </td>
                         </tr>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { getActiveCompanyId, safeSupabaseSave } from '../utils/helpers';
+import { getActiveCompanyId, safeSupabaseSave, toStorageValue } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 
 interface CustomerFormProps {
@@ -42,6 +42,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
         const cid = getActiveCompanyId();
         const payload = { 
             ...formData, 
+            balance: toStorageValue(formData.balance),
             company_id: cid, 
             is_deleted: false,
             is_customer: true,
@@ -59,39 +60,39 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
   }
 
   return (
-    <div className="bg-white w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden rounded-md border border-slate-300">
+    <div className="bg-white dark:bg-slate-900 w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden rounded-md border border-slate-300 dark:border-slate-800">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0 bg-white">
-        <h2 className="text-[18px] font-normal text-slate-900">Customer Entry</h2>
-        <button type="button" onClick={onCancel} className="text-slate-400 hover:text-slate-600 transition-none">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0 bg-white dark:bg-slate-900">
+        <h2 className="text-[18px] font-normal text-slate-900 dark:text-white">Customer Entry</h2>
+        <button type="button" onClick={onCancel} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-none">
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Scrollable Form Body */}
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col bg-white">
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col bg-white dark:bg-slate-900">
         <div className="p-8 space-y-6">
-          <div className="border border-slate-200 rounded-md p-8 space-y-6 bg-white shadow-sm">
+          <div className="border border-slate-200 dark:border-slate-800 rounded-md p-8 space-y-6 bg-white dark:bg-slate-900 shadow-sm">
               <div className="grid grid-cols-3 gap-6">
                   <div className="col-span-2 space-y-1.5">
-                      <label className="text-[14px] font-normal text-slate-900">Customer Name</label>
+                      <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Customer Name</label>
                       <input 
                         ref={firstInputRef} 
                         type="text" 
                         required
                         value={formData.name} 
                         onChange={e => handleChange('name', e.target.value)} 
-                        className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white uppercase" 
+                        className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white uppercase" 
                         placeholder="Customer / Company Name" 
                       />
                   </div>
                   <div className="space-y-1.5">
-                      <label className="text-[14px] font-normal text-slate-900">Opening Balance</label>
+                      <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Opening Balance</label>
                       <input 
                         type="number" 
                         value={formData.balance} 
                         onChange={e => handleChange('balance', parseFloat(e.target.value) || 0)} 
-                        className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white font-mono" 
+                        className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono" 
                         placeholder="0.00" 
                       />
                   </div>
@@ -99,32 +100,32 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
 
               <div className="grid grid-cols-3 gap-6">
                   <div className="space-y-1.5">
-                      <label className="text-[14px] font-normal text-slate-900">GSTIN Number</label>
+                      <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">GSTIN Number</label>
                       <input 
                         type="text" 
                         value={formData.gstin} 
                         onChange={e => handleChange('gstin', e.target.value.toUpperCase())} 
-                        className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white uppercase font-mono" 
+                        className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white uppercase font-mono" 
                         placeholder="GSTIN (Optional)" 
                       />
                   </div>
                   <div className="space-y-1.5">
-                      <label className="text-[14px] font-normal text-slate-900">PAN Number</label>
+                      <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">PAN Number</label>
                       <input 
                         type="text" 
                         value={formData.pan} 
                         onChange={e => handleChange('pan', e.target.value.toUpperCase())} 
-                        className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white uppercase font-mono" 
+                        className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white uppercase font-mono" 
                         placeholder="PAN Number" 
                       />
                   </div>
                   <div className="space-y-1.5">
-                      <label className="text-[14px] font-normal text-slate-900">State</label>
+                      <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">State</label>
                       <input 
                         type="text" 
                         value={formData.state} 
                         onChange={e => handleChange('state', e.target.value)} 
-                        className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white" 
+                        className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
                         placeholder="State Name" 
                       />
                   </div>
@@ -132,66 +133,66 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
 
               <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-1.5">
-                      <label className="text-[14px] font-normal text-slate-900">Email Address</label>
+                      <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Email Address</label>
                       <input 
                         type="email" 
                         value={formData.email} 
                         onChange={e => handleChange('email', e.target.value)} 
-                        className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white" 
+                        className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
                         placeholder="Email Address" 
                       />
                   </div>
                   <div className="space-y-1.5">
-                      <label className="text-[14px] font-normal text-slate-900">Contact Number</label>
+                      <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Contact Number</label>
                       <input 
                         type="text" 
                         value={formData.phone} 
                         onChange={e => handleChange('phone', e.target.value)} 
-                        className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white" 
+                        className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
                         placeholder="Phone Number" 
                       />
                   </div>
               </div>
 
               <div className="space-y-1.5">
-                  <label className="text-[14px] font-normal text-slate-900">Complete Address</label>
+                  <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Complete Address</label>
                   <textarea 
                     rows={3} 
                     value={formData.address} 
                     onChange={e => handleChange('address', e.target.value)} 
-                    className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 resize-none bg-white" 
+                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 resize-none bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
                     placeholder="Enter business address..." 
                   />
               </div>
 
               <div className="grid grid-cols-3 gap-6">
                   <div className="space-y-1.5">
-                      <label className="text-[14px] font-normal text-slate-900">Bank Account Number</label>
+                      <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Bank Account Number</label>
                       <input 
                         type="text" 
                         value={formData.account_number} 
                         onChange={e => handleChange('account_number', e.target.value)} 
-                        className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white font-mono" 
+                        className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono" 
                         placeholder="Account Number" 
                       />
                   </div>
                   <div className="space-y-1.5">
-                      <label className="text-[14px] font-normal text-slate-900">A/C Holder Name</label>
+                      <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">A/C Holder Name</label>
                       <input 
                         type="text" 
                         value={formData.account_name} 
                         onChange={e => handleChange('account_name', e.target.value)} 
-                        className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white" 
+                        className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
                         placeholder="Holder Name" 
                       />
                   </div>
                   <div className="space-y-1.5">
-                      <label className="text-[14px] font-normal text-slate-900">IFSC Code</label>
+                      <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">IFSC Code</label>
                       <input 
                         type="text" 
                         value={formData.ifsc_code} 
                         onChange={e => handleChange('ifsc_code', e.target.value.toUpperCase())} 
-                        className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white font-mono uppercase" 
+                        className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono uppercase" 
                         placeholder="IFSC Code" 
                       />
                   </div>
@@ -200,8 +201,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
         </div>
 
         {/* Fixed Footer */}
-        <div className="px-8 py-4 border-t border-slate-200 flex items-center justify-end space-x-8 bg-white shrink-0">
-            <button type="button" onClick={onCancel} className="text-[13px] text-slate-500 hover:text-slate-800 transition-none font-normal">Discard</button>
+        <div className="px-8 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end space-x-8 bg-white dark:bg-slate-900 shrink-0">
+            <button type="button" onClick={onCancel} className="text-[13px] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-none font-normal">Discard</button>
             <button 
                 type="submit"
                 disabled={loading}

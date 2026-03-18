@@ -123,7 +123,7 @@ const Stock = () => {
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, item: null })} onConfirm={confirmDelete} title="Delete Stock Item" message={`Are you sure you want to remove "${deleteDialog.item?.name}" from master?`} />
       
       <div className="flex items-center justify-between shrink-0">
-        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Inventory Control</h1>
+        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Inventory Control</h1>
         {items.length > 0 && (
           <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-white px-8 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-all capitalize flex items-center shadow-sm">
               <Plus className="w-4 h-4 mr-2" /> New SKU Item
@@ -144,7 +144,7 @@ const Stock = () => {
             <div className="w-80 flex flex-col space-y-4 shrink-0">
                 <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
-                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filter items..." className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-slate-300 shadow-sm" />
+                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filter items..." className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 shadow-sm text-slate-900 dark:text-slate-100" />
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                 {filteredItems.map((item) => {
@@ -159,12 +159,12 @@ const Stock = () => {
                     const isSelected = String(selectedId) === String(item.id);
 
                     return (
-                    <div key={item.id} onClick={() => setSelectedId(String(item.id))} className={`p-4 border rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-primary border-slate-900 text-white' : 'bg-white border-slate-100 hover:bg-slate-50'}`}>
-                        <h3 className={`font-medium capitalize text-[11px] truncate mb-1 ${isSelected ? 'text-white' : 'text-slate-700'}`}>{item.name}</h3>
+                    <div key={item.id} onClick={() => setSelectedId(String(item.id))} className={`p-4 border rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-primary border-slate-900 dark:border-slate-700 text-white' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
+                        <h3 className={`font-medium capitalize text-[11px] truncate mb-1 ${isSelected ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{item.name}</h3>
                         <div className="flex justify-between items-end">
-                            <span className="text-[10px] font-medium text-slate-400 capitalize tracking-tighter">Hsn: {item.hsn || 'N/A'}</span>
-                            <span className={`font-mono text-lg font-bold leading-none ${isSelected ? 'text-white' : 'text-link'}`}>
-                                {currentBalance.toFixed(0)} <span className="text-[10px] opacity-60 font-sans">{item.unit || 'PCS'}</span>
+                            <span className={`text-[10px] font-medium capitalize tracking-tighter ${isSelected ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`}>Hsn: {item.hsn || 'N/A'}</span>
+                            <span className={`font-mono text-lg font-bold leading-none ${isSelected ? 'text-white' : 'text-link dark:text-blue-400'}`}>
+                                {currentBalance.toFixed(0)} <span className={`text-[10px] opacity-60 font-sans ${isSelected ? 'text-white' : ''}`}>{item.unit || 'PCS'}</span>
                             </span>
                         </div>
                     </div>
@@ -174,63 +174,63 @@ const Stock = () => {
             </div>
             )}
 
-            <div className={`flex-1 bg-white border border-slate-200 rounded-md flex flex-col overflow-hidden ${isFullScreen ? 'fixed inset-4 z-[500] m-0 shadow-2xl' : ''}`}>
+            <div className={`flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md flex flex-col overflow-hidden ${isFullScreen ? 'fixed inset-4 z-[500] m-0 shadow-2xl' : ''}`}>
             {selectedItem && itemStats ? (
                 <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-300">
-                <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
                     <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-white rounded-xl border border-slate-200 flex items-center justify-center shadow-sm">
-                        <Package className="w-6 h-6 text-slate-400" />
+                    <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm">
+                        <Package className="w-6 h-6 text-slate-400 dark:text-slate-500" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-medium text-slate-900 capitalize tracking-tight">{selectedItem.name}</h2>
+                        <h2 className="text-xl font-medium text-slate-900 dark:text-white capitalize tracking-tight">{selectedItem.name}</h2>
                         <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-[9px] font-medium text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded capitalize">Hsn {selectedItem.hsn || 'N/A'}</span>
-                        <span className="text-[9px] font-medium text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded capitalize">Sku {selectedItem.sku || 'N/A'}</span>
+                        <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded capitalize">Hsn {selectedItem.hsn || 'N/A'}</span>
+                        <span className="text-[9px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 px-2 py-0.5 rounded capitalize">Sku {selectedItem.sku || 'N/A'}</span>
                         </div>
                     </div>
                     </div>
                     <div className="flex space-x-2">
-                    <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2.5 text-slate-400 bg-white border border-slate-200 rounded-lg hover:text-slate-900 shadow-sm">{isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}</button>
-                    <button onClick={() => { setEditingItem(selectedItem); setIsModalOpen(true); }} className="p-2.5 text-slate-400 bg-white border border-slate-200 rounded-lg hover:text-slate-900 shadow-sm"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => setDeleteDialog({ isOpen: true, item: selectedItem })} className="p-2.5 text-slate-400 bg-white border border-slate-200 rounded-lg hover:text-rose-500 shadow-sm"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2.5 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-slate-900 dark:hover:text-white shadow-sm">{isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}</button>
+                    <button onClick={() => { setEditingItem(selectedItem); setIsModalOpen(true); }} className="p-2.5 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-slate-900 dark:hover:text-white shadow-sm"><Edit className="w-4 h-4" /></button>
+                    <button onClick={() => setDeleteDialog({ isOpen: true, item: selectedItem })} className="p-2.5 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-rose-500 shadow-sm"><Trash2 className="w-4 h-4" /></button>
                     </div>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="bg-white text-slate-900 p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <p className="text-[9px] font-medium text-slate-400 capitalize tracking-widest mb-1">Current Balance</p>
-                        <p className="text-3xl font-bold font-mono text-link">{itemStats.stockBalance.toFixed(0)} <span className="text-xs font-normal opacity-50">{selectedItem.unit}</span></p>
+                    <div className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest mb-1">Current Balance</p>
+                        <p className="text-3xl font-bold font-mono text-link dark:text-blue-400">{itemStats.stockBalance.toFixed(0)} <span className="text-xs font-normal opacity-50">{selectedItem.unit}</span></p>
                     </div>
-                    <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
-                        <p className="text-[9px] font-medium text-slate-400 capitalize tracking-widest mb-1">Purchased (Inward)</p>
-                        <div className="flex items-center text-emerald-600">
+                    <div className="bg-white dark:bg-slate-800 p-6 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
+                        <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest mb-1">Purchased (Inward)</p>
+                        <div className="flex items-center text-emerald-600 dark:text-emerald-400">
                             <ArrowDownLeft className="w-4 h-4 mr-1" />
                             <p className="text-2xl font-medium font-mono">{itemStats.inwardTotal.toFixed(0)}</p>
                         </div>
                     </div>
-                    <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
-                        <p className="text-[9px] font-medium text-slate-400 capitalize tracking-widest mb-1">Sold (Outward)</p>
-                        <div className="flex items-center text-rose-600">
+                    <div className="bg-white dark:bg-slate-800 p-6 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
+                        <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest mb-1">Sold (Outward)</p>
+                        <div className="flex items-center text-rose-600 dark:text-rose-400">
                             <ArrowUpRight className="w-4 h-4 mr-1" />
                             <p className="text-2xl font-medium font-mono">{itemStats.outwardTotal.toFixed(0)}</p>
                         </div>
                     </div>
-                    <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-sm">
-                        <p className="text-[9px] font-medium text-slate-400 capitalize tracking-widest mb-1">Standard Cost</p>
-                        <p className="text-2xl font-medium text-slate-900 font-mono">₹{selectedItem.rate || 0}</p>
+                    <div className="bg-white dark:bg-slate-800 p-6 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
+                        <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest mb-1">Standard Cost</p>
+                        <p className="text-2xl font-medium text-slate-900 dark:text-white font-mono">₹{selectedItem.rate || 0}</p>
                     </div>
                     </div>
 
                     <div className="space-y-4">
-                    <h4 className="text-[11px] font-medium text-slate-400 capitalize tracking-widest flex items-center">
-                        <History className="w-4 h-4 mr-2 text-slate-300" /> Stock Movement Log
+                    <h4 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest flex items-center">
+                        <History className="w-4 h-4 mr-2 text-slate-300 dark:text-slate-600" /> Stock Movement Log
                     </h4>
-                    <div className="border border-slate-200 rounded-md overflow-hidden bg-white shadow-sm">
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
                         <table className="clean-table">
                         <thead>
-                            <tr className="bg-slate-50 text-[10px] font-medium text-slate-400 capitalize tracking-widest">
+                            <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest border-b border-slate-200 dark:border-slate-800">
                                 <th className="font-medium capitalize">Date</th>
                                 <th className="font-medium capitalize">Voucher #</th>
                                 <th className="font-medium capitalize">Type</th>
@@ -238,24 +238,24 @@ const Stock = () => {
                                 <th className="text-right font-medium capitalize">Quantity</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {itemStats.transactions.map((t, idx) => (
-                                <tr key={idx} className="hover:bg-slate-50 transition-none">
-                                    <td className="text-slate-500 font-medium">{formatDate(t.date)}</td>
-                                    <td className="font-mono font-medium text-slate-900">{t.docNo}</td>
+                                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-none">
+                                    <td className="text-slate-500 dark:text-slate-400 font-medium">{formatDate(t.date)}</td>
+                                    <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{t.docNo}</td>
                                     <td>
-                                        <span className={`text-[9px] font-medium capitalize px-2 py-0.5 rounded-sm ${t.type === 'Sale' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-700'}`}>
+                                        <span className={`text-[9px] font-medium capitalize px-2 py-0.5 rounded-sm ${t.type === 'Sale' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
                                             {t.type}
                                         </span>
                                     </td>
-                                    <td className="capitalize font-medium text-slate-700 truncate max-w-[200px]">{t.party}</td>
-                                    <td className={`text-right font-bold font-mono ${t.type === 'Purchase' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    <td className="capitalize font-medium text-slate-700 dark:text-slate-300 truncate max-w-[200px]">{t.party}</td>
+                                    <td className={`text-right font-bold font-mono ${t.type === 'Purchase' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                         {t.type === 'Purchase' ? '+' : '-'}{t.qty}
                                     </td>
                                 </tr>
                             ))}
                             {itemStats.transactions.length === 0 && (
-                                <tr><td colSpan={5} className="py-24 text-center text-slate-300 italic">No inventory activity registered for this SKU.</td></tr>
+                                <tr><td colSpan={5} className="py-24 text-center text-slate-300 dark:text-slate-700 italic">No inventory activity registered for this SKU.</td></tr>
                             )}
                         </tbody>
                         </table>
@@ -264,7 +264,7 @@ const Stock = () => {
                 </div>
                 </div>
             ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-300 italic py-20">
+                <div className="h-full flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 italic py-20">
                     <Layers className="w-16 h-16 opacity-5 mb-4" />
                     <p className="text-sm font-medium">Select an item from the list to view analytics.</p>
                 </div>

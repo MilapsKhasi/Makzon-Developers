@@ -12,7 +12,7 @@ const Auth = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -22,7 +22,7 @@ const Auth = () => {
         const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
         if (loginError) throw loginError;
         
-        // On success, navigate to companies selection
+        // On success, navigate to companies selection immediately
         navigate('/companies');
       } else {
         const { error: signUpError } = await supabase.auth.signUp({ email, password });
@@ -53,7 +53,7 @@ const Auth = () => {
         </div>
 
         <div className="bg-white rounded-[10px] p-6 pb-10 shadow-none">
-          <form onSubmit={handleAuth} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-6">
             {error && (
               <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-[10px] font-semibold animate-shake">
                 {error}

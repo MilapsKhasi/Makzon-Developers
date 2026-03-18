@@ -54,40 +54,40 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
   }
 
   return (
-    <div className="bg-white flex flex-col max-h-[90vh] overflow-hidden">
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-8 bg-white custom-scrollbar">
+    <div className="bg-white dark:bg-slate-900 flex flex-col max-h-[90vh] overflow-hidden">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-8 bg-white dark:bg-slate-900 custom-scrollbar">
             <div className="space-y-6">
                 <div className="space-y-1.5">
-                    <label className="text-[14px] font-normal text-slate-900">Item / Product Name</label>
+                    <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Item / Product Name</label>
                     <input 
                         ref={firstInputRef} 
                         type="text" 
                         required
                         value={formData.name} 
                         onChange={(e) => handleInputChange('name', e.target.value)} 
-                        className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-base font-bold text-slate-900 focus:border-slate-400 uppercase" 
+                        className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded outline-none text-base font-bold text-slate-900 dark:text-white focus:border-slate-400 dark:focus:border-slate-600 uppercase" 
                         placeholder="e.g. PREMIUM RICE" 
                     />
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-1.5">
-                        <label className="text-[14px] font-normal text-slate-900">SKU Code</label>
+                        <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">SKU Code</label>
                         <input 
                             type="text" 
                             value={formData.sku} 
                             onChange={(e) => handleInputChange('sku', e.target.value)} 
-                            className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-sm font-mono focus:border-slate-400" 
+                            className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded outline-none text-sm font-mono focus:border-slate-400 dark:focus:border-slate-600 dark:text-slate-100" 
                             placeholder="Optional" 
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[14px] font-normal text-slate-900">HSN Code</label>
+                        <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">HSN Code</label>
                         <input 
                             type="text" 
                             value={formData.hsn} 
                             onChange={(e) => handleInputChange('hsn', e.target.value)} 
-                            className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-sm font-mono focus:border-slate-400" 
+                            className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded outline-none text-sm font-mono focus:border-slate-400 dark:focus:border-slate-600 dark:text-slate-100" 
                             placeholder="Optional" 
                         />
                     </div>
@@ -95,47 +95,47 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
 
                 <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-1.5">
-                        <label className="text-[14px] font-normal text-slate-900">Unit</label>
+                        <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Unit</label>
                         <div className="relative">
                             <select 
                                 value={formData.unit} 
                                 onChange={(e) => handleInputChange('unit', e.target.value)} 
-                                className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-sm bg-white appearance-none focus:border-slate-400"
+                                className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded outline-none text-sm bg-white dark:bg-slate-800 appearance-none focus:border-slate-400 dark:focus:border-slate-600 dark:text-slate-100"
                             >
                                 {['PCS', 'NOS', 'KGS', 'LTR', 'BAGS', 'BOX', 'DRUMS', 'PACKS'].map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
-                            <Box className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            <Box className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
                         </div>
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[14px] font-normal text-slate-900">Opening Stock</label>
+                        <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Opening Stock</label>
                         <input 
                             type="number" 
                             step="any" 
                             value={formData.in_stock} 
                             onChange={(e) => handleInputChange('in_stock', e.target.value)} 
-                            className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-sm font-mono font-bold focus:border-slate-400" 
+                            className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded outline-none text-sm font-mono font-bold focus:border-slate-400 dark:focus:border-slate-600 dark:text-slate-100" 
                         />
                     </div>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-inner">
+                <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-inner">
                     <div className="space-y-1.5">
-                        <label className="text-[14px] font-normal text-slate-700">Valuation Rate ({currencySymbol})</label>
+                        <label className="text-[14px] font-normal text-slate-700 dark:text-slate-400">Valuation Rate ({currencySymbol})</label>
                         <input 
                             type="number" 
                             step="any" 
                             value={formData.rate} 
                             onChange={(e) => handleInputChange('rate', e.target.value)} 
-                            className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-lg font-bold text-slate-900 bg-white" 
+                            className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-lg font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-800" 
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[14px] font-normal text-slate-700">Default GST %</label>
+                        <label className="text-[14px] font-normal text-slate-700 dark:text-slate-400">Default GST %</label>
                         <select 
                             value={formData.tax_rate} 
                             onChange={(e) => handleInputChange('tax_rate', Number(e.target.value))} 
-                            className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-lg font-bold text-slate-900 bg-white appearance-none"
+                            className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-lg font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-800 appearance-none"
                         >
                             {TAX_RATES.map(r => <option key={r} value={r}>{r}% GST</option>)}
                         </select>
@@ -143,19 +143,19 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-[14px] font-normal text-slate-900">Item Description</label>
+                    <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Item Description</label>
                     <textarea 
                         rows={3} 
                         value={formData.description} 
                         onChange={(e) => handleInputChange('description', e.target.value)} 
-                        className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-sm focus:border-slate-400 resize-none" 
+                        className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded outline-none text-sm focus:border-slate-400 dark:focus:border-slate-600 dark:text-slate-100 resize-none" 
                         placeholder="Optional remarks..." 
                     />
                 </div>
             </div>
 
-            <div className="pt-6 border-t border-slate-100 flex justify-end space-x-6">
-                <button type="button" onClick={onCancel} className="text-[13px] text-slate-400 font-normal hover:text-slate-700 transition-none">Discard Changes</button>
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end space-x-6">
+                <button type="button" onClick={onCancel} className="text-[13px] text-slate-400 dark:text-slate-500 font-normal hover:text-slate-700 dark:hover:text-slate-300 transition-none">Discard Changes</button>
                 <button type="submit" className="bg-primary text-white px-10 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center">
                     <Save className="w-4 h-4 mr-2" /> {initialData ? 'Update Record' : 'Create Item'}
                 </button>

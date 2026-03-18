@@ -26,16 +26,16 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-sm">
       <div className="flex flex-col items-center text-center py-2">
-        <div className={`p-4 rounded-full mb-4 ${variant === 'danger' ? 'bg-red-50 text-red-500' : 'bg-amber-50 text-amber-500'}`}>
+        <div className={`p-4 rounded-full mb-4 ${variant === 'danger' ? 'bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-500 dark:text-amber-400'}`}>
           <AlertTriangle className="w-8 h-8" />
         </div>
-        <p className="text-sm text-slate-600 mb-8 leading-relaxed">
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
           {message}
         </p>
         <div className="flex w-full space-x-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-600 font-bold uppercase text-[10px] tracking-widest rounded hover:bg-slate-200 transition-colors"
+            className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase text-[10px] tracking-widest rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
           >
             {cancelLabel}
           </button>

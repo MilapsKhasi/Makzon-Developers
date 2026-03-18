@@ -179,8 +179,8 @@ const Cashbook = () => {
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex justify-between items-start">
         <div className="flex items-center space-x-3">
-          <h1 className="text-[20px] font-medium text-slate-900 capitalize">Cashbook Register</h1>
-          <button onClick={loadData} className="p-1.5 text-slate-400 hover:text-slate-900 rounded transition-colors">
+          <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Cashbook Register</h1>
+          <button onClick={loadData} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded transition-colors">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -189,7 +189,7 @@ const Cashbook = () => {
                 <button 
                   onClick={handleExportCSV}
                   disabled={exporting || entries.length === 0}
-                  className="px-4 py-2 bg-white border border-slate-200 rounded-md text-xs hover:bg-slate-50 transition-none font-medium flex items-center disabled:opacity-50"
+                  className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-none font-medium flex items-center disabled:opacity-50 text-slate-600 dark:text-slate-300"
                 >
                     {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <FileDown className="w-3.5 h-3.5 mr-2" />} Export Csv
                 </button>
@@ -225,12 +225,12 @@ const Cashbook = () => {
         <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[ 
-                { label: 'Cumulative Inward', value: stats.income, color: 'text-emerald-600' }, 
-                { label: 'Cumulative Outward', value: stats.expense, color: 'text-rose-600' }, 
-                { label: 'Net Cash In Hand', value: stats.balance, color: 'text-slate-900' } 
+                { label: 'Cumulative Inward', value: stats.income, color: 'text-emerald-600 dark:text-emerald-400' }, 
+                { label: 'Cumulative Outward', value: stats.expense, color: 'text-rose-600 dark:text-rose-400' }, 
+                { label: 'Net Cash In Hand', value: stats.balance, color: 'text-slate-900 dark:text-white' } 
                 ].map((stat, i) => (
-                <div key={i} className="bg-white border border-slate-200 rounded-lg p-5 flex flex-col hover:border-slate-300">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1 block">{stat.label}</span>
+                <div key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-5 flex flex-col hover:border-slate-300 dark:hover:border-slate-600 transition-colors shadow-sm">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1 block">{stat.label}</span>
                     <span className={`text-[22px] font-bold font-mono ${stat.color}`}>
                         {formatCurrency(stat.value)}
                     </span>
@@ -240,54 +240,54 @@ const Cashbook = () => {
 
             <div className="space-y-4 pt-4">
                 <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-4 h-4" />
                 <input 
                     type="text" 
                     value={searchQuery} 
                     onChange={(e) => setSearchQuery(e.target.value)} 
                     placeholder="Search by date..." 
-                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-md text-xs outline-none focus:border-slate-300 shadow-sm" 
+                    className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 shadow-sm text-slate-900 dark:text-slate-100" 
                 />
                 </div>
 
-                <div className="border border-slate-200 rounded-md overflow-hidden bg-white shadow-sm">
+                <div className="border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
                 <table className="w-full text-left text-sm border-collapse">
                     <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        <th className="w-16 py-4 px-6 text-center border-r border-slate-100">Sr</th>
-                        <th className="py-4 px-6 border-r border-slate-100">Statement Date</th>
-                        <th className="text-right py-4 px-6 border-r border-slate-100">Income</th>
-                        <th className="text-right py-4 px-6 border-r border-slate-100">Expense</th>
-                        <th className="text-right py-4 px-6 border-r border-slate-100">Balance</th>
+                    <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                        <th className="w-16 py-4 px-6 text-center border-r border-slate-100 dark:border-slate-800">Sr</th>
+                        <th className="py-4 px-6 border-r border-slate-100 dark:border-slate-800">Statement Date</th>
+                        <th className="text-right py-4 px-6 border-r border-slate-100 dark:border-slate-800">Income</th>
+                        <th className="text-right py-4 px-6 border-r border-slate-100 dark:border-slate-800">Expense</th>
+                        <th className="text-right py-4 px-6 border-r border-slate-100 dark:border-slate-800">Balance</th>
                         <th className="text-center py-4 px-6">Manage</th>
                     </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {loading ? (
-                        <tr><td colSpan={6} className="text-center py-20 text-slate-400 text-xs">Loading...</td></tr>
+                        <tr><td colSpan={6} className="text-center py-20 text-slate-400 dark:text-slate-500 text-xs uppercase font-bold">Loading...</td></tr>
                     ) : filteredEntries.map((e, i) => (
-                        <tr key={e.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-3 px-6 text-center border-r border-slate-100 font-mono text-slate-400">{i + 1}</td>
-                        <td className="py-3 px-6 border-r border-slate-100">
-                            <div className="flex items-center text-slate-700 font-bold">
-                            <Calendar className="w-3.5 h-3.5 mr-2 text-slate-300" />
+                        <tr key={e.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="py-3 px-6 text-center border-r border-slate-100 dark:border-slate-800 font-mono text-slate-400 dark:text-slate-500">{i + 1}</td>
+                        <td className="py-3 px-6 border-r border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center text-slate-700 dark:text-slate-300 font-bold">
+                            <Calendar className="w-3.5 h-3.5 mr-2 text-slate-300 dark:text-slate-600" />
                             {formatDate(e.date)}
                             </div>
                         </td>
-                        <td className="text-right py-3 px-6 border-r border-slate-100 font-mono text-emerald-600 font-bold">
+                        <td className="text-right py-3 px-6 border-r border-slate-100 dark:border-slate-800 font-mono text-emerald-600 dark:text-emerald-400 font-bold">
                             {formatCurrency(e.income_total, false)}
                         </td>
-                        <td className="text-right py-3 px-6 border-r border-slate-100 font-mono text-rose-600 font-bold">
+                        <td className="text-right py-3 px-6 border-r border-slate-100 dark:border-slate-800 font-mono text-rose-600 dark:text-rose-400 font-bold">
                             {formatCurrency(e.expense_total, false)}
                         </td>
-                        <td className="text-right py-3 px-6 border-r border-slate-100 font-bold text-slate-900 font-mono">
+                        <td className="text-right py-3 px-6 border-r border-slate-100 dark:border-slate-800 font-bold text-slate-900 dark:text-slate-100 font-mono">
                             {formatCurrency(e.balance, false)}
                         </td>
                         <td className="text-center py-3 px-6">
                             <div className="flex items-center justify-center space-x-2">
-                            <button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 hover:text-slate-900"><Eye className="w-4 h-4" /></button>
-                            <button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 hover:text-slate-900"><Edit className="w-4 h-4" /></button>
-                            <button onClick={() => deleteEntry(e.id)} className="p-1.5 text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"><Eye className="w-4 h-4" /></button>
+                            <button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => deleteEntry(e.id)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
                             </div>
                         </td>
                         </tr>

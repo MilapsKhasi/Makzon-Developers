@@ -22,7 +22,7 @@ const Settings = () => {
   });
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [licenseId, setLicenseId] = useState('FP-26112');
+  const [licenseId, setLicenseId] = useState('ZP-26313');
   
   // Recycle Bin State
   const [recycleTab, setRecycleTab] = useState('All');
@@ -64,7 +64,7 @@ const Settings = () => {
       if (allCompanies) {
         const index = allCompanies.findIndex(c => c.id === cid);
         if (index !== -1) {
-          setLicenseId(`FP-${26112 + index}`);
+          setLicenseId(`ZP-${26313 + index}`);
         }
       }
 
@@ -250,7 +250,7 @@ const Settings = () => {
                   <ShieldCheck className="w-6 h-6 text-primary-dark" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Plan - <span className="text-link">Licensed</span></h4>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Plan - <span className="text-link">Active</span></h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider font-mono">License ID: {licenseId}</p>
                 </div>
               </div>
@@ -297,7 +297,7 @@ const Settings = () => {
               <button 
                 type="button" 
                 onClick={toggleGST} 
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${gstConfig.enabled ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none items-center ${gstConfig.enabled ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`}
               >
                 <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${gstConfig.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>

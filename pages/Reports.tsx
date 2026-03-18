@@ -132,12 +132,12 @@ const Reports = () => {
       <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} onExport={handleExport} reportName={`${activeTab}`} />
 
       <div className="flex items-center justify-between print:hidden">
-        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Reports Engine</h1>
+        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Reports Engine</h1>
         <div className="flex items-center space-x-2">
           <button 
             onClick={() => setIsExportModalOpen(true)}
             disabled={reportTableData.length === 0}
-            className="px-6 py-2 bg-white border border-slate-200 rounded-md text-xs font-medium capitalize hover:bg-slate-50 disabled:opacity-50 shadow-sm transition-all"
+            className="px-6 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium capitalize hover:bg-slate-50 dark:hover:bg-slate-700/50 disabled:opacity-50 shadow-sm transition-all text-slate-600 dark:text-slate-300"
           >
             Export Statement
           </button>
@@ -146,13 +146,13 @@ const Reports = () => {
       </div>
 
       <div className="relative print:hidden">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-4 h-4" />
         <input 
           type="text" 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Filter report data..." 
-          className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-md text-xs outline-none focus:border-slate-300" 
+          className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm" 
         />
       </div>
 
@@ -162,8 +162,8 @@ const Reports = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`w-full text-left px-4 py-2 text-xs font-medium transition-none capitalize ${
-                activeTab === tab ? 'bg-slate-50 text-slate-900 font-medium border-r-2 border-slate-900' : 'text-slate-500 hover:bg-slate-50'
+              className={`w-full text-left px-4 py-2 text-xs font-medium transition-none capitalize rounded-md ${
+                activeTab === tab ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold shadow-md' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
               }`}
             >
               {tab}
@@ -171,34 +171,34 @@ const Reports = () => {
           ))}
         </div>
 
-        <div className="flex-1 bg-white border border-slate-200 rounded-md overflow-hidden flex flex-col shadow-sm print:border-none">
-          <div className="p-4 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center">
-             <h3 className="text-[10px] font-medium text-slate-400 capitalize tracking-widest">{activeTab} Register</h3>
-             <span className="text-[10px] font-medium text-slate-400 capitalize">{reportTableData.length} entries matching</span>
+        <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden flex flex-col shadow-sm print:border-none">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30 flex justify-between items-center">
+             <h3 className="text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest">{activeTab} Register</h3>
+             <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize">{reportTableData.length} entries matching</span>
           </div>
 
-          <div className="flex-1 overflow-auto bg-white custom-scrollbar">
+          <div className="flex-1 overflow-auto bg-white dark:bg-slate-900 custom-scrollbar">
             {loading ? (
                 <div className="h-full flex items-center justify-center py-24"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
             ) : reportTableData.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center py-32 text-center">
-                    <FileText className="w-12 h-12 text-slate-100 mb-4" />
-                    <p className="text-slate-300 italic text-xs capitalize">Report set is currently empty.</p>
+                    <FileText className="w-12 h-12 text-slate-100 dark:text-slate-800 mb-4" />
+                    <p className="text-slate-300 dark:text-slate-700 italic text-xs capitalize">Report set is currently empty.</p>
                 </div>
             ) : (
                 <table className="clean-table w-full text-[11px]">
-                  <thead>
+                  <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
                     <tr>
                       {Object.keys(reportTableData[0] || {}).map(h => (
-                          <th key={h} className="whitespace-nowrap font-medium text-slate-500 bg-slate-50/50 capitalize">{h}</th>
+                          <th key={h} className="py-3 px-4 text-left whitespace-nowrap font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {reportTableData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                      <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
                         {Object.values(row).map((val: any, vIdx) => (
-                          <td key={vIdx} className="whitespace-nowrap font-medium text-slate-700">{val}</td>
+                          <td key={vIdx} className="py-3 px-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">{val}</td>
                         ))}
                       </tr>
                     ))}

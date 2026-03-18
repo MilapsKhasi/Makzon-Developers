@@ -124,7 +124,7 @@ const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ isOpen, onClose, title,
       <button 
         onClick={onClick} 
         disabled={disabled}
-        className={`p-2 rounded hover:bg-slate-100 transition-colors relative group ${disabled ? 'opacity-50 cursor-not-allowed' : 'text-slate-600 hover:text-slate-900'}`}
+        className={`p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative group ${disabled ? 'opacity-50 cursor-not-allowed' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
       >
           <Icon className="w-5 h-5" />
           <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
@@ -137,8 +137,8 @@ const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ isOpen, onClose, title,
     <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-[95vw]">
       <div className="flex flex-col h-[80vh]">
         {/* Toolbar */}
-        <div className="flex items-center space-x-2 border-b border-slate-200 pb-3 mb-3 shrink-0">
-            <div className="flex items-center border-r border-slate-200 pr-2 mr-2 space-x-1">
+        <div className="flex items-center space-x-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-3 shrink-0">
+            <div className="flex items-center border-r border-slate-200 dark:border-slate-800 pr-2 mr-2 space-x-1">
                 <TooltipButton icon={Undo} onClick={handleUndo} tip="Undo" disabled={historyIndex === 0} />
                 <TooltipButton icon={Redo} onClick={handleRedo} tip="Redo" disabled={historyIndex === history.length - 1} />
             </div>
@@ -148,21 +148,21 @@ const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ isOpen, onClose, title,
                 <TooltipButton icon={Eraser} onClick={handleClearAll} tip="Clear All" />
             </div>
             <div className="flex-1"></div>
-            <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded text-xs font-bold border border-blue-100">
+            <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-3 py-1 rounded text-xs font-bold border border-blue-100 dark:border-blue-800">
                 Bulk Entry Mode
             </div>
         </div>
 
         {/* Spreadsheet Area */}
-        <div className="flex-1 overflow-auto border border-slate-300 bg-white shadow-inner relative">
+        <div className="flex-1 overflow-auto border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-inner relative custom-scrollbar">
             <table className="w-full border-collapse">
-                <thead className="sticky top-0 bg-slate-100 z-10 shadow-sm ring-1 ring-slate-200">
+                <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800 z-10 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
                     <tr>
-                        <th className="w-10 border-r border-b border-slate-300 bg-slate-200 text-xs font-bold text-slate-500 p-2 text-center uppercase">#</th>
+                        <th className="w-10 border-r border-b border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 p-2 text-center uppercase">#</th>
                         {columns.map((col) => (
                             <th 
                                 key={col.key} 
-                                className="border-r border-b border-slate-300 text-xs font-bold text-slate-700 p-2 text-left min-w-[120px] uppercase"
+                                className="border-r border-b border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 p-2 text-left min-w-[120px] uppercase"
                                 style={{ width: col.width }}
                             >
                                 {col.header}
@@ -172,22 +172,22 @@ const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ isOpen, onClose, title,
                 </thead>
                 <tbody>
                     {gridData.map((row, rIndex) => (
-                        <tr key={rIndex} className="hover:bg-blue-50/30 transition-colors group">
-                            <td className="border-r border-b border-slate-200 bg-slate-50 text-xs text-slate-400 text-center font-mono select-none group-hover:bg-blue-50/50">
+                        <tr key={rIndex} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors group">
+                            <td className="border-r border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-400 dark:text-slate-500 text-center font-mono select-none group-hover:bg-blue-50/50 dark:group-hover:bg-blue-900/20">
                                 {rIndex + 1}
                             </td>
                             {columns.map((col) => (
-                                <td key={`${rIndex}-${col.key}`} className="border-r border-b border-slate-200 p-0 bg-white">
+                                <td key={`${rIndex}-${col.key}`} className="border-r border-b border-slate-200 dark:border-slate-800 p-0 bg-white dark:bg-slate-900">
                                     {col.type === 'select' ? (
                                         <select
                                             value={row[col.key]}
                                             onChange={(e) => handleCellChange(rIndex, col.key, e.target.value)}
                                             onBlur={handleBlur}
-                                            className="w-full h-full px-2 py-2 text-sm bg-transparent outline-none focus:bg-blue-50 focus:ring-2 focus:ring-inset focus:ring-blue-500/50 cursor-pointer text-slate-900"
+                                            className="w-full h-full px-2 py-2 text-sm bg-transparent outline-none focus:bg-blue-50 dark:focus:bg-blue-900/20 focus:ring-2 focus:ring-inset focus:ring-blue-500/50 cursor-pointer text-slate-900 dark:text-white"
                                         >
-                                            <option value="">Select...</option>
+                                            <option value="" className="dark:bg-slate-900">Select...</option>
                                             {col.options?.map(opt => (
-                                                <option key={opt} value={opt}>{opt}</option>
+                                                <option key={opt} value={opt} className="dark:bg-slate-900">{opt}</option>
                                             ))}
                                         </select>
                                     ) : (
@@ -196,7 +196,7 @@ const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ isOpen, onClose, title,
                                             value={row[col.key]}
                                             onChange={(e) => handleCellChange(rIndex, col.key, e.target.value)}
                                             onBlur={handleBlur}
-                                            className="w-full h-full px-2 py-2 text-sm bg-transparent outline-none focus:bg-blue-50 focus:ring-2 focus:ring-inset focus:ring-blue-500/50 font-normal text-slate-900"
+                                            className="w-full h-full px-2 py-2 text-sm bg-transparent outline-none focus:bg-blue-50 dark:focus:bg-blue-900/20 focus:ring-2 focus:ring-inset focus:ring-blue-500/50 font-normal text-slate-900 dark:text-white"
                                         />
                                     )}
                                 </td>
@@ -204,10 +204,10 @@ const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ isOpen, onClose, title,
                         </tr>
                     ))}
                     <tr>
-                        <td colSpan={columns.length + 1} className="p-2 bg-slate-50 border-t border-slate-200">
+                        <td colSpan={columns.length + 1} className="p-2 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800">
                              <button 
                                 onClick={handleAddRows}
-                                className="w-full py-2 text-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded border border-dashed border-slate-300 transition-colors text-sm font-medium flex items-center justify-center"
+                                className="w-full py-2 text-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 rounded border border-dashed border-slate-300 dark:border-slate-700 transition-colors text-sm font-medium flex items-center justify-center"
                              >
                                 <Plus className="w-4 h-4 mr-2" /> Add 10 More Rows
                              </button>

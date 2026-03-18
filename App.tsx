@@ -57,10 +57,18 @@ const AppContent = () => {
     };
 
     const initAuth = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-      if (currentSession) await checkSchema(currentSession);
-      setAuthLoading(false);
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        setSession(currentSession);
+        if (currentSession) await checkSchema(currentSession);
+      } catch (e: any) {
+        console.error("Auth init error:", e);
+        if (e.message?.includes('Failed to fetch') || e.name === 'TypeError') {
+          setDbError("CONNECTION_ERROR");
+        }
+      } finally {
+        setAuthLoading(false);
+      }
     };
 
     initAuth();
