@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark, CreditCard, ShieldCheck, Plus, ExternalLink, Phone, Mail, MapPin } from 'lucide-react';
+import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark, CreditCard, ShieldCheck, Plus, ExternalLink, Phone, Mail, MapPin, Calculator } from 'lucide-react';
 import Modal from '../components/Modal';
 import VendorForm from '../components/VendorForm';
+import LedgerModal from '../components/LedgerModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
@@ -24,6 +25,7 @@ const Vendors = () => {
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<any | null>(null);
+  const [isLedgerOpen, setIsLedgerOpen] = useState(false);
   
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; vendor: any | null }>({
     isOpen: false,
@@ -133,6 +135,8 @@ const Vendors = () => {
         message={`Are you sure you want to delete "${deleteDialog.vendor?.name}"?`}
       />
 
+      <LedgerModal isOpen={isLedgerOpen} onClose={() => setIsLedgerOpen(false)} party={selectedVendor} type="vendor" />
+
       <div className="flex justify-between items-center shrink-0">
         <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Vendors Directory</h1>
         {vendors.length > 0 && (
@@ -201,6 +205,10 @@ const Vendors = () => {
                     </div>
                     </div>
                     <div className="flex items-center space-x-2">
+                    <button onClick={() => setIsLedgerOpen(true)} className="flex items-center space-x-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all mr-2">
+                        <Calculator className="w-4 h-4" />
+                        <span>Ledgers</span>
+                    </button>
                     <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 rounded" title="Toggle Fullscreen">
                         {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                     </button>

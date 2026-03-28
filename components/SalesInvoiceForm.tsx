@@ -5,6 +5,7 @@ import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, s
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
 import CustomerForm from './CustomerForm';
+import PaymentModal from './PaymentModal';
 
 interface SalesInvoiceFormProps {
   initialData?: any;
@@ -32,7 +33,8 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     grand_total: 0, 
     status: 'Pending',
     round_off: 0,
-    description: ''
+    description: '',
+    payment_details: null
   });
 
   const [loading, setLoading] = useState(false);
@@ -40,6 +42,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   const [customers, setCustomers] = useState<any[]>([]);
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [customerModal, setCustomerModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const parseNumber = (val: string) => {
     if (!val) return 0;
@@ -138,7 +141,8 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         customer_name: normalized.customer_name || '',
         invoice_number: normalized.invoice_number || '',
         displayDate: formatDate(normalized.date),
-        duties_and_taxes: (normalized.items_raw?.duties_and_taxes) || activeDuties.map(d => ({ ...d, bill_rate: d.rate, bill_fixed_amount: d.fixed_amount, amount: 0 }))
+        duties_and_taxes: (normalized.items_raw?.duties_and_taxes) || activeDuties.map(d => ({ ...d, bill_rate: d.rate, bill_fixed_amount: d.fixed_amount, amount: 0 })),
+        payment_details: normalized.items_raw?.payment_details || null
       }));
     }
   };
@@ -186,7 +190,8 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         items: {
             line_items: formData.items,
             duties_and_taxes: formData.duties_and_taxes,
-            gst_type: formData.gst_type
+            gst_type: formData.gst_type,
+            payment_details: formData.payment_details
         }
       };
 
@@ -208,6 +213,22 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       <Modal isOpen={customerModal.isOpen} onClose={() => setCustomerModal({ ...customerModal, isOpen: false })} title={customerModal.initialData ? "Edit Customer" : "New Customer"} maxWidth="max-w-4xl">
         <CustomerForm initialData={customerModal.initialData || matchedCustomer} prefilledName={customerModal.prefilledName} onSubmit={(saved) => { setCustomerModal({ ...customerModal, isOpen: false }); loadData().then(() => handleCustomerChange(saved.name)); }} onCancel={() => setCustomerModal({ ...customerModal, isOpen: false })} />
       </Modal>
+
+      <PaymentModal 
+        isOpen={showPaymentModal} 
+        onClose={() => {
+          setShowPaymentModal(false);
+          if (!formData.payment_details || formData.payment_details.length === 0) setFormData({ ...formData, status: 'Pending' });
+        }} 
+        onSubmit={(payments) => {
+          setFormData({ ...formData, payment_details: payments, status: 'Paid' });
+          setShowPaymentModal(false);
+        }}
+        billNumber={formData.invoice_number || 'New'}
+        totalAmount={formData.grand_total}
+        initialPayments={Array.isArray(formData.payment_details) ? formData.payment_details : (formData.payment_details ? [formData.payment_details] : [])}
+      />
+
       <form onSubmit={handleSubmit} className="p-8 space-y-6 bg-white dark:bg-slate-900">
         <div className="border border-slate-200 dark:border-slate-800 rounded-md p-8 bg-white dark:bg-slate-900 space-y-6 shadow-sm">
             <div className="grid grid-cols-3 gap-6">
@@ -216,7 +237,17 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                 <div className="space-y-1.5">
                     <label className="text-[14px] font-medium dark:text-slate-300 capitalize">Status</label>
                     <div className="relative">
-                        <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] dark:bg-slate-800 dark:text-white appearance-none cursor-pointer">
+                        <select 
+                          value={formData.status} 
+                          onChange={e => {
+                            const newStatus = e.target.value;
+                            setFormData({...formData, status: newStatus});
+                            if (newStatus === 'Paid' && (!formData.payment_details || (Array.isArray(formData.payment_details) && formData.payment_details.length === 0))) {
+                              setShowPaymentModal(true);
+                            }
+                          }} 
+                          className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] dark:bg-slate-800 dark:text-white appearance-none cursor-pointer"
+                        >
                             <option value="Pending">Unpaid</option>
                             <option value="Paid">Received</option>
                         </select>

@@ -5,6 +5,7 @@ import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, g
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
 import VendorForm from './VendorForm';
+import PaymentModal from './PaymentModal';
 
 interface BillFormProps {
   initialData?: any;
@@ -31,7 +32,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     round_off: 0, 
     grand_total: 0, 
     status: 'Pending',
-    description: ''
+    description: '',
+    payment_details: null
   });
 
   const [loading, setLoading] = useState(false);
@@ -39,6 +41,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   const [vendors, setVendors] = useState<any[]>([]);
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [vendorModal, setVendorModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const parseNumber = (val: string) => {
     if (!val) return 0;
@@ -131,7 +134,14 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     } else {
         const normalized = normalizeBill(initialData);
         normalized.items_raw?.duties_and_taxes?.forEach((d:any) => { if(d.amount !== 0) manualOverrides.current.add(d.id); });
-        setFormData(recalculate({ ...getInitialState(), ...normalized, description: normalized.description || '', displayDate: formatDate(normalized.date), duties_and_taxes: (normalized.items_raw?.duties_and_taxes || []) }));
+        setFormData(recalculate({ 
+          ...getInitialState(), 
+          ...normalized, 
+          description: normalized.description || '', 
+          displayDate: formatDate(normalized.date), 
+          duties_and_taxes: (normalized.items_raw?.duties_and_taxes || []),
+          payment_details: normalized.items_raw?.payment_details || null
+        }));
     }
   };
 
@@ -168,7 +178,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
           items: {
               line_items: formData.items,
               duties_and_taxes: formData.duties_and_taxes,
-              gst_type: formData.gst_type
+              gst_type: formData.gst_type,
+              payment_details: formData.payment_details
           }
       };
       
@@ -187,12 +198,43 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         <VendorForm initialData={vendorModal.initialData} prefilledName={vendorModal.prefilledName} onSubmit={(v) => { setVendorModal({ ...vendorModal, isOpen: false }); loadDependencies(); }} onCancel={() => setVendorModal({ ...vendorModal, isOpen: false })} />
       </Modal>
 
+      <PaymentModal 
+        isOpen={showPaymentModal} 
+        onClose={() => {
+          setShowPaymentModal(false);
+          if (!formData.payment_details || formData.payment_details.length === 0) setFormData({ ...formData, status: 'Pending' });
+        }} 
+        onSubmit={(payments) => {
+          setFormData({ ...formData, payment_details: payments, status: 'Paid' });
+          setShowPaymentModal(false);
+        }}
+        billNumber={formData.bill_number || 'New'}
+        totalAmount={formData.grand_total}
+        initialPayments={Array.isArray(formData.payment_details) ? formData.payment_details : (formData.payment_details ? [formData.payment_details] : [])}
+      />
+
       <form onSubmit={handleSubmit} className="p-8 space-y-6">
         <div className="border border-slate-200 dark:border-slate-800 rounded-md p-8 bg-white dark:bg-slate-900 space-y-6 shadow-sm">
             <div className="grid grid-cols-3 gap-6">
                 <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Date</label><input required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px]" /></div>
                 <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Bill No</label><input required value={formData.bill_number} onChange={e => setFormData({...formData, bill_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono uppercase" /></div>
-                <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Status</label><select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] appearance-none cursor-pointer"><option value="Pending">Pending</option><option value="Paid">Paid</option></select></div>
+                <div className="space-y-1.5">
+                  <label className="text-[14px] font-medium dark:text-slate-300 capitalize">Status</label>
+                  <select 
+                    value={formData.status} 
+                    onChange={e => {
+                      const newStatus = e.target.value;
+                      setFormData({...formData, status: newStatus});
+                      if (newStatus === 'Paid' && (!formData.payment_details || (Array.isArray(formData.payment_details) && formData.payment_details.length === 0))) {
+                        setShowPaymentModal(true);
+                      }
+                    }} 
+                    className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] appearance-none cursor-pointer"
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Paid">Paid</option>
+                  </select>
+                </div>
             </div>
 
             <div className="space-y-1.5">

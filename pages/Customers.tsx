@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark, Plus, Contact, Phone, Mail, MapPin } from 'lucide-react';
+import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark, Plus, Contact, Phone, Mail, MapPin, Calculator } from 'lucide-react';
 import Modal from '../components/Modal';
 import CustomerForm from '../components/CustomerForm';
+import LedgerModal from '../components/LedgerModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
@@ -24,6 +25,7 @@ const Customers = () => {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any | null>(null);
+  const [isLedgerOpen, setIsLedgerOpen] = useState(false);
   
   const [lastShiftNTime, setLastShiftNTime] = useState(0);
   const [lastShiftETime, setLastShiftETime] = useState(0);
@@ -200,6 +202,8 @@ const Customers = () => {
 
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, customer: null })} onConfirm={confirmDeleteCustomer} title="Delete Customer" message={`Delete customer account for "${deleteDialog.customer?.name}"? (Press Shift + D + C again to confirm)`} />
 
+      <LedgerModal isOpen={isLedgerOpen} onClose={() => setIsLedgerOpen(false)} party={selectedCustomer} type="customer" />
+
       <div className="flex justify-between items-center shrink-0">
         <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Customers Ledger</h1>
         {customers.length > 0 && (
@@ -247,6 +251,10 @@ const Customers = () => {
                     </div>
                     </div>
                     <div className="flex space-x-2">
+                    <button onClick={() => setIsLedgerOpen(true)} className="flex items-center space-x-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all mr-2">
+                        <Calculator className="w-4 h-4" />
+                        <span>Ledgers</span>
+                    </button>
                     <button ref={fullScreenBtnRef} onClick={() => setIsFullScreen(!isFullScreen)} className={`p-2 text-slate-400 border border-slate-200 dark:border-slate-700 rounded hover:text-slate-900 dark:hover:text-white transition-none ${actionFocusIdx === 0 ? 'ring-2 ring-primary ring-offset-2 border-slate-900 dark:border-white' : ''}`}>{isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}</button>
                     <button ref={editBtnRef} onClick={() => { setEditingCustomer(selectedCustomer); setIsFormOpen(true); }} className={`p-2 text-slate-400 border border-slate-200 dark:border-slate-700 rounded hover:text-slate-900 dark:hover:text-white transition-none ${actionFocusIdx === 1 ? 'ring-2 ring-primary ring-offset-2 border-slate-900 dark:border-white' : ''}`}><Edit className="w-4 h-4" /></button>
                     <button ref={deleteBtnRef} onClick={() => setDeleteDialog({ isOpen: true, customer: selectedCustomer })} className={`p-2 text-slate-400 border border-slate-200 dark:border-slate-700 rounded hover:text-red-500 transition-none ${actionFocusIdx === 2 ? 'ring-2 ring-rose-500 ring-offset-2 border-rose-500' : ''}`}><Trash2 className="w-4 h-4" /></button>
