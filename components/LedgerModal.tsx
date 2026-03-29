@@ -148,23 +148,23 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
   if (!isOpen || !party) return null;
 
   return (
-    <div className="fixed inset-0 z-[550] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-6xl h-[90vh] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[550] flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-6xl h-full sm:h-[90vh] rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-          <div className="flex items-center space-x-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-inner ${type === 'customer' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-600'}`}>
-              <History className="w-6 h-6" />
+        <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
+          <div className="flex items-center space-x-3 sm:space-x-4 overflow-hidden">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shadow-inner shrink-0 ${type === 'customer' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-600'}`}>
+              <History className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white capitalize tracking-tight">{party.name} - Ledger</h2>
-              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">Statement of Accounts</p>
+            <div className="truncate">
+              <h2 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white capitalize tracking-tight truncate">{party.name} - Ledger</h2>
+              <p className="text-[9px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Statement of Accounts</p>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
-            <button className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <button className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
               <Download className="w-4 h-4" />
-              <span>Export PDF</span>
+              <span className="hidden sm:inline">Export PDF</span>
             </button>
             <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
               <X className="w-6 h-6" />
@@ -173,20 +173,20 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         </div>
 
         {/* Stats Bar */}
-        <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-slate-800 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
-          <div className="p-6 flex flex-col items-center justify-center">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Total Debit</p>
-            <p className="text-2xl font-mono font-bold text-red-500">{formatCurrency(totals.debit)}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <div className="p-4 sm:p-6 flex flex-col items-center justify-center">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 sm:mb-2">Total Debit</p>
+            <p className="text-xl sm:text-2xl font-mono font-bold text-red-500">{formatCurrency(totals.debit)}</p>
           </div>
-          <div className="p-6 flex flex-col items-center justify-center">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Total Credit</p>
-            <p className="text-2xl font-mono font-bold text-emerald-500">{formatCurrency(totals.credit)}</p>
+          <div className="p-4 sm:p-6 flex flex-col items-center justify-center">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 sm:mb-2">Total Credit</p>
+            <p className="text-xl sm:text-2xl font-mono font-bold text-emerald-500">{formatCurrency(totals.credit)}</p>
           </div>
-          <div className="p-6 flex flex-col items-center justify-center bg-slate-50/30 dark:bg-slate-800/20">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Net Balance</p>
-            <p className={`text-2xl font-mono font-bold ${finalBalance > 0 ? (type === 'customer' ? 'text-red-500' : 'text-emerald-500') : (finalBalance < 0 ? (type === 'customer' ? 'text-emerald-500' : 'text-red-500') : 'text-slate-400')}`}>
+          <div className="p-4 sm:p-6 flex flex-col items-center justify-center bg-slate-50/30 dark:bg-slate-800/20">
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 sm:mb-2">Net Balance</p>
+            <p className={`text-xl sm:text-2xl font-mono font-bold ${finalBalance > 0 ? (type === 'customer' ? 'text-red-500' : 'text-emerald-500') : (finalBalance < 0 ? (type === 'customer' ? 'text-emerald-500' : 'text-red-500') : 'text-slate-400')}`}>
               {formatCurrency(Math.abs(finalBalance))}
-              <span className="text-xs ml-2 uppercase opacity-50">
+              <span className="text-[10px] sm:text-xs ml-1 sm:ml-2 uppercase opacity-50">
                 {finalBalance === 0 ? '' : (type === 'customer' ? (finalBalance > 0 ? 'Dr' : 'Cr') : (finalBalance > 0 ? 'Cr' : 'Dr'))}
               </span>
             </p>
@@ -194,7 +194,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         </div>
 
         {/* Table Content */}
-        <div className="flex-1 overflow-y-auto p-8 bg-white dark:bg-slate-900 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-white dark:bg-slate-900 custom-scrollbar">
           {loading ? (
             <div className="h-full flex items-center justify-center">
               <Loader2 className="w-10 h-10 text-primary animate-spin opacity-20" />
@@ -205,8 +205,8 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
               <p className="text-sm font-medium">No ledger entries found for this party.</p>
             </div>
           ) : (
-            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-              <table className="w-full text-sm border-collapse">
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto shadow-sm">
+              <table className="w-full text-xs border-collapse min-w-[800px]">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     <th className="p-4 text-left w-32">Date</th>
@@ -243,11 +243,11 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 flex justify-between items-center shrink-0">
-          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Generated on {new Date().toLocaleString()}</p>
+        <div className="px-4 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 flex flex-col sm:flex-row justify-between items-center shrink-0 gap-2">
+          <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Generated on {new Date().toLocaleString()}</p>
           <div className="flex items-center space-x-2">
              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-             <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Live Ledger Sync Active</span>
+             <span className="text-[9px] sm:text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">Live Ledger Sync Active</span>
           </div>
         </div>
       </div>

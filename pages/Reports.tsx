@@ -131,13 +131,13 @@ const Reports = () => {
     <div className="space-y-6 animate-in fade-in duration-300">
       <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} onExport={handleExport} reportName={`${activeTab}`} />
 
-      <div className="flex items-center justify-between print:hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Reports Engine</h1>
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
           <button 
             onClick={() => setIsExportModalOpen(true)}
             disabled={reportTableData.length === 0}
-            className="px-6 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium capitalize hover:bg-slate-50 dark:hover:bg-slate-700/50 disabled:opacity-50 shadow-sm transition-all text-slate-600 dark:text-slate-300"
+            className="px-6 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium capitalize hover:bg-slate-50 dark:hover:bg-slate-700/50 disabled:opacity-50 shadow-sm transition-all text-slate-600 dark:text-slate-300 w-full sm:w-auto"
           >
             Export Statement
           </button>
@@ -156,13 +156,13 @@ const Reports = () => {
         />
       </div>
 
-      <div className="flex gap-6 min-h-[500px]">
-        <div className="w-64 space-y-1 print:hidden">
+      <div className="flex flex-col lg:flex-row gap-6 min-h-[500px]">
+        <div className="w-full lg:w-64 flex lg:flex-col overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 gap-1 print:hidden scrollbar-none">
           {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`w-full text-left px-4 py-2 text-xs font-medium transition-none capitalize rounded-md ${
+              className={`whitespace-nowrap lg:whitespace-normal text-left px-4 py-2 text-xs font-medium transition-none capitalize rounded-md shrink-0 lg:shrink ${
                 activeTab === tab ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold shadow-md' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
               }`}
             >
@@ -177,7 +177,7 @@ const Reports = () => {
              <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize">{reportTableData.length} entries matching</span>
           </div>
 
-          <div className="flex-1 overflow-auto bg-white dark:bg-slate-900 custom-scrollbar">
+          <div className="flex-1 overflow-auto bg-white dark:bg-slate-900 custom-scrollbar overflow-x-auto">
             {loading ? (
                 <div className="h-full flex items-center justify-center py-24"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
             ) : reportTableData.length === 0 ? (
@@ -186,7 +186,7 @@ const Reports = () => {
                     <p className="text-slate-300 dark:text-slate-700 italic text-xs capitalize">Report set is currently empty.</p>
                 </div>
             ) : (
-                <table className="clean-table w-full text-[11px]">
+                <table className="clean-table w-full text-[11px] min-w-[800px]">
                   <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
                     <tr>
                       {Object.keys(reportTableData[0] || {}).map(h => (

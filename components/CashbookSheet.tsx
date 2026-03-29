@@ -212,13 +212,13 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
   return (
     <div className="bg-white dark:bg-slate-900 w-full border border-slate-300 dark:border-slate-800 rounded-md flex flex-col h-full animate-in fade-in duration-300 overflow-hidden">
       {/* Utility Header */}
-      <div className="flex items-center justify-between px-6 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shrink-0">
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shrink-0 gap-4">
+        <div className="flex items-center space-x-4 w-full sm:w-auto">
           <button onClick={onCancel} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex flex-col">
-            <h2 className="text-[14px] font-bold text-slate-900 dark:text-slate-100 uppercase tracking-tight">
+            <h2 className="text-[14px] font-bold text-slate-900 dark:text-slate-100 uppercase tracking-tight truncate max-w-[150px] sm:max-w-none">
               {localStorage.getItem('activeCompanyName') || 'Workspace'}
             </h2>
             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
@@ -226,12 +226,12 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
             </p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <button onClick={handleExportPDF} className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 font-bold text-[11px] hover:bg-slate-50 transition-all uppercase">
-            <FileText className="w-4 h-4 mr-2 text-rose-500" /> PDF
+        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+          <button onClick={handleExportPDF} className="flex items-center px-3 sm:px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 font-bold text-[11px] hover:bg-slate-50 transition-all uppercase">
+            <FileText className="w-4 h-4 sm:mr-2 text-rose-500" /> <span className="hidden sm:inline">PDF</span>
           </button>
-          <button onClick={handleExportXLSX} className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 font-bold text-[11px] hover:bg-slate-50 transition-all uppercase">
-            <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-500" /> Excel
+          <button onClick={handleExportXLSX} className="flex items-center px-3 sm:px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 font-bold text-[11px] hover:bg-slate-50 transition-all uppercase">
+            <FileSpreadsheet className="w-4 h-4 sm:mr-2 text-emerald-500" /> <span className="hidden sm:inline">Excel</span>
           </button>
           <button 
             onClick={() => {
@@ -249,10 +249,11 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
               });
             }}
             disabled={loading}
-            className="bg-primary text-white px-8 py-1.5 rounded font-bold text-[12px] hover:bg-primary-dark transition-all flex items-center ml-2 uppercase shadow-sm"
+            className="bg-primary text-white px-4 sm:px-8 py-2 sm:py-1.5 rounded font-bold text-[12px] hover:bg-primary-dark transition-all flex items-center ml-2 uppercase shadow-sm whitespace-nowrap"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            {initialData ? 'Update Entry' : 'Save Statement'}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 sm:mr-2" />}
+            <span className="hidden sm:inline">{initialData ? 'Update Entry' : 'Save Statement'}</span>
+            <span className="sm:hidden">{initialData ? 'Update' : 'Save'}</span>
           </button>
         </div>
       </div>
@@ -276,26 +277,26 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
               </div>
             </div>
             
-            <div className="flex items-center justify-between text-[13px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] sm:text-[13px] font-bold text-slate-900 dark:text-white uppercase tracking-tight gap-1">
               <span>OPENING BALANCE FOR DATE {openingDateText}</span>
-              <span className="font-mono text-[16px]">{formatCurrency(openingBalance)}</span>
+              <span className="font-mono text-[14px] sm:text-[16px]">{formatCurrency(openingBalance)}</span>
             </div>
         </div>
 
         <div className="flex-1 flex flex-col min-h-0 border border-slate-300 dark:border-slate-800 rounded overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-          <div className="grid grid-cols-2 divide-x divide-slate-300 dark:divide-slate-800 flex-1 overflow-hidden">
+          <div className="flex flex-col lg:grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-slate-300 dark:divide-slate-800 flex-1 overflow-hidden">
             {/* Income Section */}
             <div className="flex flex-col overflow-hidden">
               <div className="bg-emerald-600 px-4 py-2 text-center text-white text-[12px] font-bold uppercase tracking-widest shrink-0">
                 INCOME (INWARDS)
               </div>
-              <div className="overflow-y-auto custom-scrollbar flex-1">
-                <table className="w-full text-[12px] border-collapse">
+              <div className="overflow-y-auto custom-scrollbar flex-1 overflow-x-auto">
+                <table className="w-full text-[12px] border-collapse min-w-[300px]">
                   <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700">
                     <tr className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[9px] tracking-widest">
-                      <th className="w-12 py-2 border-r border-slate-200 dark:border-slate-700 text-center">SR NO</th>
+                      <th className="w-10 sm:w-12 py-2 border-r border-slate-200 dark:border-slate-700 text-center">SR</th>
                       <th className="py-2 px-3 text-left">PARTICULARS</th>
-                      <th className="w-32 py-2 px-3 text-right border-l border-slate-200 dark:border-slate-700">AMOUNT</th>
+                      <th className="w-24 sm:w-32 py-2 px-3 text-right border-l border-slate-200 dark:border-slate-700">AMOUNT</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -305,15 +306,15 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
                           <span className="group-hover:hidden">{idx + 1}</span>
                           <button type="button" onClick={() => removeRow('income', idx)} className="hidden group-hover:flex absolute inset-0 items-center justify-center text-rose-400 hover:text-rose-600"><Trash2 className="w-3 h-3" /></button>
                         </td>
-                        <td className="py-0"><input type="text" value={row.particulars} onChange={(e) => handleInputChange('income', idx, 'particulars', e.target.value)} onBlur={handleBlur} onKeyDown={(e) => handleKeyDown('income', idx, e)} className="w-full h-8 px-3 outline-none bg-transparent font-medium text-slate-700 dark:text-slate-300 uppercase text-[11px]" /></td>
-                        <td className="py-0 border-l border-slate-200 dark:border-slate-700"><input type="text" value={row.amount} onChange={(e) => handleInputChange('income', idx, 'amount', e.target.value)} onBlur={handleBlur} onKeyDown={(e) => handleKeyDown('income', idx, e)} placeholder="0.00" className="w-full h-8 px-3 text-right outline-none bg-transparent font-mono font-bold text-slate-900 dark:text-white" /></td>
+                        <td className="py-0"><input type="text" value={row.particulars} onChange={(e) => handleInputChange('income', idx, 'particulars', e.target.value)} onBlur={handleBlur} onKeyDown={(e) => handleKeyDown('income', idx, e)} className="w-full h-8 px-2 sm:px-3 outline-none bg-transparent font-medium text-slate-700 dark:text-slate-300 uppercase text-[10px] sm:text-[11px]" /></td>
+                        <td className="py-0 border-l border-slate-200 dark:border-slate-700"><input type="text" value={row.amount} onChange={(e) => handleInputChange('income', idx, 'amount', e.target.value)} onBlur={handleBlur} onKeyDown={(e) => handleKeyDown('income', idx, e)} placeholder="0.00" className="w-full h-8 px-2 sm:px-3 text-right outline-none bg-transparent font-mono font-bold text-slate-900 dark:text-white" /></td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot className="sticky bottom-0 bg-white dark:bg-slate-900 border-t-2 border-slate-200 dark:border-slate-700">
                     <tr className="font-bold text-emerald-600">
-                      <td colSpan={2} className="py-2 px-3 text-right text-[11px] uppercase tracking-widest">TOTAL INWARD</td>
-                      <td className="py-2 px-3 text-right font-mono text-[14px]">{formatCurrency(incomeTotal, false)}</td>
+                      <td colSpan={2} className="py-2 px-3 text-right text-[10px] sm:text-[11px] uppercase tracking-widest">TOTAL INWARD</td>
+                      <td className="py-2 px-3 text-right font-mono text-[12px] sm:text-[14px]">{formatCurrency(incomeTotal, false)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -325,13 +326,13 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
               <div className="bg-rose-600 px-4 py-2 text-center text-white text-[12px] font-bold uppercase tracking-widest shrink-0">
                 EXPENSE (OUTWARDS)
               </div>
-              <div className="overflow-y-auto custom-scrollbar flex-1">
-                <table className="w-full text-[12px] border-collapse">
+              <div className="overflow-y-auto custom-scrollbar flex-1 overflow-x-auto">
+                <table className="w-full text-[12px] border-collapse min-w-[300px]">
                   <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700">
                     <tr className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[9px] tracking-widest">
-                      <th className="w-12 py-2 border-r border-slate-200 dark:border-slate-700 text-center">SR NO</th>
+                      <th className="w-10 sm:w-12 py-2 border-r border-slate-200 dark:border-slate-700 text-center">SR</th>
                       <th className="py-2 px-3 text-left">PARTICULARS</th>
-                      <th className="w-32 py-2 px-3 text-right border-l border-slate-200 dark:border-slate-700">AMOUNT</th>
+                      <th className="w-24 sm:w-32 py-2 px-3 text-right border-l border-slate-200 dark:border-slate-700">AMOUNT</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -341,15 +342,15 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
                           <span className="group-hover:hidden">{idx + 1}</span>
                           <button type="button" onClick={() => removeRow('expense', idx)} className="hidden group-hover:flex absolute inset-0 items-center justify-center text-rose-400 hover:text-rose-600"><Trash2 className="w-3 h-3" /></button>
                         </td>
-                        <td className="py-0"><input type="text" value={row.particulars} onChange={(e) => handleInputChange('expense', idx, 'particulars', e.target.value)} onBlur={handleBlur} onKeyDown={(e) => handleKeyDown('expense', idx, e)} className="w-full h-8 px-3 outline-none bg-transparent font-medium text-slate-700 dark:text-slate-300 uppercase text-[11px]" /></td>
-                        <td className="py-0 border-l border-slate-200 dark:border-slate-700"><input type="text" value={row.amount} onChange={(e) => handleInputChange('expense', idx, 'amount', e.target.value)} onBlur={handleBlur} onKeyDown={(e) => handleKeyDown('expense', idx, e)} placeholder="0.00" className="w-full h-8 px-3 text-right outline-none bg-transparent font-mono font-bold text-slate-900 dark:text-white" /></td>
+                        <td className="py-0"><input type="text" value={row.particulars} onChange={(e) => handleInputChange('expense', idx, 'particulars', e.target.value)} onBlur={handleBlur} onKeyDown={(e) => handleKeyDown('expense', idx, e)} className="w-full h-8 px-2 sm:px-3 outline-none bg-transparent font-medium text-slate-700 dark:text-slate-300 uppercase text-[10px] sm:text-[11px]" /></td>
+                        <td className="py-0 border-l border-slate-200 dark:border-slate-700"><input type="text" value={row.amount} onChange={(e) => handleInputChange('expense', idx, 'amount', e.target.value)} onBlur={handleBlur} onKeyDown={(e) => handleKeyDown('expense', idx, e)} placeholder="0.00" className="w-full h-8 px-2 sm:px-3 text-right outline-none bg-transparent font-mono font-bold text-slate-900 dark:text-white" /></td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot className="sticky bottom-0 bg-white dark:bg-slate-900 border-t-2 border-slate-200 dark:border-slate-700">
                     <tr className="font-bold text-rose-600">
-                      <td colSpan={2} className="py-2 px-3 text-right text-[11px] uppercase tracking-widest">TOTAL OUTWARD</td>
-                      <td className="py-2 px-3 text-right font-mono text-[14px]">{formatCurrency(expenseTotal, false)}</td>
+                      <td colSpan={2} className="py-2 px-3 text-right text-[10px] sm:text-[11px] uppercase tracking-widest">TOTAL OUTWARD</td>
+                      <td className="py-2 px-3 text-right font-mono text-[12px] sm:text-[14px]">{formatCurrency(expenseTotal, false)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -358,17 +359,17 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
           </div>
 
           {/* Bottom Summary Ledger */}
-          <div className="bg-slate-100 dark:bg-slate-800 px-8 py-4 shrink-0 grid grid-cols-1 gap-1 border-t-2 border-slate-300 dark:border-slate-700">
-            <div className="flex justify-between text-[13px] font-bold text-slate-700 dark:text-slate-300 uppercase">
+          <div className="bg-slate-100 dark:bg-slate-800 px-4 sm:px-8 py-4 shrink-0 grid grid-cols-1 gap-1 border-t-2 border-slate-300 dark:border-slate-700">
+            <div className="flex justify-between text-[11px] sm:text-[13px] font-bold text-slate-700 dark:text-slate-300 uppercase">
               <span>Total Income</span>
               <span className="font-mono">{formatCurrency(incomeTotal)}</span>
             </div>
-            <div className="flex justify-between text-[13px] font-bold text-slate-700 dark:text-slate-300 uppercase">
+            <div className="flex justify-between text-[11px] sm:text-[13px] font-bold text-slate-700 dark:text-slate-300 uppercase">
               <span>Total Expense</span>
               <span className="font-mono">{formatCurrency(expenseTotal)}</span>
             </div>
-            <div className="flex justify-between text-[15px] font-black text-slate-900 dark:text-white uppercase mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-              <span>CLOSING BALANCE FOR DATE {displayDate}</span>
+            <div className="flex flex-col sm:flex-row sm:justify-between text-[12px] sm:text-[15px] font-black text-slate-900 dark:text-white uppercase mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 gap-1">
+              <span className="max-w-[150px] sm:max-w-none">CLOSING BALANCE FOR DATE {displayDate}</span>
               <span className="font-mono text-link">{formatCurrency(closingBalance)}</span>
             </div>
           </div>

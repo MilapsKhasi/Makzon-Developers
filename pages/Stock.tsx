@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, History, Trash2, Edit, Package, Maximize2, Minimize2, Plus, TrendingUp, TrendingDown, Layers, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Search, History, Trash2, Edit, Package, Maximize2, Minimize2, Plus, TrendingUp, TrendingDown, Layers, ArrowDownLeft, ArrowUpRight, ArrowLeft } from 'lucide-react';
 import { getActiveCompanyId, formatDate, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import StockForm from '../components/StockForm';
@@ -122,11 +122,14 @@ const Stock = () => {
       </Modal>
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, item: null })} onConfirm={confirmDelete} title="Delete Stock Item" message={`Are you sure you want to remove "${deleteDialog.item?.name}" from master?`} />
       
-      <div className="flex items-center justify-between shrink-0">
-        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Inventory Control</h1>
+      <div className="flex flex-col sm:flex-row items-center justify-between shrink-0 gap-4">
+        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize w-full sm:w-auto">Inventory Control</h1>
         {items.length > 0 && (
-          <button onClick={() => { setEditingItem(null); setIsModalOpen(true); }} className="bg-primary text-white px-8 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-all capitalize flex items-center shadow-sm">
-              <Plus className="w-4 h-4 mr-2" /> New SKU Item
+          <button 
+            onClick={() => { setEditingItem(null); setIsModalOpen(true); }} 
+            className="bg-primary text-white px-8 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-all capitalize flex items-center shadow-sm w-full sm:w-auto justify-center"
+          >
+            <Plus className="w-4 h-4 mr-2" /> New SKU Item
           </button>
         )}
       </div>
@@ -139,9 +142,9 @@ const Stock = () => {
           onAction={() => { setEditingItem(null); setIsModalOpen(true); }} 
         />
       ) : (
-        <div className="flex-1 flex gap-6 overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden min-h-0">
             {!isFullScreen && (
-            <div className="w-80 flex flex-col space-y-4 shrink-0">
+            <div className={`w-full lg:w-80 flex flex-col space-y-4 shrink-0 ${selectedId ? 'hidden lg:flex' : 'flex'}`}>
                 <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
                 <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filter items..." className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 shadow-sm text-slate-900 dark:text-slate-100" />
@@ -174,52 +177,55 @@ const Stock = () => {
             </div>
             )}
 
-            <div className={`flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md flex flex-col overflow-hidden ${isFullScreen ? 'fixed inset-4 z-[500] m-0 shadow-2xl' : ''}`}>
+            <div className={`flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md flex flex-col overflow-hidden ${isFullScreen ? 'fixed inset-4 z-[500] m-0 shadow-2xl' : ''} ${!selectedId ? 'hidden lg:flex' : 'flex'}`}>
             {selectedItem && itemStats ? (
                 <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-300">
-                <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
-                    <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm">
-                        <Package className="w-6 h-6 text-slate-400 dark:text-slate-500" />
+                <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30 shrink-0">
+                    <div className="flex items-center space-x-3 sm:space-x-4 overflow-hidden">
+                    <button onClick={() => setSelectedId(null)} className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center shadow-sm shrink-0">
+                        <Package className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 dark:text-slate-500" />
                     </div>
-                    <div>
-                        <h2 className="text-xl font-medium text-slate-900 dark:text-white capitalize tracking-tight">{selectedItem.name}</h2>
+                    <div className="truncate">
+                        <h2 className="text-base sm:text-xl font-medium text-slate-900 dark:text-white capitalize tracking-tight truncate">{selectedItem.name}</h2>
                         <div className="flex items-center space-x-2 mt-1">
                         <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded capitalize">Hsn {selectedItem.hsn || 'N/A'}</span>
                         <span className="text-[9px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 px-2 py-0.5 rounded capitalize">Sku {selectedItem.sku || 'N/A'}</span>
                         </div>
                     </div>
                     </div>
-                    <div className="flex space-x-2">
-                    <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2.5 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-slate-900 dark:hover:text-white shadow-sm">{isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}</button>
+                    <div className="flex items-center space-x-1 sm:space-x-2">
+                    <button onClick={() => setIsFullScreen(!isFullScreen)} className="hidden sm:block p-2.5 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-slate-900 dark:hover:text-white shadow-sm">{isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}</button>
                     <button onClick={() => { setEditingItem(selectedItem); setIsModalOpen(true); }} className="p-2.5 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-slate-900 dark:hover:text-white shadow-sm"><Edit className="w-4 h-4" /></button>
                     <button onClick={() => setDeleteDialog({ isOpen: true, item: selectedItem })} className="p-2.5 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-rose-500 shadow-sm"><Trash2 className="w-4 h-4" /></button>
                     </div>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar space-y-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                     <div className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                         <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest mb-1">Current Balance</p>
-                        <p className="text-3xl font-bold font-mono text-link dark:text-blue-400">{itemStats.stockBalance.toFixed(0)} <span className="text-xs font-normal opacity-50">{selectedItem.unit}</span></p>
+                        <p className="text-2xl sm:text-3xl font-bold font-mono text-link dark:text-blue-400">{itemStats.stockBalance.toFixed(0)} <span className="text-xs font-normal opacity-50">{selectedItem.unit}</span></p>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-6 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
                         <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest mb-1">Purchased (Inward)</p>
                         <div className="flex items-center text-emerald-600 dark:text-emerald-400">
                             <ArrowDownLeft className="w-4 h-4 mr-1" />
-                            <p className="text-2xl font-medium font-mono">{itemStats.inwardTotal.toFixed(0)}</p>
+                            <p className="text-xl sm:text-2xl font-medium font-mono">{itemStats.inwardTotal.toFixed(0)}</p>
                         </div>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-6 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
                         <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest mb-1">Sold (Outward)</p>
                         <div className="flex items-center text-rose-600 dark:text-rose-400">
                             <ArrowUpRight className="w-4 h-4 mr-1" />
-                            <p className="text-2xl font-medium font-mono">{itemStats.outwardTotal.toFixed(0)}</p>
+                            <p className="text-xl sm:text-2xl font-medium font-mono">{itemStats.outwardTotal.toFixed(0)}</p>
                         </div>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-6 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
                         <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest mb-1">Standard Cost</p>
-                        <p className="text-2xl font-medium text-slate-900 dark:text-white font-mono">₹{selectedItem.rate || 0}</p>
+                        <p className="text-xl sm:text-2xl font-medium text-slate-900 dark:text-white font-mono">₹{selectedItem.rate || 0}</p>
                     </div>
                     </div>
 
@@ -227,8 +233,8 @@ const Stock = () => {
                     <h4 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest flex items-center">
                         <History className="w-4 h-4 mr-2 text-slate-300 dark:text-slate-600" /> Stock Movement Log
                     </h4>
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-                        <table className="clean-table">
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-x-auto bg-white dark:bg-slate-900 shadow-sm">
+                        <table className="clean-table min-w-[600px]">
                         <thead>
                             <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest border-b border-slate-200 dark:border-slate-800">
                                 <th className="font-medium capitalize">Date</th>

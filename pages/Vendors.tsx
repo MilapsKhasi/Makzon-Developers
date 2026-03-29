@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark, CreditCard, ShieldCheck, Plus, ExternalLink, Phone, Mail, MapPin, Calculator } from 'lucide-react';
+import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark, CreditCard, ShieldCheck, Plus, ExternalLink, Phone, Mail, MapPin, Calculator, ArrowLeft } from 'lucide-react';
 import Modal from '../components/Modal';
 import VendorForm from '../components/VendorForm';
 import LedgerModal from '../components/LedgerModal';
@@ -137,12 +137,12 @@ const Vendors = () => {
 
       <LedgerModal isOpen={isLedgerOpen} onClose={() => setIsLedgerOpen(false)} party={selectedVendor} type="vendor" />
 
-      <div className="flex justify-between items-center shrink-0">
-        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Vendors Directory</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4">
+        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize w-full sm:w-auto">Vendors Directory</h1>
         {vendors.length > 0 && (
           <button 
             onClick={() => { setEditingVendor(null); setIsFormOpen(true); }} 
-            className="bg-primary text-white px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize"
+            className="bg-primary text-white px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize w-full sm:w-auto justify-center"
           >
             <Plus className="w-4 h-4 mr-2" /> New Vendor
           </button>
@@ -157,9 +157,9 @@ const Vendors = () => {
           onAction={() => { setEditingVendor(null); setIsFormOpen(true); }} 
         />
       ) : (
-        <div className="flex-1 flex gap-6 min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0 overflow-hidden">
             {!isFullScreen && (
-            <div className="w-80 flex flex-col space-y-4 shrink-0">
+            <div className={`w-full lg:w-80 flex flex-col space-y-4 shrink-0 ${selectedVendorId ? 'hidden lg:flex' : 'flex'}`}>
                 <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
                 <input 
@@ -191,25 +191,28 @@ const Vendors = () => {
             </div>
             )}
 
-            <div className={`flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md flex flex-col overflow-hidden ${isFullScreen ? 'fixed inset-4 z-[150] m-0 shadow-2xl' : ''}`}>
+            <div className={`flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md flex flex-col overflow-hidden ${isFullScreen ? 'fixed inset-4 z-[150] m-0 shadow-2xl' : ''} ${!selectedVendorId ? 'hidden lg:flex' : 'flex'}`}>
             {selectedVendor ? (
                 <div className="flex flex-col h-full">
-                <div className="px-8 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
-                    <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                <div className="px-4 sm:px-8 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
+                    <div className="flex items-center space-x-3 overflow-hidden">
+                    <button onClick={() => setSelectedVendorId(null)} className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded flex items-center justify-center border border-slate-200 dark:border-slate-700 shrink-0">
                         <Landmark className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                     </div>
-                    <div>
-                        <h2 className="text-lg font-medium text-slate-900 dark:text-white capitalize leading-none">{selectedVendor.name}</h2>
+                    <div className="truncate">
+                        <h2 className="text-base sm:text-lg font-medium text-slate-900 dark:text-white capitalize leading-none truncate">{selectedVendor.name}</h2>
                         <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-tighter mt-1">Id: {selectedVendor.id.split('-')[0]}</p>
                     </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                    <button onClick={() => setIsLedgerOpen(true)} className="flex items-center space-x-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all mr-2">
+                    <div className="flex items-center space-x-1 sm:space-x-2">
+                    <button onClick={() => setIsLedgerOpen(true)} className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
                         <Calculator className="w-4 h-4" />
-                        <span>Ledgers</span>
+                        <span className="hidden sm:inline">Ledgers</span>
                     </button>
-                    <button onClick={() => setIsFullScreen(!isFullScreen)} className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 rounded" title="Toggle Fullscreen">
+                    <button onClick={() => setIsFullScreen(!isFullScreen)} className="hidden sm:block p-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 rounded" title="Toggle Fullscreen">
                         {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                     </button>
                     <button onClick={() => { setEditingVendor(selectedVendor); setIsFormOpen(true); }} className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 rounded" title="Edit Profile">
@@ -220,14 +223,14 @@ const Vendors = () => {
                     </button>
                     </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-10">
                     <StatCard label="Ledger Balance" value={formatCurrency(stats.balance)} colorClass="text-slate-900" />
                     <StatCard label="Total Purchases" value={formatCurrency(stats.totalPurchased)} colorClass="text-slate-500" />
                     <StatCard label="Settled Amount" value={formatCurrency(stats.totalPaid)} colorClass="text-green-600" />
                     <StatCard label="Status" value={selectedVendor.status || 'Active'} colorClass="text-primary-dark dark:text-primary font-medium" />
                     </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-10">
                     <div className="bg-slate-50/50 dark:bg-slate-800/30 p-6 rounded-xl border border-slate-100 dark:border-slate-800 space-y-4">
                         <h4 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest flex items-center"><ShieldCheck className="w-3.5 h-3.5 mr-2" /> Kyc & Identity</h4>
                         <div className="space-y-3">
@@ -253,8 +256,8 @@ const Vendors = () => {
                     </div>
                     <div className="space-y-4">
                     <div className="flex items-center justify-between"><h4 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest flex items-center"><History className="w-4 h-4 mr-2 text-slate-300 dark:text-slate-600" /> Transaction Register</h4></div>
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-                        <table className="clean-table">
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-x-auto bg-white dark:bg-slate-900 shadow-sm">
+                        <table className="clean-table min-w-[600px]">
                         <thead><tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800"><th className="font-medium capitalize text-slate-400 dark:text-slate-500">Date</th><th className="font-medium capitalize text-slate-400 dark:text-slate-500">Bill No</th><th className="text-right font-medium capitalize text-slate-400 dark:text-slate-500">Without Gst</th><th className="text-right font-medium capitalize text-slate-400 dark:text-slate-500">Tax</th><th className="text-right font-medium capitalize text-slate-400 dark:text-slate-500">Total</th><th className="text-center font-medium capitalize text-slate-400 dark:text-slate-500">Status</th></tr></thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {stats.transactions.map((bill) => (

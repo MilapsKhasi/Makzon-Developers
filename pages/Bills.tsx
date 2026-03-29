@@ -183,15 +183,15 @@ const Bills = () => {
 
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, bill: null })} onConfirm={confirmDelete} title="Archive Bill" message={`Are you sure you want to delete bill ${deleteDialog.bill?.bill_number}? (Press Shift + D again to confirm)`} />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Purchase Bills Ledger</h1>
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
           <DateFilter ref={dateFilterRef} onFilterChange={setDateRange} />
           {bills.length > 0 && (
             <button 
                 ref={newEntryBtnRef}
                 onClick={() => { setEditingBill(null); setIsModalOpen(true); }}
-                className={`bg-primary text-white px-6 py-2 rounded-md font-medium text-sm transition-none capitalize border-2 ${headerFocusIdx === 2 ? 'border-slate-900 dark:border-white ring-2 ring-primary ring-offset-2' : 'border-transparent hover:bg-primary-dark'}`}
+                className={`bg-primary text-white px-6 py-2 rounded-md font-medium text-sm transition-none capitalize border-2 w-full sm:w-auto ${headerFocusIdx === 2 ? 'border-slate-900 dark:border-white ring-2 ring-primary ring-offset-2' : 'border-transparent hover:bg-primary-dark'}`}
             >
                 New Entry
             </button>
@@ -208,7 +208,7 @@ const Bills = () => {
         />
       ) : (
         <>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 inline-block min-w-[200px]">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 inline-block w-full sm:w-auto min-w-[200px]">
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium capitalize tracking-tight mb-1 block">Total Purchase</span>
                 <span className="text-[24px] font-medium text-slate-900 dark:text-white leading-none">{totalPurchase.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
@@ -226,8 +226,8 @@ const Bills = () => {
                 />
                 </div>
                 
-                <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900">
-                <table className="clean-table">
+                <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900 overflow-x-auto">
+                <table className="clean-table min-w-[800px]">
                     <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest">
                         <th className="w-16">Sr No</th>

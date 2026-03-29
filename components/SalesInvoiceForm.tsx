@@ -229,9 +229,9 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         initialPayments={Array.isArray(formData.payment_details) ? formData.payment_details : (formData.payment_details ? [formData.payment_details] : [])}
       />
 
-      <form onSubmit={handleSubmit} className="p-8 space-y-6 bg-white dark:bg-slate-900">
-        <div className="border border-slate-200 dark:border-slate-800 rounded-md p-8 bg-white dark:bg-slate-900 space-y-6 shadow-sm">
-            <div className="grid grid-cols-3 gap-6">
+      <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6 bg-white dark:bg-slate-900">
+        <div className="border border-slate-200 dark:border-slate-800 rounded-md p-4 sm:p-8 bg-white dark:bg-slate-900 space-y-6 shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Date</label><input ref={firstInputRef} required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-medium dark:bg-slate-800 dark:text-white" /></div>
                 <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Invoice No</label><input required value={formData.invoice_number} onChange={e => setFormData({...formData, invoice_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono dark:bg-slate-800 dark:text-white font-bold uppercase" /></div>
                 <div className="space-y-1.5">
@@ -301,10 +301,10 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                 <datalist id="itemslist">{stockItems.map(s => <option key={s.id} value={s.name} />)}</datalist>
                 <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', unit: 'PCS', rate: '', tax_rate: 0, taxableAmount: 0 }]}))} className="w-full py-3 bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-t border-slate-200 dark:border-slate-700">+ Add New Row</button>
             </div>
-            <div className="flex justify-between items-start pt-8 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-                <div className="w-1/2 pr-12"><label className="text-[14px] font-medium dark:text-slate-100 mb-2 block capitalize">Remark</label><textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] resize-none h-36 bg-slate-50/30 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-800 transition-all shadow-inner" placeholder="Public or private notes..." /></div>
-                <div className="flex flex-col items-end space-y-4 w-1/2">
-                    <div className="flex items-center justify-between w-full max-sm text-[14px]"><span className="text-slate-500 font-bold uppercase tracking-tight text-right pr-4">Taxable Value</span><input type="text" value={formatWhileTyping(formData.total_without_gst.toString())} onFocus={(e) => { e.target.value = formData.total_without_gst.toString(); e.target.select(); }} onBlur={(e) => { e.target.value = formatWhileTyping(formData.total_without_gst.toString()) }} onChange={e => setFormData(recalculate({...formData}, 'total_without_gst', undefined, e.target.value))} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-slate-900 dark:text-100 text-right w-48 bg-white dark:bg-slate-800" /></div>
+            <div className="flex flex-col lg:flex-row justify-between items-start pt-8 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 gap-8">
+                <div className="w-full lg:w-1/2 lg:pr-12"><label className="text-[14px] font-medium dark:text-slate-100 mb-2 block capitalize">Remark</label><textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] resize-none h-36 bg-slate-50/30 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-800 transition-all shadow-inner" placeholder="Public or private notes..." /></div>
+                <div className="flex flex-col items-end space-y-4 w-full lg:w-1/2">
+                    <div className="flex items-center justify-between w-full max-sm text-[14px]"><span className="text-slate-500 font-bold uppercase tracking-tight text-right pr-4">Taxable Value</span><input type="text" value={formatWhileTyping(formData.total_without_gst.toString())} onFocus={(e) => { e.target.value = formData.total_without_gst.toString(); e.target.select(); }} onBlur={(e) => { e.target.value = formatWhileTyping(formData.total_without_gst.toString()) }} onChange={e => setFormData(recalculate({...formData}, 'total_without_gst', undefined, e.target.value))} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-slate-900 dark:text-100 text-right w-40 sm:w-48 bg-white dark:bg-slate-800" /></div>
                     {formData.duties_and_taxes.map((d: any) => (
                         <div key={d.id} className="flex items-center justify-between w-full max-sm text-[14px]">
                             <span className="text-slate-500 font-bold uppercase tracking-tight text-right pr-4">{d.name}</span>
@@ -314,12 +314,12 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                               onFocus={(e) => { e.target.value = d.amount.toString(); e.target.select(); }} 
                               onBlur={(e) => { e.target.value = formatWhileTyping(d.amount.toString()) }} 
                               onChange={e => setFormData(recalculate({...formData}, undefined, d.id, e.target.value))} 
-                              className={`px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-right w-48 ${appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST') ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed' : 'bg-white dark:bg-slate-800'}`}
+                              className={`px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-right w-40 sm:w-48 ${appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST') ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed' : 'bg-white dark:bg-slate-800'}`}
                               readOnly={appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST')}
                             />
                         </div>
                     ))}
-                    <div className="flex items-center justify-between w-full max-sm pt-5 border-t border-slate-100 dark:border-slate-800"><span className="text-slate-900 dark:text-white font-bold uppercase tracking-tight text-right pr-4">Net Amount</span><span className={`font-mono font-bold text-[24px] tracking-tight ${formData.grand_total < 0 ? 'text-red-500' : 'text-link'}`}>{formatCurrency(formData.grand_total)}</span></div>
+                    <div className="flex items-center justify-between w-full max-sm pt-5 border-t border-slate-100 dark:border-slate-800"><span className="text-slate-900 dark:text-white font-bold uppercase tracking-tight text-right pr-4">Net Amount</span><span className={`font-mono font-bold text-[20px] sm:text-[24px] tracking-tight ${formData.grand_total < 0 ? 'text-red-500' : 'text-link'}`}>{formatCurrency(formData.grand_total)}</span></div>
                 </div>
             </div>
         </div>

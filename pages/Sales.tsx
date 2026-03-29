@@ -188,15 +188,15 @@ const Sales = () => {
         message={`Permanently archive sale invoice ${deleteDialog.invoice?.invoice_number}? (Press Shift + D again to confirm, or Esc to cancel)`} 
       />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Sales Ledger</h1>
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
           <DateFilter ref={dateFilterRef} onFilterChange={setDateRange} />
           {invoices.length > 0 && (
             <button 
                 ref={newSaleBtnRef}
                 onClick={() => { setEditingInvoice(null); setIsModalOpen(true); }}
-                className={`px-8 py-2 rounded-md font-medium text-sm transition-none capitalize border-2 ${headerFocusIdx === 2 ? 'border-slate-900 dark:border-white ring-2 ring-link ring-offset-2' : 'border-transparent bg-link text-white hover:bg-link/90'}`}
+                className={`px-8 py-2 rounded-md font-medium text-sm transition-none capitalize border-2 w-full sm:w-auto ${headerFocusIdx === 2 ? 'border-slate-900 dark:border-white ring-2 ring-link ring-offset-2' : 'border-transparent bg-link text-white hover:bg-link/90'}`}
             >
                 <Plus className="w-4 h-4 mr-2 inline" /> New Sale
             </button>
@@ -213,7 +213,7 @@ const Sales = () => {
         />
       ) : (
         <>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 inline-block min-w-[240px]">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 inline-block w-full sm:w-auto min-w-[240px]">
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium capitalize tracking-tight mb-1 block">Total Revenue</span>
                 <span className="text-[24px] font-medium text-link font-mono">
                     {filtered.reduce((acc, i) => acc + Number(i.grand_total || 0), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -233,8 +233,8 @@ const Sales = () => {
                 />
                 </div>
                 
-                <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900">
-                <table className="clean-table">
+                <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900 overflow-x-auto">
+                <table className="clean-table min-w-[800px]">
                     <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest">
                         <th className="w-16">Sr</th>

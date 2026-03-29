@@ -177,25 +177,25 @@ const Cashbook = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div className="flex items-center space-x-3">
           <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Cashbook Register</h1>
           <button onClick={loadData} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded transition-colors">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
-        <div className="flex flex-col items-end space-y-4">
-            <div className="flex space-x-2">
+        <div className="flex flex-col items-end space-y-4 w-full sm:w-auto">
+            <div className="flex flex-wrap gap-2 justify-end w-full sm:w-auto">
                 <button 
                   onClick={handleExportCSV}
                   disabled={exporting || entries.length === 0}
-                  className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-none font-medium flex items-center disabled:opacity-50 text-slate-600 dark:text-slate-300"
+                  className="px-3 sm:px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-none font-medium flex items-center disabled:opacity-50 text-slate-600 dark:text-slate-300"
                 >
                     {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <FileDown className="w-3.5 h-3.5 mr-2" />} Export Csv
                 </button>
                 <button 
                   onClick={() => { setEditingEntry(null); setViewState('entry'); }} 
-                  className="bg-primary text-white px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center shadow-sm"
+                  className="bg-primary text-white px-4 sm:px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center shadow-sm"
                 >
                 <Plus className="w-4 h-4 mr-2" /> Create Statement
                 </button>
@@ -250,8 +250,8 @@ const Cashbook = () => {
                 />
                 </div>
 
-                <div className="border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-                <table className="w-full text-left text-sm border-collapse">
+                <div className="border border-slate-200 dark:border-slate-700 rounded-md overflow-x-auto bg-white dark:bg-slate-900 shadow-sm">
+                <table className="w-full text-left text-sm border-collapse min-w-[800px]">
                     <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                         <th className="w-16 py-4 px-6 text-center border-r border-slate-100 dark:border-slate-800">Sr</th>

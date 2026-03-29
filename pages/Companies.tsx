@@ -134,14 +134,19 @@ const Companies = () => {
 
   return (
     <div className="flex flex-col h-screen bg-white overflow-hidden font-sans text-slate-900">
-      <header className="h-16 border-b border-slate-200 flex items-center justify-between px-6 shrink-0 bg-white">
-        <div className="flex items-center space-x-2">
-          <Logo size={32} />
-          <div className="flex items-center px-3 py-1.5 border border-slate-200 rounded-md bg-slate-50">
-            <span className="text-[10px] font-medium text-slate-400 capitalize tracking-widest mr-2">Workspaces</span>
+      <header className="h-auto min-h-[4rem] border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 py-4 sm:py-0 shrink-0 bg-white gap-4">
+        <div className="flex items-center justify-between w-full sm:w-auto">
+          <div className="flex items-center space-x-2">
+            <Logo size={32} />
+            <div className="flex items-center px-3 py-1.5 border border-slate-200 rounded-md bg-slate-50">
+              <span className="text-[10px] font-medium text-slate-400 capitalize tracking-widest mr-2">Workspaces</span>
+            </div>
           </div>
+          <button onClick={() => supabase.auth.signOut()} className="sm:hidden p-2 text-slate-400 hover:text-red-500 rounded transition-colors">
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
-        <div className="flex-1 max-w-lg mx-8">
+        <div className="w-full sm:flex-1 sm:max-w-lg sm:mx-8">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
             <input
@@ -153,21 +158,21 @@ const Companies = () => {
             />
           </div>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="hidden sm:flex items-center space-x-4">
            <button onClick={() => supabase.auth.signOut()} className="p-2 text-slate-400 hover:text-red-500 rounded transition-colors">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-10 bg-white">
-        <div className="max-w-6xl mx-auto space-y-8">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-10 bg-white">
+        <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-6 gap-4">
               <div>
                 <h1 className="text-[20px] font-medium text-slate-900 capitalize">Select Workspace</h1>
               </div>
               {companies.length > 0 && (
-                <button onClick={handleOpenCreate} className="bg-primary text-white px-8 py-3 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize">
+                <button onClick={handleOpenCreate} className="bg-primary text-white px-8 py-3 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center justify-center capitalize w-full sm:w-auto">
                   <Plus className="w-4 h-4 mr-2" /> New Workspace
                 </button>
               )}
@@ -225,8 +230,8 @@ const Companies = () => {
       />
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCompany ? "Edit Business Workspace" : "Register Business Workspace"} maxWidth="max-w-2xl">
-        <form onSubmit={handleCreateOrUpdate} className="p-8 space-y-6 bg-white">
-          <div className="space-y-6 border border-slate-200 rounded-md p-8 bg-white">
+        <form onSubmit={handleCreateOrUpdate} className="p-4 sm:p-8 space-y-6 bg-white">
+          <div className="space-y-6 border border-slate-200 rounded-md p-4 sm:p-8 bg-white">
             <div className="space-y-1.5">
               <label className="text-sm font-medium capitalize text-slate-400">Legal Business Name</label>
               <input required type="text" value={formData.name} onChange={(e) =>
@@ -243,8 +248,8 @@ const Companies = () => {
                 setFormData({ ...formData, address: e.target.value })} rows={3} className="w-full px-4 py-3 border border-slate-200 rounded outline-none text-sm focus:border-slate-400 resize-none" placeholder="Enter complete office address..." />
             </div>
           </div>
-          <div className="flex items-center justify-end space-x-6 pt-4">
-            <button type="submit" disabled={creating} className="bg-primary text-white px-10 py-3 rounded-md font-medium text-sm hover:bg-primary-dark shadow-sm disabled:opacity-50 flex items-center capitalize">
+          <div className="flex items-center justify-end pt-4">
+            <button type="submit" disabled={creating} className="bg-primary text-white px-10 py-3 rounded-md font-medium text-sm hover:bg-primary-dark shadow-sm disabled:opacity-50 flex items-center justify-center capitalize w-full sm:w-auto">
               {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : editingCompany ? <Save className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               {creating ? 'Processing...' : editingCompany ? 'Save Changes' : 'Save Workspace'}
             </button>

@@ -98,15 +98,15 @@ const Dashboard = () => {
         <BillForm onSubmit={() => { setIsPurchaseModalOpen(false); loadData(); }} onCancel={() => setIsPurchaseModalOpen(false)} />
       </Modal>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Executive Summary</h1>
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <DateFilter onFilterChange={setDateRange} />
           <button onClick={() => setIsPurchaseModalOpen(true)} className="px-4 py-2 bg-primary text-white font-medium text-xs rounded capitalize hover:bg-primary-dark">New Purchase</button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatBox label="Sales (Gross)" value={formatCurrency(stats.totalSales)} subLabel={`Net Recv: ${formatCurrency(stats.receivables)}`} icon={BadgeIndianRupee} />
         <StatBox label="Purchases" value={formatCurrency(stats.totalPurchases)} subLabel={`Net Payable: ${formatCurrency(stats.payables)}`} icon={ShoppingCart} />
         <StatBox label="Active Partners" value={stats.totalVendors + stats.totalCustomers} subLabel={`${stats.totalVendors} Vendors / ${stats.totalCustomers} Customers`} icon={Users} />
@@ -114,45 +114,47 @@ const Dashboard = () => {
       </div>
 
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/50">
           <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">Recent Transactions</h2>
-          <div className="relative">
+          <div className="relative w-full sm:w-48">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-3.5 h-3.5" />
-            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filter list..." className="pl-7 pr-3 py-1 border border-slate-200 dark:border-slate-700 rounded text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 w-48 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filter list..." className="pl-7 pr-3 py-1 border border-slate-200 dark:border-slate-700 rounded text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
           </div>
         </div>
         
-        <table className="clean-table">
-          <thead>
-            <tr>
-              <th className="font-medium capitalize">Date</th>
-              <th className="font-medium capitalize">Type</th>
-              <th className="font-medium capitalize">Document #</th>
-              <th className="font-medium capitalize">Party Name</th>
-              <th className="text-right font-medium capitalize">Total Amount</th>
-              <th className="text-center font-medium capitalize">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={6} className="text-center py-20 text-slate-400 capitalize text-[10px] font-medium tracking-widest">Refreshing Data...</td></tr>
-            ) : filteredVouchers.map((v) => (
-              <tr key={v.id}>
-                <td className="text-slate-500 dark:text-slate-400">{formatDate(v.date)}</td>
-                <td className={`text-[10px] font-medium capitalize ${v.type === 'Sale' ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}>{v.type}</td>
-                <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{v.bill_number}</td>
-                <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{v.vendor_name || v.customer_name}</td>
-                <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{formatCurrency(v.grand_total, false)}</td>
-                <td className="text-center">
-                  <span className={`text-[9px] px-2 py-0.5 rounded-sm font-medium capitalize ${v.status === 'Paid' ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>{v.status}</span>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="clean-table min-w-[800px] sm:min-w-full">
+            <thead>
+              <tr>
+                <th className="font-medium capitalize">Date</th>
+                <th className="font-medium capitalize">Type</th>
+                <th className="font-medium capitalize">Document #</th>
+                <th className="font-medium capitalize">Party Name</th>
+                <th className="text-right font-medium capitalize">Total Amount</th>
+                <th className="text-center font-medium capitalize">Status</th>
               </tr>
-            ))}
-            {!loading && filteredVouchers.length === 0 && (
-              <tr><td colSpan={6} className="py-20 text-center text-slate-300 italic">No transactions found for the selected period.</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={6} className="text-center py-20 text-slate-400 capitalize text-[10px] font-medium tracking-widest">Refreshing Data...</td></tr>
+              ) : filteredVouchers.map((v) => (
+                <tr key={v.id}>
+                  <td className="text-slate-500 dark:text-slate-400">{formatDate(v.date)}</td>
+                  <td className={`text-[10px] font-medium capitalize ${v.type === 'Sale' ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}>{v.type}</td>
+                  <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{v.bill_number}</td>
+                  <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{v.vendor_name || v.customer_name}</td>
+                  <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{formatCurrency(v.grand_total, false)}</td>
+                  <td className="text-center">
+                    <span className={`text-[9px] px-2 py-0.5 rounded-sm font-medium capitalize ${v.status === 'Paid' ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>{v.status}</span>
+                  </td>
+                </tr>
+              ))}
+              {!loading && filteredVouchers.length === 0 && (
+                <tr><td colSpan={6} className="py-20 text-center text-slate-300 italic">No transactions found for the selected period.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

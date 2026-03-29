@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark, Plus, Contact, Phone, Mail, MapPin, Calculator } from 'lucide-react';
+import { Search, Edit, Trash2, History, Maximize2, Minimize2, Loader2, Landmark, Plus, Contact, Phone, Mail, MapPin, Calculator, ArrowLeft } from 'lucide-react';
 import Modal from '../components/Modal';
 import CustomerForm from '../components/CustomerForm';
 import LedgerModal from '../components/LedgerModal';
@@ -204,11 +204,14 @@ const Customers = () => {
 
       <LedgerModal isOpen={isLedgerOpen} onClose={() => setIsLedgerOpen(false)} party={selectedCustomer} type="customer" />
 
-      <div className="flex justify-between items-center shrink-0">
-        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Customers Ledger</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4">
+        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize w-full sm:w-auto">Customers Ledger</h1>
         {customers.length > 0 && (
-          <button onClick={() => { setEditingCustomer(null); setIsFormOpen(true); }} className="bg-link text-white px-8 py-2 rounded-md font-medium text-sm hover:bg-link/90 transition-none capitalize">
-              <Plus className="w-4 h-4 mr-2 inline" /> New Customer
+          <button 
+            onClick={() => { setEditingCustomer(null); setIsFormOpen(true); }} 
+            className="bg-link text-white px-8 py-2 rounded-md font-medium text-sm hover:bg-link/90 transition-none flex items-center capitalize w-full sm:w-auto justify-center"
+          >
+            <Plus className="w-4 h-4 mr-2" /> New Customer
           </button>
         )}
       </div>
@@ -221,9 +224,9 @@ const Customers = () => {
           onAction={() => { setEditingCustomer(null); setIsFormOpen(true); }} 
         />
       ) : (
-        <div className="flex-1 flex gap-6 overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden min-h-0">
             {!isFullScreen && (
-            <div className="w-80 shrink-0 flex flex-col space-y-4">
+            <div className={`w-full lg:w-80 shrink-0 flex flex-col space-y-4 ${selectedCustomerId ? 'hidden lg:flex' : 'flex'}`}>
                 <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-4 h-4" />
                 <input ref={searchInputRef} type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search parties..." className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 shadow-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
@@ -239,37 +242,40 @@ const Customers = () => {
             </div>
             )}
 
-            <div className={`flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md flex flex-col overflow-hidden ${isFullScreen ? 'fixed inset-4 z-[500] m-0 shadow-2xl' : ''}`}>
+            <div className={`flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md flex flex-col overflow-hidden ${isFullScreen ? 'fixed inset-4 z-[500] m-0 shadow-2xl' : ''} ${!selectedCustomerId ? 'hidden lg:flex' : 'flex'}`}>
             {selectedCustomer ? (
                 <div className="flex flex-col h-full animate-in fade-in duration-300">
-                <div className="px-8 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
-                    <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded flex items-center justify-center border border-slate-200 dark:border-slate-700"><Contact className="w-5 h-5 text-slate-400 dark:text-slate-500" /></div>
-                    <div>
-                        <h2 className="text-lg font-medium text-slate-900 dark:text-white capitalize leading-none">{selectedCustomer.name}</h2>
+                <div className="px-4 sm:px-8 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
+                    <div className="flex items-center space-x-3 overflow-hidden">
+                    <button onClick={() => setSelectedCustomerId(null)} className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded flex items-center justify-center border border-slate-200 dark:border-slate-700 shrink-0"><Contact className="w-5 h-5 text-slate-400 dark:text-slate-500" /></div>
+                    <div className="truncate">
+                        <h2 className="text-base sm:text-lg font-medium text-slate-900 dark:text-white capitalize leading-none truncate">{selectedCustomer.name}</h2>
                         <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-tighter mt-1">Id: {selectedCustomer.id.split('-')[0]}</p>
                     </div>
                     </div>
-                    <div className="flex space-x-2">
-                    <button onClick={() => setIsLedgerOpen(true)} className="flex items-center space-x-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all mr-2">
+                    <div className="flex items-center space-x-1 sm:space-x-2">
+                    <button onClick={() => setIsLedgerOpen(true)} className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
                         <Calculator className="w-4 h-4" />
-                        <span>Ledgers</span>
+                        <span className="hidden sm:inline">Ledgers</span>
                     </button>
-                    <button ref={fullScreenBtnRef} onClick={() => setIsFullScreen(!isFullScreen)} className={`p-2 text-slate-400 border border-slate-200 dark:border-slate-700 rounded hover:text-slate-900 dark:hover:text-white transition-none ${actionFocusIdx === 0 ? 'ring-2 ring-primary ring-offset-2 border-slate-900 dark:border-white' : ''}`}>{isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}</button>
+                    <button ref={fullScreenBtnRef} onClick={() => setIsFullScreen(!isFullScreen)} className={`hidden sm:block p-2 text-slate-400 border border-slate-200 dark:border-slate-700 rounded hover:text-slate-900 dark:hover:text-white transition-none ${actionFocusIdx === 0 ? 'ring-2 ring-primary ring-offset-2 border-slate-900 dark:border-white' : ''}`}>{isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}</button>
                     <button ref={editBtnRef} onClick={() => { setEditingCustomer(selectedCustomer); setIsFormOpen(true); }} className={`p-2 text-slate-400 border border-slate-200 dark:border-slate-700 rounded hover:text-slate-900 dark:hover:text-white transition-none ${actionFocusIdx === 1 ? 'ring-2 ring-primary ring-offset-2 border-slate-900 dark:border-white' : ''}`}><Edit className="w-4 h-4" /></button>
                     <button ref={deleteBtnRef} onClick={() => setDeleteDialog({ isOpen: true, customer: selectedCustomer })} className={`p-2 text-slate-400 border border-slate-200 dark:border-slate-700 rounded hover:text-red-500 transition-none ${actionFocusIdx === 2 ? 'ring-2 ring-rose-500 ring-offset-2 border-rose-500' : ''}`}><Trash2 className="w-4 h-4" /></button>
                     </div>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-10">
                     <StatCard label="Total Receivable" value={formatCurrency(stats.balance)} colorClass="text-link" />
                     <StatCard label="Gross Sales" value={formatCurrency(stats.totalSales)} colorClass="text-slate-600" />
                     <StatCard label="Gst Aggregate" value={selectedCustomer.gstin || 'N/A'} colorClass="text-slate-400 text-sm" />
                     <StatCard label="Status" value="Active" colorClass="text-emerald-500" />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mb-10">
                     <div className="space-y-4 bg-slate-50/50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800">
                         <h4 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest flex items-center"><Phone className="w-3.5 h-3.5 mr-2" /> Communication</h4>
                         <div className="text-xs text-slate-600 dark:text-slate-400 space-y-2">
@@ -285,8 +291,8 @@ const Customers = () => {
 
                     <div className="space-y-4">
                     <div className="flex items-center justify-between"><h4 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest flex items-center"><History className="w-4 h-4 mr-2 text-slate-300 dark:text-slate-600" /> Sales & Billing History</h4></div>
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-                        <table className="clean-table">
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-x-auto bg-white dark:bg-slate-900 shadow-sm">
+                        <table className="clean-table min-w-[600px]">
                             <thead>
                                 <tr className="bg-slate-50 dark:bg-slate-800 text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest">
                                     <th className="font-medium capitalize">Date</th>

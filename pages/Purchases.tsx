@@ -81,23 +81,25 @@ const Purchases = () => {
         message={`Delete purchase entry ${deleteDialog.bill?.bill_number}?`}
       />
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white uppercase">Purchase Register</h1>
           <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Manage and track all vendor purchase invoices.</p>
         </div>
-        <div className="flex items-center space-x-2">
-           <div className="relative">
+        <div className="flex items-center space-x-2 w-full sm:w-auto">
+           <div className="relative w-full sm:w-auto">
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+              className="flex items-center justify-between sm:justify-start space-x-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 w-full sm:w-auto"
             >
-              <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-              <span>Status: {statusFilter}</span>
+              <div className="flex items-center space-x-2">
+                <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                <span>Status: {statusFilter}</span>
+              </div>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
             </button>
             {isMenuOpen && (
-              <div className="absolute top-full right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-lg z-50 py-1 min-w-[120px]">
+              <div className="absolute top-full right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-lg z-50 py-1 min-w-[120px] w-full sm:w-auto">
                 {['All', 'Paid', 'Pending'].map(opt => (
                   <button key={opt} onClick={() => { setStatusFilter(opt); setIsMenuOpen(false); }} className={`w-full text-left px-4 py-2 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-700/50 ${statusFilter === opt ? 'bg-primary/10 dark:bg-primary/20 font-bold text-primary' : 'text-slate-600 dark:text-slate-300'}`}>{opt}</button>
                 ))}
@@ -107,12 +109,12 @@ const Purchases = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded shadow-sm">
           <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Gross Purchase</span>
           <span className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(filtered.reduce((acc, b) => acc + Number(b.grand_total || 0), 0))}</span>
         </div>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded md:col-span-2 shadow-sm">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded sm:col-span-1 lg:col-span-2 shadow-sm">
           <div className="flex items-start space-x-3">
              <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
@@ -134,8 +136,8 @@ const Purchases = () => {
           />
         </div>
         
-        <div className="border border-slate-200 dark:border-slate-700 rounded overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-          <table className="clean-table w-full">
+        <div className="border border-slate-200 dark:border-slate-700 rounded overflow-hidden bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
+          <table className="clean-table w-full min-w-[800px]">
             <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
               <tr className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 <th className="py-3 px-4 text-left">Date</th>

@@ -365,7 +365,7 @@ const Settings = () => {
             ))}
           </div>
 
-          <div className="min-h-[300px] max-h-[500px] overflow-y-auto custom-scrollbar">
+          <div className="min-h-[300px] max-h-[500px] overflow-y-auto custom-scrollbar overflow-x-auto">
             {recycleLoading ? (
               <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
             ) : filteredDeleted.length === 0 ? (
@@ -374,7 +374,7 @@ const Settings = () => {
                 <p className="text-xs">Recycle bin is empty for this category.</p>
               </div>
             ) : (
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse min-w-[600px]">
                 <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10">
                   <tr className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
                     <th className="px-6 py-3 border-b border-slate-100 dark:border-slate-800">Source Screen</th>

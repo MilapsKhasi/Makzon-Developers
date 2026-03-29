@@ -10,12 +10,31 @@ import ConfirmDialog from './ConfirmDialog';
 import UpdateNotification from './UpdateNotification';
 
 const Layout = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const { activeCompany, setCompany } = useCompany();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Handle window resize to auto-close/open sidebar
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
 
   // Edit/Create Workspace States
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -157,12 +176,26 @@ const Layout = () => {
   ];
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden font-sans transition-colors duration-300">
-      <aside className={`${isSidebarOpen ? 'w-64' : 'w-16'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-50 transition-all duration-300`}>
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden font-sans transition-colors duration-300 relative">
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] lg:hidden animate-in fade-in duration-300"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-[70] lg:relative lg:z-50
+        ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-16 -translate-x-full lg:translate-x-0'}
+        ${isMobileMenuOpen ? 'translate-x-0 w-64' : ''}
+        bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300
+      `}>
         <div className="h-16 flex items-center px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center space-x-3">
             <Logo size={32} />
-            {isSidebarOpen && (
+            {(isSidebarOpen || isMobileMenuOpen) && (
               <div className="flex flex-col animate-in fade-in slide-in-from-left-2 duration-500">
                 <div className="flex items-center space-x-2">
                   <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">ZenterPrime</span>
@@ -170,11 +203,18 @@ const Layout = () => {
               </div>
             )}
           </div>
+          {/* Close button for mobile menu */}
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="lg:hidden ml-auto p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+          >
+            <Plus className="w-5 h-5 rotate-45" />
+          </button>
         </div>
         
         {/* Gateway of ZenterPrime Header */}
-        <div className={`bg-slate-50 dark:bg-slate-800/40 flex items-center transition-all duration-300 shrink-0 border-b border-slate-100 dark:border-slate-800 ${isSidebarOpen ? 'px-4 py-2.5 h-10' : 'h-1.5 justify-center'}`}>
-          {isSidebarOpen && (
+        <div className={`bg-slate-50 dark:bg-slate-800/40 flex items-center transition-all duration-300 shrink-0 border-b border-slate-100 dark:border-slate-800 ${(isSidebarOpen || isMobileMenuOpen) ? 'px-4 py-2.5 h-10' : 'h-1.5 justify-center'}`}>
+          {(isSidebarOpen || isMobileMenuOpen) && (
             <span className="text-slate-500 dark:text-slate-400 font-bold text-[10px] capitalize tracking-wide whitespace-nowrap">
               Gateway Of ZenterPrime
             </span>
@@ -192,7 +232,7 @@ const Layout = () => {
                 }`}
             >
               <item.icon className={`w-4 h-4 shrink-0 ${location.pathname === item.path ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
-              {isSidebarOpen && <span className="ml-3 text-[13px] whitespace-nowrap capitalize">{item.label}</span>}
+              {(isSidebarOpen || isMobileMenuOpen) && <span className="ml-3 text-[13px] whitespace-nowrap capitalize">{item.label}</span>}
             </Link>
           ))}
         </nav>
@@ -201,8 +241,13 @@ const Layout = () => {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="h-12 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 shrink-0 z-40">
           <div className="flex items-center space-x-4">
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 dark:text-slate-400">
+            {/* Desktop toggle sidebar */}
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="hidden lg:block p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 dark:text-slate-400">
               <Menu className="w-4 h-4" />
+            </button>
+            {/* Mobile toggle menu */}
+            <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 dark:text-slate-400">
+              <Menu className="w-5 h-5" />
             </button>
             <div className="relative">
               <button
@@ -210,7 +255,7 @@ const Layout = () => {
                 className="flex items-center px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-sm hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
               >
                 <Building2 className="w-3.5 h-3.5 text-slate-400 mr-2" />
-                <span className="font-medium text-slate-700 dark:text-slate-200 capitalize text-[11px] max-w-[150px] truncate">
+                <span className="font-medium text-slate-700 dark:text-slate-200 capitalize text-[11px] max-w-[100px] sm:max-w-[150px] truncate">
                   {activeCompany?.name || 'Select Workspace'}
                 </span>
                 <ChevronDown className="ml-2 w-3 h-3 text-slate-400" />
