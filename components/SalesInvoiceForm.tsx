@@ -158,7 +158,12 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     if (field === 'itemName') {
         const selected = stockItems.find(s => s.name.toLowerCase().trim() === val.toLowerCase().trim());
         if (selected) {
-            items[idx] = { ...items[idx], hsnCode: selected.hsn || '', rate: selected.rate?.toString() || '', tax_rate: selected.tax_rate || 0 };
+            items[idx] = { 
+              ...items[idx], 
+              hsnCode: selected.hsn || '', 
+              rate: (selected.selling_price || selected.rate || 0).toString(), 
+              tax_rate: selected.tax_rate || 0 
+            };
         }
     }
     setFormData(recalculate({ ...formData, items }));
@@ -273,7 +278,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                             <th className="p-3 text-left w-24 border-r border-slate-200 dark:border-slate-700 capitalize">HSN</th>
                             {appSettings.gstEnabled && <th className="p-3 text-center w-24 border-r border-slate-200 dark:border-slate-700 capitalize">GST %</th>}
                             <th className="p-3 text-center w-28 border-r border-slate-200 dark:border-slate-700 capitalize">QTY</th>
-                            <th className="p-3 text-right w-36 border-r border-slate-200 dark:border-slate-700 capitalize">Rate</th>
+                            <th className="p-3 text-right w-36 border-r border-slate-200 dark:border-slate-700 capitalize">Selling Price</th>
                             <th className="p-3 text-right w-32 capitalize">Amount</th>
                             <th className="w-10"></th>
                         </tr>

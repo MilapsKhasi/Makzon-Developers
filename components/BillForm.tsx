@@ -253,7 +253,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                             <th className="p-3 text-left border-r border-slate-200 dark:border-slate-700 min-w-[200px] capitalize">Particulars</th>
                             {appSettings.gstEnabled && <th className="p-3 text-center w-24 border-r border-slate-200 dark:border-slate-700 capitalize">GST %</th>}
                             <th className="p-3 text-center w-28 border-r border-slate-200 dark:border-slate-700 capitalize">QTY</th>
-                            <th className="p-3 text-right w-36 border-r border-slate-200 dark:border-slate-700 capitalize">Rate</th>
+                            <th className="p-3 text-right w-36 border-r border-slate-200 dark:border-slate-700 capitalize">Purchase Rate</th>
                             <th className="p-3 text-right w-32 capitalize">Amount</th>
                             <th className="w-10"></th>
                         </tr>

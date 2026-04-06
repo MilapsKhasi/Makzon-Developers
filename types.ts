@@ -30,6 +30,22 @@ export interface Customer {
   state?: string;
 }
 
+export interface StockItem {
+  id: string;
+  name: string;
+  sku?: string;
+  unit: string;
+  hsn?: string;
+  rate: number;
+  selling_price: number;
+  in_stock: number;
+  description?: string;
+  tax_rate: number;
+  kg_per_bag?: number;
+  company_id: string;
+  is_deleted: boolean;
+}
+
 export interface BillItem {
   id: string;
   itemName: string;

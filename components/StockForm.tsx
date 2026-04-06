@@ -13,7 +13,7 @@ const TAX_RATES = [0, 5, 12, 18, 28];
 
 const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState<any>({
-      name: '', sku: '', unit: 'PCS', hsn: '', rate: 0, in_stock: 0, description: '', tax_rate: 18, kg_per_bag: 0
+      name: '', sku: '', unit: 'PCS', hsn: '', rate: 0, selling_price: 0, in_stock: 0, description: '', tax_rate: 18, kg_per_bag: 0
   });
 
   const currencySymbol = CURRENCIES[getAppSettings().currency as keyof typeof CURRENCIES]?.symbol || '₹';
@@ -27,6 +27,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
         unit: initialData.unit || 'PCS',
         hsn: initialData.hsn || '',
         rate: toDisplayValue(initialData.rate),
+        selling_price: toDisplayValue(initialData.selling_price || 0),
         in_stock: toDisplayValue(initialData.in_stock),
         description: initialData.description || '',
         tax_rate: initialData.tax_rate || 18,
@@ -47,6 +48,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
         ...formData, 
         name: formData.name.trim(),
         rate: toStorageValue(formData.rate), 
+        selling_price: toStorageValue(formData.selling_price),
         in_stock: toStorageValue(formData.in_stock),
         kg_per_bag: toStorageValue(formData.kg_per_bag)
       };
@@ -119,9 +121,9 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
                     </div>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-6 grid grid-cols-2 gap-6 shadow-inner">
+                <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-6 grid grid-cols-1 sm:grid-cols-2 gap-6 shadow-inner">
                     <div className="space-y-1.5">
-                        <label className="text-[14px] font-normal text-slate-700 dark:text-slate-400">Valuation Rate ({currencySymbol})</label>
+                        <label className="text-[14px] font-normal text-slate-700 dark:text-slate-400">Purchase Rate ({currencySymbol})</label>
                         <input 
                             type="number" 
                             step="any" 
@@ -131,6 +133,16 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
                         />
                     </div>
                     <div className="space-y-1.5">
+                        <label className="text-[14px] font-normal text-slate-700 dark:text-slate-400">Selling Price ({currencySymbol})</label>
+                        <input 
+                            type="number" 
+                            step="any" 
+                            value={formData.selling_price} 
+                            onChange={(e) => handleInputChange('selling_price', e.target.value)} 
+                            className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-lg font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-800" 
+                        />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
                         <label className="text-[14px] font-normal text-slate-700 dark:text-slate-400">Default GST %</label>
                         <select 
                             value={formData.tax_rate} 

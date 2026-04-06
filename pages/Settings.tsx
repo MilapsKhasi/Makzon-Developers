@@ -22,7 +22,7 @@ const Settings = () => {
   });
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [licenseId, setLicenseId] = useState('ZP-26313');
+  const [licenseId, setLicenseId] = useState('26401');
   
   // Recycle Bin State
   const [recycleTab, setRecycleTab] = useState('All');
@@ -64,7 +64,7 @@ const Settings = () => {
       if (allCompanies) {
         const index = allCompanies.findIndex(c => c.id === cid);
         if (index !== -1) {
-          setLicenseId(`ZP-${26313 + index}`);
+          setLicenseId(`${26401 + index}`);
         }
       }
 
@@ -257,7 +257,7 @@ const Settings = () => {
               <div className="flex justify-end">
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 px-4 py-2 rounded-lg flex items-center">
                   <BadgeCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mr-2" />
-                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-tighter">Status: Active & Valid</span>
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-tighter">Version 26.4.91</span>
                 </div>
               </div>
             </div>

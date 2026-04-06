@@ -224,8 +224,12 @@ const Stock = () => {
                         </div>
                     </div>
                     <div className="bg-white dark:bg-slate-800 p-6 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
-                        <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest mb-1">Standard Cost</p>
+                        <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest mb-1">Purchase Rate</p>
                         <p className="text-xl sm:text-2xl font-medium text-slate-900 dark:text-white font-mono">₹{selectedItem.rate || 0}</p>
+                    </div>
+                    <div className="bg-white dark:bg-slate-800 p-6 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
+                        <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest mb-1">Selling Price</p>
+                        <p className="text-xl sm:text-2xl font-medium text-slate-900 dark:text-white font-mono">₹{selectedItem.selling_price || 0}</p>
                     </div>
                     </div>
 
