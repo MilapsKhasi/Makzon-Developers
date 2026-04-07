@@ -26,7 +26,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     date: today, 
     displayDate: formatDate(today), 
     gst_type: appSettings.gstType || 'CGST - SGST',
-    items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', rate: '', tax_rate: 0, taxableAmount: 0 }],
+    items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', rate: '', discount: 0, discount_type: 'Percentage', tax_rate: 0, taxableAmount: 0, itemTotal: 0 }],
     total_without_gst: 0, 
     total_gst: 0, 
     duties_and_taxes: [],
@@ -78,18 +78,34 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       const items = (state.items || []).map((item: any) => {
         const q = parseNumber(item.qty.toString());
         const r = parseNumber(item.rate.toString());
+        const d = parseFloat(item.discount) || 0;
+        const dt = item.discount_type || 'Percentage';
         const t = parseFloat(item.tax_rate) || 0;
-        const taxable = q * r;
+        
+        const baseAmount = q * r;
+        let discountAmount = 0;
+        if (dt === 'Percentage') {
+          discountAmount = baseAmount * (d / 100);
+        } else {
+          discountAmount = d;
+        }
+        
+        // Ensure discount does not exceed baseAmount
+        discountAmount = Math.min(discountAmount, baseAmount);
+        
+        const taxable = baseAmount - discountAmount;
         const gst = taxable * (t / 100);
+        const itemSubtotal = taxable; // Subtotal is only taxable value without GST
+        
         taxableTotal += taxable;
         autoGstSum += gst;
         gstTotal += gst;
-        return { ...item, taxableAmount: taxable };
+        return { ...item, taxableAmount: taxable, itemTotal: itemSubtotal };
       });
       state.items = items;
     }
 
-    let runningTotal = taxableTotal + gstTotal;
+    let runningTotal = taxableTotal;
     const updatedDuties = (state.duties_and_taxes || []).map((d: any) => {
       let calcAmt = d.amount || 0;
       if (sourceDutyId === d.id) {
@@ -276,35 +292,57 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                         <tr>
                             <th className="p-3 text-left border-r border-slate-200 dark:border-slate-700 min-w-[200px] capitalize">Particulars</th>
                             <th className="p-3 text-left w-24 border-r border-slate-200 dark:border-slate-700 capitalize">HSN</th>
+                            <th className="p-3 text-right w-32 border-r border-slate-200 dark:border-slate-700 capitalize">Rate</th>
+                            <th className="p-3 text-center w-24 border-r border-slate-200 dark:border-slate-700 capitalize">QTY</th>
+                            <th className="p-3 text-center w-40 border-r border-slate-200 dark:border-slate-700 capitalize">Discount</th>
                             {appSettings.gstEnabled && <th className="p-3 text-center w-24 border-r border-slate-200 dark:border-slate-700 capitalize">GST %</th>}
-                            <th className="p-3 text-center w-28 border-r border-slate-200 dark:border-slate-700 capitalize">QTY</th>
-                            <th className="p-3 text-right w-36 border-r border-slate-200 dark:border-slate-700 capitalize">Selling Price</th>
-                            <th className="p-3 text-right w-32 capitalize">Amount</th>
+                            <th className="p-3 text-right w-32 capitalize">Subtotal</th>
                             <th className="w-10"></th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {formData.items.map((it: any, idx: number) => (
-                            <tr key={it.id}>
-                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input list="itemslist" value={it.itemName} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-10 px-3 outline-none font-medium bg-transparent dark:text-white" /></td>
-                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={it.hsnCode} onChange={e => updateItemRow(idx, 'hsnCode', e.target.value)} className="w-full h-10 px-3 outline-none bg-transparent font-mono text-slate-400 dark:text-slate-500" /></td>
-                                {appSettings.gstEnabled && (
-                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800 text-center">
-                                        <select value={it.tax_rate} onChange={e => updateItemRow(idx, 'tax_rate', e.target.value)} className="w-full h-10 px-2 outline-none bg-transparent dark:text-white appearance-none text-center cursor-pointer">
-                                            <option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option value="18">18%</option><option value="28">28%</option>
-                                        </select>
+                        {formData.items.map((it: any, idx: number) => {
+                            const base = parseNumber(it.qty) * parseNumber(it.rate);
+                            const discVal = parseFloat(it.discount) || 0;
+                            const isPerc = it.discount_type === 'Percentage';
+                            const equiv = isPerc ? (base * (discVal / 100)) : (base > 0 ? (discVal / base) * 100 : 0);
+
+                            return (
+                                <tr key={it.id}>
+                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input list="itemslist" value={it.itemName} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-10 px-3 outline-none font-medium bg-transparent dark:text-white" /></td>
+                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={it.hsnCode} onChange={e => updateItemRow(idx, 'hsnCode', e.target.value)} className="w-full h-10 px-3 outline-none bg-transparent font-mono text-slate-400 dark:text-slate-500" /></td>
+                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input type="text" value={it.rate} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-10 px-2 text-right outline-none bg-transparent font-mono font-bold dark:text-white" /></td>
+                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input type="text" value={it.qty} onChange={e => updateItemRow(idx, 'qty', e.target.value)} placeholder="10,000" className="w-full h-10 px-2 text-center outline-none bg-transparent font-mono font-bold dark:text-white" /></td>
+                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800">
+                                        <div className="flex items-center h-10">
+                                            <input type="text" value={it.discount} onChange={e => updateItemRow(idx, 'discount', e.target.value)} className="w-1/2 h-full px-2 text-right outline-none bg-transparent dark:text-white border-r border-slate-100 dark:border-slate-800" />
+                                            <select value={it.discount_type} onChange={e => updateItemRow(idx, 'discount_type', e.target.value)} className="w-1/2 h-full px-1 outline-none bg-transparent dark:text-white text-[10px] font-bold">
+                                                <option value="Percentage">%</option>
+                                                <option value="Amount">₹</option>
+                                            </select>
+                                        </div>
+                                        {discVal > 0 && (
+                                            <div className="px-2 pb-1 text-[9px] text-slate-400 text-right">
+                                                {isPerc ? `₹${equiv.toFixed(2)}` : `${equiv.toFixed(2)}%`}
+                                            </div>
+                                        )}
                                     </td>
-                                )}
-                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input type="text" value={it.qty} onChange={e => updateItemRow(idx, 'qty', e.target.value)} placeholder="10,000" className="w-full h-10 px-2 text-center outline-none bg-transparent font-mono font-bold dark:text-white" /></td>
-                                <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input type="text" value={it.rate} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-10 px-2 text-right outline-none bg-transparent font-mono font-bold dark:text-white" /></td>
-                                <td className="p-3 text-right font-bold text-slate-900 dark:text-slate-100 font-mono">{formatCurrency(it.taxableAmount, false)}</td>
-                                <td className="p-2 text-center"><button type="button" onClick={() => setFormData(recalculate({...formData, items: formData.items.filter((_: any, i: number) => i !== idx)}))} className="text-slate-300 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button></td>
-                            </tr>
-                        ))}
+                                    {appSettings.gstEnabled && (
+                                        <td className="p-0 border-r border-slate-100 dark:border-slate-800 text-center">
+                                            <select value={it.tax_rate} onChange={e => updateItemRow(idx, 'tax_rate', e.target.value)} className="w-full h-10 px-2 outline-none bg-transparent dark:text-white appearance-none text-center cursor-pointer">
+                                                <option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option value="18">18%</option><option value="28">28%</option>
+                                            </select>
+                                        </td>
+                                    )}
+                                    <td className="p-3 text-right font-bold text-slate-900 dark:text-slate-100 font-mono">{formatCurrency(it.itemTotal, false)}</td>
+                                    <td className="p-2 text-center"><button type="button" onClick={() => setFormData(recalculate({...formData, items: formData.items.filter((_: any, i: number) => i !== idx)}))} className="text-slate-300 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button></td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
                 <datalist id="itemslist">{stockItems.map(s => <option key={s.id} value={s.name} />)}</datalist>
-                <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', unit: 'PCS', rate: '', tax_rate: 0, taxableAmount: 0 }]}))} className="w-full py-3 bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-t border-slate-200 dark:border-slate-700">+ Add New Row</button>
+                <button type="button" onClick={() => setFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', unit: 'PCS', rate: '', discount: 0, discount_type: 'Percentage', tax_rate: 0, taxableAmount: 0, itemTotal: 0 }]}))} className="w-full py-3 bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-t border-slate-200 dark:border-slate-700">+ Add New Row</button>
             </div>
             <div className="flex flex-col lg:flex-row justify-between items-start pt-8 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 gap-8">
                 <div className="w-full lg:w-1/2 lg:pr-12"><label className="text-[14px] font-medium dark:text-slate-100 mb-2 block capitalize">Remark</label><textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] resize-none h-36 bg-slate-50/30 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-800 transition-all shadow-inner" placeholder="Public or private notes..." /></div>
