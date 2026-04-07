@@ -57,7 +57,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
 
   return (
     <div className="bg-white dark:bg-slate-900 flex flex-col max-h-[90vh] overflow-hidden">
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-8 bg-white dark:bg-slate-900 custom-scrollbar">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 bg-white dark:bg-slate-900 custom-scrollbar">
             <div className="space-y-6">
                 <div className="space-y-1.5">
                     <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Item / Product Name</label>
@@ -65,19 +65,19 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
                         ref={firstInputRef} 
                         type="text" 
                         required
-                        value={formData.name} 
+                        value={toDisplayValue(formData.name)} 
                         onChange={(e) => handleInputChange('name', e.target.value)} 
                         className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded outline-none text-base font-bold text-slate-900 dark:text-white focus:border-slate-400 dark:focus:border-slate-600 uppercase" 
                         placeholder="e.g. PREMIUM RICE" 
                     />
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-1.5">
                         <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">SKU Code</label>
                         <input 
                             type="text" 
-                            value={formData.sku} 
+                            value={toDisplayValue(formData.sku)} 
                             onChange={(e) => handleInputChange('sku', e.target.value)} 
                             className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded outline-none text-sm font-mono focus:border-slate-400 dark:focus:border-slate-600 dark:text-slate-100" 
                             placeholder="Optional" 
@@ -87,7 +87,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
                         <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">HSN Code</label>
                         <input 
                             type="text" 
-                            value={formData.hsn} 
+                            value={toDisplayValue(formData.hsnCode || formData.hsn)} 
                             onChange={(e) => handleInputChange('hsn', e.target.value)} 
                             className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded outline-none text-sm font-mono focus:border-slate-400 dark:focus:border-slate-600 dark:text-slate-100" 
                             placeholder="Optional" 
@@ -95,7 +95,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-1.5">
                         <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Unit</label>
                         <div className="relative">
@@ -114,7 +114,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
                         <input 
                             type="number" 
                             step="any" 
-                            value={formData.in_stock} 
+                            value={toDisplayValue(formData.in_stock)} 
                             onChange={(e) => handleInputChange('in_stock', e.target.value)} 
                             className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded outline-none text-sm font-mono font-bold focus:border-slate-400 dark:focus:border-slate-600 dark:text-slate-100" 
                         />
@@ -127,7 +127,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
                         <input 
                             type="number" 
                             step="any" 
-                            value={formData.rate} 
+                            value={toDisplayValue(formData.rate)} 
                             onChange={(e) => handleInputChange('rate', e.target.value)} 
                             className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-lg font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-800" 
                         />
@@ -137,7 +137,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
                         <input 
                             type="number" 
                             step="any" 
-                            value={formData.selling_price} 
+                            value={toDisplayValue(formData.selling_price)} 
                             onChange={(e) => handleInputChange('selling_price', e.target.value)} 
                             className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-lg font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-800" 
                         />
@@ -158,7 +158,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
                     <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Item Description</label>
                     <textarea 
                         rows={3} 
-                        value={formData.description} 
+                        value={toDisplayValue(formData.description)} 
                         onChange={(e) => handleInputChange('description', e.target.value)} 
                         className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 rounded outline-none text-sm focus:border-slate-400 dark:focus:border-slate-600 dark:text-slate-100 resize-none" 
                         placeholder="Optional remarks..." 

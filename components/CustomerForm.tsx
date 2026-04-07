@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { getActiveCompanyId, safeSupabaseSave, toStorageValue } from '../utils/helpers';
+import { getActiveCompanyId, safeSupabaseSave, toStorageValue, toDisplayValue } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 
 interface CustomerFormProps {
@@ -71,16 +71,16 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
 
       {/* Scrollable Form Body */}
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col bg-white dark:bg-slate-900">
-        <div className="p-8 space-y-6">
-          <div className="border border-slate-200 dark:border-slate-800 rounded-md p-8 space-y-6 bg-white dark:bg-slate-900 shadow-sm">
-              <div className="grid grid-cols-3 gap-6">
-                  <div className="col-span-2 space-y-1.5">
+        <div className="p-4 sm:p-8 space-y-6">
+          <div className="border border-slate-200 dark:border-slate-800 rounded-md p-4 sm:p-8 space-y-6 bg-white dark:bg-slate-900 shadow-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <div className="sm:col-span-2 space-y-1.5">
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Customer Name</label>
                       <input 
                         ref={firstInputRef} 
                         type="text" 
                         required
-                        value={formData.name} 
+                        value={toDisplayValue(formData.name)} 
                         onChange={e => handleChange('name', e.target.value)} 
                         className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white uppercase" 
                         placeholder="Customer / Company Name" 
@@ -90,7 +90,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Opening Balance</label>
                       <input 
                         type="number" 
-                        value={formData.balance} 
+                        value={toDisplayValue(formData.balance)} 
                         onChange={e => handleChange('balance', parseFloat(e.target.value) || 0)} 
                         className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono" 
                         placeholder="0.00" 
@@ -103,7 +103,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">GSTIN Number</label>
                       <input 
                         type="text" 
-                        value={formData.gstin} 
+                        value={toDisplayValue(formData.gstin)} 
                         onChange={e => handleChange('gstin', e.target.value.toUpperCase())} 
                         className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white uppercase font-mono" 
                         placeholder="GSTIN (Optional)" 
@@ -113,7 +113,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">PAN Number</label>
                       <input 
                         type="text" 
-                        value={formData.pan} 
+                        value={toDisplayValue(formData.pan)} 
                         onChange={e => handleChange('pan', e.target.value.toUpperCase())} 
                         className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white uppercase font-mono" 
                         placeholder="PAN Number" 
@@ -123,7 +123,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">State</label>
                       <input 
                         type="text" 
-                        value={formData.state} 
+                        value={toDisplayValue(formData.state)} 
                         onChange={e => handleChange('state', e.target.value)} 
                         className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
                         placeholder="State Name" 
@@ -131,12 +131,12 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
                   </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1.5">
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Email Address</label>
                       <input 
                         type="email" 
-                        value={formData.email} 
+                        value={toDisplayValue(formData.email)} 
                         onChange={e => handleChange('email', e.target.value)} 
                         className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
                         placeholder="Email Address" 
@@ -146,7 +146,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Contact Number</label>
                       <input 
                         type="text" 
-                        value={formData.phone} 
+                        value={toDisplayValue(formData.phone)} 
                         onChange={e => handleChange('phone', e.target.value)} 
                         className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
                         placeholder="Phone Number" 
@@ -158,7 +158,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
                   <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Complete Address</label>
                   <textarea 
                     rows={3} 
-                    value={formData.address} 
+                    value={toDisplayValue(formData.address)} 
                     onChange={e => handleChange('address', e.target.value)} 
                     className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 resize-none bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
                     placeholder="Enter business address..." 
@@ -170,7 +170,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Bank Account Number</label>
                       <input 
                         type="text" 
-                        value={formData.account_number} 
+                        value={toDisplayValue(formData.account_number)} 
                         onChange={e => handleChange('account_number', e.target.value)} 
                         className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono" 
                         placeholder="Account Number" 
@@ -180,7 +180,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">A/C Holder Name</label>
                       <input 
                         type="text" 
-                        value={formData.account_name} 
+                        value={toDisplayValue(formData.account_name)} 
                         onChange={e => handleChange('account_name', e.target.value)} 
                         className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" 
                         placeholder="Holder Name" 
@@ -190,7 +190,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">IFSC Code</label>
                       <input 
                         type="text" 
-                        value={formData.ifsc_code} 
+                        value={toDisplayValue(formData.ifsc_code)} 
                         onChange={e => handleChange('ifsc_code', e.target.value.toUpperCase())} 
                         className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono uppercase" 
                         placeholder="IFSC Code" 

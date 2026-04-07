@@ -101,6 +101,14 @@ export const safeSupabaseSave = async (table: string, payload: any, id?: string)
   }
 
   let cleanPayload: any = { ...payload };
+  
+  // Convert empty strings to null to avoid Postgres numeric syntax errors
+  Object.keys(cleanPayload).forEach(key => {
+    if (cleanPayload[key] === '') {
+      cleanPayload[key] = null;
+    }
+  });
+
   if (table !== 'companies' && table !== 'profiles') {
     cleanPayload.company_id = cid;
   }

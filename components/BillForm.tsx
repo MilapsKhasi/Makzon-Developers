@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen } from 'lucide-react';
-import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency } from '../utils/helpers';
+import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
 import VendorForm from './VendorForm';
@@ -232,8 +232,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6">
         <div className="border border-slate-200 dark:border-slate-800 rounded-md p-4 sm:p-8 bg-white dark:bg-slate-900 space-y-6 shadow-sm">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Date</label><input required value={formData.displayDate} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px]" /></div>
-                <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Bill No</label><input required value={formData.bill_number} onChange={e => setFormData({...formData, bill_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono uppercase" /></div>
+                <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Date</label><input required value={toDisplayValue(formData.displayDate)} onChange={e => setFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) setFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px]" /></div>
+                <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Bill No</label><input required value={toDisplayValue(formData.bill_number)} onChange={e => setFormData({...formData, bill_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono uppercase" /></div>
                 <div className="space-y-1.5">
                   <label className="text-[14px] font-medium dark:text-slate-300 capitalize">Status</label>
                   <select 
@@ -256,7 +256,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
             <div className="space-y-1.5">
                 <label className="text-[14px] font-medium dark:text-slate-300 capitalize">Vendor Name</label>
                 <div className="flex gap-3">
-                  <input required list="vlist" value={formData.vendor_name} onChange={e => setFormData({...formData, vendor_name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] uppercase font-bold" />
+                  <input required list="vlist" value={toDisplayValue(formData.vendor_name)} onChange={e => setFormData({...formData, vendor_name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] uppercase font-bold" />
                   <button type="button" onClick={() => setVendorModal({ isOpen: true, initialData: vendors.find(v=>v.name===formData.vendor_name), prefilledName: formData.vendor_name })} className="h-10 w-10 flex items-center justify-center rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"><UserRoundPen className="w-4 h-4 text-slate-400" /></button>
                 </div>
                 <datalist id="vlist">{vendors.map(v => <option key={v.id} value={v.name} />)}</datalist>
@@ -285,13 +285,13 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
                             return (
                                 <tr key={it.id}>
-                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input list="itemslist" value={it.itemName} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-10 px-3 outline-none bg-transparent dark:text-white" /></td>
-                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={it.hsnCode} onChange={e => updateItemRow(idx, 'hsnCode', e.target.value)} className="w-full h-10 px-3 outline-none bg-transparent font-mono text-slate-400 dark:text-slate-500" /></td>
-                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={it.rate} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-10 px-2 text-right outline-none font-mono font-bold dark:text-white bg-transparent" /></td>
-                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={it.qty} onChange={e => updateItemRow(idx, 'qty', e.target.value)} placeholder="10,000" className="w-full h-10 px-2 text-center outline-none font-mono font-bold dark:text-white bg-transparent" /></td>
+                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input list="itemslist" value={toDisplayValue(it.itemName)} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-10 px-3 outline-none bg-transparent dark:text-white" /></td>
+                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={toDisplayValue(it.hsnCode)} onChange={e => updateItemRow(idx, 'hsnCode', e.target.value)} className="w-full h-10 px-3 outline-none bg-transparent font-mono text-slate-400 dark:text-slate-500" /></td>
+                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={toDisplayValue(it.rate)} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-10 px-2 text-right outline-none font-mono font-bold dark:text-white bg-transparent" /></td>
+                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={toDisplayValue(it.qty)} onChange={e => updateItemRow(idx, 'qty', e.target.value)} placeholder="10,000" className="w-full h-10 px-2 text-center outline-none font-mono font-bold dark:text-white bg-transparent" /></td>
                                     <td className="p-0 border-r border-slate-100 dark:border-slate-800">
                                         <div className="flex items-center h-10">
-                                            <input type="text" value={it.discount} onChange={e => updateItemRow(idx, 'discount', e.target.value)} className="w-1/2 h-full px-2 text-right outline-none bg-transparent dark:text-white border-r border-slate-100 dark:border-slate-800" />
+                                            <input type="text" value={toDisplayValue(it.discount)} onChange={e => updateItemRow(idx, 'discount', e.target.value)} className="w-1/2 h-full px-2 text-right outline-none bg-transparent dark:text-white border-r border-slate-100 dark:border-slate-800" />
                                             <select value={it.discount_type} onChange={e => updateItemRow(idx, 'discount_type', e.target.value)} className="w-1/2 h-full px-1 outline-none bg-transparent dark:text-white text-[10px] font-bold">
                                                 <option value="Percentage">%</option>
                                                 <option value="Amount">₹</option>
@@ -322,7 +322,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
             </div>
 
             <div className="flex flex-col lg:flex-row justify-between items-start pt-8 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 gap-8">
-                <div className="w-full lg:w-1/2 lg:pr-12"><label className="text-[14px] font-medium dark:text-slate-300 mb-2 block capitalize">Remark</label><textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] resize-none h-36 bg-slate-50/30 focus:bg-white transition-all shadow-inner" placeholder="Public or private notes..." /></div>
+                <div className="w-full lg:w-1/2 lg:pr-12"><label className="text-[14px] font-medium dark:text-slate-300 mb-2 block capitalize">Remark</label><textarea value={toDisplayValue(formData.description)} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] resize-none h-36 bg-slate-50/30 focus:bg-white transition-all shadow-inner" placeholder="Public or private notes..." /></div>
                 <div className="flex flex-col items-end space-y-4 w-full lg:w-1/2">
                     <div className="flex items-center justify-between w-full max-w-sm text-[14px]">
                         <span className="text-slate-500 font-bold uppercase tracking-tight pr-4">Taxable Value</span>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { getActiveCompanyId, safeSupabaseSave, toStorageValue } from '../utils/helpers';
+import { getActiveCompanyId, safeSupabaseSave, toStorageValue, toDisplayValue } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 
 interface VendorFormProps {
@@ -70,62 +70,62 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, prefilledName, onS
 
       {/* Scrollable Form Body */}
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col bg-white dark:bg-slate-900">
-        <div className="p-8 space-y-6">
-          <div className="border border-slate-200 dark:border-slate-800 rounded-md p-8 space-y-6 bg-white dark:bg-slate-900">
-              <div className="grid grid-cols-3 gap-6">
-                  <div className="col-span-2 space-y-1.5">
+        <div className="p-4 sm:p-8 space-y-6">
+          <div className="border border-slate-200 dark:border-slate-800 rounded-md p-4 sm:p-8 space-y-6 bg-white dark:bg-slate-900">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <div className="sm:col-span-2 space-y-1.5">
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Vendor Name</label>
-                      <input ref={firstInputRef} type="text" value={formData.name} onChange={e => handleChange('name', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="Vendor Name here" />
+                      <input ref={firstInputRef} type="text" value={toDisplayValue(formData.name)} onChange={e => handleChange('name', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="Vendor Name here" />
                   </div>
                   <div className="space-y-1.5">
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Opening Balance</label>
-                      <input type="number" value={formData.balance} onChange={e => handleChange('balance', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono" placeholder="0.00" />
+                      <input type="number" value={toDisplayValue(formData.balance)} onChange={e => handleChange('balance', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono" placeholder="0.00" />
                   </div>
               </div>
 
               <div className="grid grid-cols-3 gap-6">
                   <div className="space-y-1.5">
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">GSTIN Number</label>
-                      <input type="text" value={formData.gstin} onChange={e => handleChange('gstin', e.target.value.toUpperCase())} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white uppercase font-mono" placeholder="GSTIN Number here" />
+                      <input type="text" value={toDisplayValue(formData.gstin)} onChange={e => handleChange('gstin', e.target.value.toUpperCase())} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white uppercase font-mono" placeholder="GSTIN Number here" />
                   </div>
                   <div className="space-y-1.5">
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">PAN Number</label>
-                      <input type="text" value={formData.pan} onChange={e => handleChange('pan', e.target.value.toUpperCase())} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white uppercase font-mono" placeholder="PAN Number here" />
+                      <input type="text" value={toDisplayValue(formData.pan)} onChange={e => handleChange('pan', e.target.value.toUpperCase())} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white uppercase font-mono" placeholder="PAN Number here" />
                   </div>
                   <div className="space-y-1.5">
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">State</label>
-                      <input type="text" value={formData.state} onChange={e => handleChange('state', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="State Name here" />
+                      <input type="text" value={toDisplayValue(formData.state)} onChange={e => handleChange('state', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="State Name here" />
                   </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-1.5">
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Email</label>
-                      <input type="email" value={formData.email} onChange={e => handleChange('email', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="Email Address here" />
+                      <input type="email" value={toDisplayValue(formData.email)} onChange={e => handleChange('email', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="Email Address here" />
                   </div>
                   <div className="space-y-1.5">
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Contact Number</label>
-                      <input type="text" value={formData.phone} onChange={e => handleChange('phone', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="Phone Number here" />
+                      <input type="text" value={toDisplayValue(formData.phone)} onChange={e => handleChange('phone', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="Phone Number here" />
                   </div>
               </div>
 
               <div className="space-y-1.5">
                   <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Business Address</label>
-                  <textarea rows={4} value={formData.address} onChange={e => handleChange('address', e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 resize-none bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="Address here" />
+                  <textarea rows={4} value={toDisplayValue(formData.address)} onChange={e => handleChange('address', e.target.value)} className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 resize-none bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="Address here" />
               </div>
 
               <div className="grid grid-cols-3 gap-6">
                   <div className="space-y-1.5">
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Bank Account Number</label>
-                      <input type="text" value={formData.account_number} onChange={e => handleChange('account_number', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono" placeholder="Account Number here" />
+                      <input type="text" value={toDisplayValue(formData.account_number)} onChange={e => handleChange('account_number', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono" placeholder="Account Number here" />
                   </div>
                   <div className="space-y-1.5">
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Account Holder Name</label>
-                      <input type="text" value={formData.account_name} onChange={e => handleChange('account_name', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="Holder Name here" />
+                      <input type="text" value={toDisplayValue(formData.account_name)} onChange={e => handleChange('account_name', e.target.value)} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="Holder Name here" />
                   </div>
                   <div className="space-y-1.5">
                       <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">IFSC Code</label>
-                      <input type="text" value={formData.ifsc_code} onChange={e => handleChange('ifsc_code', e.target.value.toUpperCase())} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono uppercase" placeholder="IFSC Code here" />
+                      <input type="text" value={toDisplayValue(formData.ifsc_code)} onChange={e => handleChange('ifsc_code', e.target.value.toUpperCase())} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono uppercase" placeholder="IFSC Code here" />
                   </div>
               </div>
           </div>
