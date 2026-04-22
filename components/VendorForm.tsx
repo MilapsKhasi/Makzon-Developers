@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { getActiveCompanyId, safeSupabaseSave, toStorageValue, toDisplayValue } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
+import { recordActivity } from '../utils/activityTracker';
 
 interface VendorFormProps {
   initialData?: any | null;
@@ -39,6 +40,9 @@ const VendorForm: React.FC<VendorFormProps> = ({ initialData, prefilledName, onS
       if (!formData.name.trim()) return alert("Vendor Name is required.");
       setLoading(true);
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) recordActivity(user.id, user.email || '');
+
         const cid = getActiveCompanyId();
         const payload = { 
             ...formData, 

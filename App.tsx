@@ -16,10 +16,12 @@ import DutiesTaxes from './pages/DutiesTaxes';
 import Cashbook from './pages/Cashbook';
 import Auth from './pages/Auth';
 import Companies from './pages/Companies';
+import UserActivity from './pages/UserActivity';
 import SplashScreen from './components/SplashScreen';
 import { CompanyProvider, useCompany } from './context/CompanyContext';
 import { supabase } from './lib/supabase';
 import { Database, AlertCircle, Copy, Check } from 'lucide-react';
+import { processInactivity, recordActivity } from './utils/activityTracker';
 
 const AppContent = () => {
   const [session, setSession] = useState<any>(null);
@@ -60,7 +62,11 @@ const AppContent = () => {
       try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         setSession(currentSession);
-        if (currentSession) await checkSchema(currentSession);
+        if (currentSession) {
+          await checkSchema(currentSession);
+          // Record initial activity on load if session exists
+          recordActivity(currentSession.user.id, currentSession.user.email || '');
+        }
       } catch (e: any) {
         console.error("Auth init error:", e);
         if (e.message?.includes('Failed to fetch') || e.name === 'TypeError') {
@@ -75,16 +81,25 @@ const AppContent = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
-      if (event === 'SIGNED_IN') checkSchema(newSession);
+      if (event === 'SIGNED_IN' && newSession) {
+        checkSchema(newSession);
+        recordActivity(newSession.user.id, newSession.user.email || '');
+      }
       if (event === 'SIGNED_OUT') {
         localStorage.clear();
         setDbError(null);
       }
     });
 
+    // Periodically check for inactivity
+    const inactivityInterval = setInterval(() => {
+      processInactivity();
+    }, 60000); // Check every minute
+
     return () => {
       clearTimeout(splashTimer);
       subscription.unsubscribe();
+      clearInterval(inactivityInterval);
     };
   }, []);
 
@@ -219,6 +234,7 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
           <Route path="duties-taxes" element={<DutiesTaxes />} />
           <Route path="stock" element={<Stock />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="user-activity" element={<UserActivity />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         

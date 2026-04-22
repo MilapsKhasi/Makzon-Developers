@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import Logo from './Logo';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import UpdateNotification from './UpdateNotification';
+import { getUserActivity } from '../utils/activityTracker';
 
 const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
@@ -17,6 +18,29 @@ const Layout = () => {
   const { activeCompany, setCompany } = useCompany();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [user, setUser] = useState<any>(null);
+  const [isInactive, setIsInactive] = useState(false);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    const checkStatus = () => {
+      if (user) {
+        const activity = getUserActivity(user.id);
+        setIsInactive(activity?.status === 'inactive');
+      }
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 30000); // Check status every 30s
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Handle window resize to auto-close/open sidebar
   useEffect(() => {
@@ -172,6 +196,7 @@ const Layout = () => {
     { icon: BookOpen, label: 'Cashbook', path: '/cashbook' },
     { icon: Percent, label: 'Duties & Taxes', path: '/duties-taxes' },
     { icon: BarChart3, label: 'Reports', path: '/reports' },
+    { icon: MonitorPlay, label: 'User Activity', path: '/user-activity' },
     { icon: SettingsIcon, label: 'Settings', path: '/settings' },
   ];
 
@@ -300,6 +325,14 @@ const Layout = () => {
               )}
             </div>
           </div>
+          {isInactive && (
+            <div className="flex items-center space-x-2 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-full border border-red-100 dark:border-red-800 animate-pulse transition-all">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+              <span className="text-[10px] sm:text-xs font-medium text-red-600 dark:text-red-400">
+                Your account is inactive. Please perform an action to keep it active.
+              </span>
+            </div>
+          )}
         </header>
         <main className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-50 dark:bg-slate-950">
           <Outlet />

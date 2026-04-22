@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, Package, Tag, Box, Hash, Scale, X } from 'lucide-react';
 import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES } from '../utils/helpers';
+import { recordActivity } from '../utils/activityTracker';
+import { supabase } from '../lib/supabase';
 
 interface StockFormProps {
   initialData?: any;
@@ -41,9 +43,13 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
     setFormData({ ...formData, [field]: value }); 
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!formData.name.trim()) return alert("Item name is mandatory.");
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) recordActivity(user.id, user.email || '');
+
       const storageData = { 
         ...formData, 
         name: formData.name.trim(),
