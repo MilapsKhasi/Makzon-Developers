@@ -14,5 +14,8 @@ export const supabase = createClient(finalUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true
+  },
+  global: {
+    fetch: (...args) => fetch(...args)
   }
 });
