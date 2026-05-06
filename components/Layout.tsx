@@ -223,7 +223,7 @@ const Layout = () => {
             {(isSidebarOpen || isMobileMenuOpen) && (
               <div className="flex flex-col animate-in fade-in slide-in-from-left-2 duration-500">
                 <div className="flex items-center space-x-2">
-                  <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">ZenterPrime</span>
+                  <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">ZenterPrime Beta</span>
                 </div>
               </div>
             )}
@@ -237,11 +237,11 @@ const Layout = () => {
           </button>
         </div>
         
-        {/* Gateway of ZenterPrime Header */}
+        {/* Gateway of ZenterPrime Beta Header */}
         <div className={`bg-slate-50 dark:bg-slate-800/40 flex items-center transition-all duration-300 shrink-0 border-b border-slate-100 dark:border-slate-800 ${(isSidebarOpen || isMobileMenuOpen) ? 'px-4 py-2.5 h-10' : 'h-1.5 justify-center'}`}>
           {(isSidebarOpen || isMobileMenuOpen) && (
             <span className="text-slate-500 dark:text-slate-400 font-bold text-[10px] capitalize tracking-wide whitespace-nowrap">
-              Gateway Of ZenterPrime
+              Gateway Of ZenterPrime Beta
             </span>
           )}
         </div>

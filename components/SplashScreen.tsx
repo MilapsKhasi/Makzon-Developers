@@ -12,7 +12,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ isExiting }) => {
         <Logo size={100} className="mb-6 rounded-[15px]" />
         <div className="text-center">
           <h1 className="text-3xl font-semibold text-primary tracking-tight mb-1 font-['Poppins']">
-            ZenterPrime
+            ZenterPrime Beta
           </h1>
           <p className="text-sm font-medium text-slate-900 tracking-[0.2em] uppercase font-['Poppins']">
             Your Digital Finance Desk

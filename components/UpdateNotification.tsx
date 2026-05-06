@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Gift, Zap, Shield, Layout } from 'lucide-react';
 
-const CURRENT_VERSION = '26.4.01';
+const CURRENT_VERSION = 'ZP-26.5.01';
 const STORAGE_KEY = `version_popup_shown_${CURRENT_VERSION}`;
 
 const UpdateNotification = () => {
@@ -39,7 +39,7 @@ const UpdateNotification = () => {
         </div>
         
         <div className="p-8">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">ZenterPrime - Version 26.4.01 Released!</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">ZenterPrime Beta - Version ZP-26.5.01 Released!</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Experience the next evolution of your digital finance desk with our latest update.</p>
             
             <div className="space-y-4 mb-8">
@@ -47,7 +47,7 @@ const UpdateNotification = () => {
                     <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg shrink-0"><Layout className="w-4 h-4 text-blue-600 dark:text-blue-400" /></div>
                     <div>
                         <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">Fresh New Look</h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Complete rebranding to ZenterPrime with a modern, accessible color palette.</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Complete rebranding to ZenterPrime Beta with a modern, accessible color palette.</p>
                     </div>
                 </div>
                 <div className="flex items-start space-x-3">
