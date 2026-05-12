@@ -31,7 +31,35 @@ const AppContent = () => {
   const [dbError, setDbError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   
+  const [isSuspended, setIsSuspended] = useState(false);
+  const location = useLocation();
+  
   const { activeCompany, loading: companyLoading } = useCompany();
+
+  const checkUserSuspension = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('suspended')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Error fetching profile:", error);
+        return false;
+      }
+
+      if (data?.suspended) {
+        setIsSuspended(true);
+        await supabase.auth.signOut();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Suspension check error:", err);
+      return false;
+    }
+  };
 
   useEffect(() => {
     const splashTimer = setTimeout(() => {
@@ -63,9 +91,11 @@ const AppContent = () => {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         setSession(currentSession);
         if (currentSession) {
-          await checkSchema(currentSession);
-          // Record initial activity on load if session exists
-          recordActivity(currentSession.user.id, currentSession.user.email || '');
+          const isUserSuspended = await checkUserSuspension(currentSession.user.id);
+          if (!isUserSuspended) {
+            await checkSchema(currentSession);
+            recordActivity(currentSession.user.id, currentSession.user.email || '');
+          }
         }
       } catch (e: any) {
         console.error("Auth init error:", e);
@@ -79,15 +109,20 @@ const AppContent = () => {
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       setSession(newSession);
-      if (event === 'SIGNED_IN' && newSession) {
-        checkSchema(newSession);
-        recordActivity(newSession.user.id, newSession.user.email || '');
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && newSession) {
+        const isUserSuspended = await checkUserSuspension(newSession.user.id);
+        if (!isUserSuspended) {
+          checkSchema(newSession);
+          recordActivity(newSession.user.id, newSession.user.email || '');
+        }
       }
       if (event === 'SIGNED_OUT') {
         localStorage.clear();
         setDbError(null);
+        // Don't reset isSuspended here if we want to keep showing the screen
+        // But if they clicked logout from suspended screen (if we add one in future), we'd want to reset it
       }
     });
 
@@ -103,6 +138,13 @@ const AppContent = () => {
     };
   }, []);
 
+  // Check suspension on every route change
+  useEffect(() => {
+    if (session?.user?.id) {
+      checkUserSuspension(session.user.id);
+    }
+  }, [location, session]);
+
   const copySql = () => {
     const sql = `
 -- 1. Create Profiles Table for Multi-tenancy Context
@@ -110,6 +152,7 @@ CREATE TABLE public.profiles (
   id uuid REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   active_company_id uuid,
   full_name text,
+  suspended boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
 
@@ -169,6 +212,31 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
   };
 
   if (showSplash) return <SplashScreen isExiting={isSplashExiting} />;
+
+  if (isSuspended) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center animate-in fade-in zoom-in duration-300">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2 capitalize">Account Suspended</h1>
+          <p className="text-slate-500 mb-8 capitalize">
+            Your account has been temporarily suspended. Contact support.
+          </p>
+          <button 
+            onClick={() => {
+              setIsSuspended(false);
+              window.location.reload();
+            }} 
+            className="w-full px-6 py-3 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-800 transition-colors capitalize"
+          >
+            Retry Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (authLoading || companyLoading) return (
     <div className="h-screen w-screen flex items-center justify-center bg-white">
