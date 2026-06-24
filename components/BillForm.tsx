@@ -104,7 +104,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     return val.startsWith('-') ? `-${formatted}` : formatted;
   };
 
-  const recalculate = (state: any, sourceField?: string, sourceDutyId?: string, sourceVal?: any) => {
+  const recalculate = (state: any, sourceField?: string, sourceDutyId?: string, sourceVal?: any, overrideGstEnabled?: boolean) => {
+    const currentGstEnabled = overrideGstEnabled !== undefined ? overrideGstEnabled : isGstEnabled;
     let taxable = state.total_without_gst;
     let gst = state.total_gst;
     let autoGstSum = gst;
@@ -139,7 +140,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         discountAmount = Math.min(discountAmount, baseAmount);
         
         const taxableVal = baseAmount - discountAmount;
-        const gstAmt = isGstEnabled ? taxableVal * (t / 100) : 0;
+        const gstAmt = currentGstEnabled ? taxableVal * (t / 100) : 0;
         const itemSubtotal = taxableVal + gstAmt; 
         
         taxable += taxableVal;
@@ -150,12 +151,47 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       state.items = updatedItems;
     }
 
+    // Dynamic injection/correction of CGST, SGST, IGST in duties_and_taxes if they are missing
+    let duties = [...(state.duties_and_taxes || [])];
+    if (currentGstEnabled && appSettings.gstEnabled) {
+      const requiredNames = appSettings.gstType === 'CGST - SGST' ? ['CGST', 'SGST'] : ['IGST'];
+      requiredNames.forEach(name => {
+        const exists = duties.some((d: any) => d.name === name);
+        if (!exists) {
+          duties.push({
+            id: 'virtual_' + name + '_' + Date.now(),
+            name: name,
+            amount: 0,
+            type: 'Charge',
+            calc_method: 'Fixed',
+            fixed_amount: 0,
+            rate: 0,
+            apply_on: 'Subtotal',
+            is_default: true,
+            is_deleted: false
+          });
+        }
+      });
+      // Also remove or zero out non-required GST types
+      const nonRequiredNames = appSettings.gstType === 'CGST - SGST' ? ['IGST'] : ['CGST', 'SGST'];
+      duties = duties.filter((d: any) => !nonRequiredNames.includes(d.name));
+    } else {
+      // If GST is disabled, remove any CGST, SGST, IGST duties
+      duties = duties.filter((d: any) => !['CGST', 'SGST', 'IGST'].includes(d.name));
+    }
+    state.duties_and_taxes = duties;
+
     let runningTotal = taxable;
+    // If GST is enabled locally, but NOT globally, add gst directly to runningTotal
+    if (currentGstEnabled && !appSettings.gstEnabled) {
+      runningTotal += gst;
+    }
+
     const updatedDuties = (state.duties_and_taxes || []).map((d: any) => {
       let calcAmt = d.amount || 0;
       if (sourceDutyId === d.id) {
         calcAmt = parseNumber(sourceVal);
-      } else if (isGstEnabled && appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST')) {
+      } else if (currentGstEnabled && appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST')) {
           if (appSettings.gstType === 'CGST - SGST') {
               if (d.name === 'CGST' || d.name === 'SGST') calcAmt = autoGstSum / 2;
           } else if (appSettings.gstType === 'IGST') {
@@ -281,7 +317,11 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-4">
-            <button type="button" onClick={() => setIsGstEnabled(!isGstEnabled)} className="flex items-center space-x-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-md text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+            <button type="button" onClick={() => {
+              const nextVal = !isGstEnabled;
+              setIsGstEnabled(nextVal);
+              setFormData(recalculate({ ...formData }, undefined, undefined, undefined, nextVal));
+            }} className="flex items-center space-x-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-md text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
               {isGstEnabled ? <ToggleRight className="w-5 h-5 text-primary" /> : <ToggleLeft className="w-5 h-5 text-slate-400" />}
               <span>Enable GST</span>
             </button>
