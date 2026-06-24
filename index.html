@@ -2,6 +2,24 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script>
+      // Fix for read-only window.fetch in some iframe / proxy environments
+      try {
+        let originalFetch = window.fetch;
+        Object.defineProperty(window, 'fetch', {
+          get() {
+            return originalFetch;
+          },
+          set(value) {
+            originalFetch = value;
+          },
+          configurable: true,
+          enumerable: true
+        });
+      } catch (e) {
+        console.warn("Could not patch window.fetch setter:", e);
+      }
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>ZenterPrime Beta | Your Digital Finance Desk</title>

@@ -25,7 +25,13 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const refresh = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error("Context refresh session error:", error);
+        setActiveCompany(null);
+        return;
+      }
+      const session = data?.session;
       if (!session) {
         setActiveCompany(null);
         return;
@@ -68,17 +74,26 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const setCompany = async (company: Company) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error("Context setCompany session error:", error);
+        return;
+      }
+      const session = data?.session;
+      if (!session) return;
 
-    // Sync to Supabase Profile for RLS
-    await supabase
-      .from('profiles')
-      .upsert({ id: session.user.id, active_company_id: company.id });
+      // Sync to Supabase Profile for RLS
+      await supabase
+        .from('profiles')
+        .upsert({ id: session.user.id, active_company_id: company.id });
 
-    localStorage.setItem('activeCompanyId', company.id);
-    localStorage.setItem('activeCompanyName', company.name);
-    setActiveCompany(company);
+      localStorage.setItem('activeCompanyId', company.id);
+      localStorage.setItem('activeCompanyName', company.name);
+      setActiveCompany(company);
+    } catch (err) {
+      console.error("Context setCompany error:", err);
+    }
   };
 
   useEffect(() => {

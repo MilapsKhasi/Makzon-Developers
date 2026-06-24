@@ -24,8 +24,18 @@ const Layout = () => {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error("Layout fetchUser error:", error);
+          setUser(null);
+        } else {
+          setUser(data?.user || null);
+        }
+      } catch (err) {
+        console.error("Layout fetchUser unexpected error:", err);
+        setUser(null);
+      }
     };
     fetchUser();
   }, []);

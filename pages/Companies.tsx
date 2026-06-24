@@ -68,8 +68,9 @@ const Companies = () => {
     setCreating(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Auth Session Not Found");
+      const { data, error: userError } = await supabase.auth.getUser();
+      if (userError || !data?.user) throw new Error(userError?.message || "Auth Session Not Found");
+      const user = data.user;
 
       const payload = {
         name: formData.name.trim().toUpperCase(),
