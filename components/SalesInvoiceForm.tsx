@@ -1,28 +1,27 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
-import VendorForm from './VendorForm';
+import CustomerForm from './CustomerForm';
 import PaymentModal from './PaymentModal';
 import { recordActivity } from '../utils/activityTracker';
 
-interface BillFormProps {
+interface SalesInvoiceFormProps {
   initialData?: any;
-  onSubmit: (bill: any) => void;
+  onSubmit: (invoice: any) => void;
   onCancel: () => void;
 }
 
-const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) => {
+const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubmit, onCancel }) => {
   const cid = getActiveCompanyId();
   const appSettings = getAppSettings();
   const today = new Date().toISOString().split('T')[0];
   const manualOverrides = useRef<Set<string>>(new Set());
 
   const getInitialState = () => ({
-    vendor_name: '', 
-    bill_number: '', 
+    customer_name: '', 
+    invoice_number: '', 
     date: today, 
     displayDate: formatDate(today), 
     gst_type: appSettings.gstType || 'CGST - SGST',
@@ -82,9 +81,9 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo]);
 
-  const [vendors, setVendors] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [stockItems, setStockItems] = useState<any[]>([]);
-  const [vendorModal, setVendorModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
+  const [customerModal, setCustomerModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const parseNumber = (val: string) => {
@@ -208,16 +207,16 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     });
 
     const rounded = parseFloat(runningTotal.toFixed(2));
-    const ro = 0; // Removing automatic rounding as per "exact logic" request
+    const ro = 0;
 
     return { ...state, total_without_gst: parseFloat(taxable.toFixed(2)), total_gst: parseFloat(gst.toFixed(2)), duties_and_taxes: updatedDuties, round_off: ro, grand_total: rounded };
   };
 
   const loadDependencies = async () => {
     if (!cid) return;
-    const { data: vendorData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('party_type', 'vendor').eq('is_deleted', false);
+    const { data: partyData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false);
     const { data: stockData } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
-    setVendors(vendorData || []);
+    setCustomers((partyData || []).filter(p => p.party_type === 'customer' || p.is_customer === true));
     setStockItems(stockData || []);
     
     const { data: allDuties } = await supabase.from('duties_taxes').select('*').eq('company_id', cid).eq('is_deleted', false);
@@ -231,14 +230,16 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       });
     } else {
         const normalized = normalizeBill(initialData);
-        normalized.items_raw?.duties_and_taxes?.forEach((d:any) => { if(d.amount !== 0) manualOverrides.current.add(d.id); });
+        normalized?.items_raw?.duties_and_taxes?.forEach((d:any) => { if(d.amount !== 0) manualOverrides.current.add(d.id); });
         setFormData(recalculate({ 
           ...getInitialState(), 
           ...normalized, 
-          description: normalized.description || '', 
-          displayDate: formatDate(normalized.date), 
-          duties_and_taxes: (normalized.items_raw?.duties_and_taxes || []),
-          payment_details: normalized.items_raw?.payment_details || null
+          customer_name: normalized?.customer_name || '',
+          invoice_number: normalized?.invoice_number || '',
+          description: normalized?.description || '', 
+          displayDate: formatDate(normalized?.date), 
+          duties_and_taxes: (normalized?.items_raw?.duties_and_taxes || []),
+          payment_details: normalized?.items_raw?.payment_details || null
         }));
     }
   };
@@ -259,15 +260,15 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.vendor_name || !formData.bill_number) return alert("Required: Vendor and Bill No");
+    if (!formData.customer_name || !formData.invoice_number) return alert("Required: Customer Name and Invoice No");
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) recordActivity(user.id, user.email || '');
 
       const payload: any = {
-          vendor_name: formData.vendor_name,
-          bill_number: formData.bill_number,
+          customer_name: formData.customer_name,
+          invoice_number: formData.invoice_number,
           date: formData.date,
           total_without_gst: formData.total_without_gst,
           total_gst: formData.total_gst,
@@ -284,9 +285,9 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
           }
       };
       
-      const savedRes = await safeSupabaseSave('bills', payload, initialData?.id);
+      const savedRes = await safeSupabaseSave('sales_invoices', payload, initialData?.id);
       await ensureStockItems(formData.items, cid);
-      await ensureParty(formData.vendor_name, 'vendor', cid);
+      await ensureParty(formData.customer_name, 'customer', cid);
       if (payload.status === 'Paid' && savedRes.data) await syncTransactionToCashbook(savedRes.data[0]);
       window.dispatchEvent(new Event('appSettingsChanged'));
       onSubmit(payload);
@@ -295,8 +296,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
   return (
     <div className="bg-white dark:bg-slate-900 w-full flex flex-col">
-      <Modal isOpen={vendorModal.isOpen} onClose={() => setVendorModal({ ...vendorModal, isOpen: false })} title="Vendor Master" maxWidth="max-w-4xl">
-        <VendorForm initialData={vendorModal.initialData} prefilledName={vendorModal.prefilledName} onSubmit={(v) => { setVendorModal({ ...vendorModal, isOpen: false }); loadDependencies(); }} onCancel={() => setVendorModal({ ...vendorModal, isOpen: false })} />
+      <Modal isOpen={customerModal.isOpen} onClose={() => setCustomerModal({ ...customerModal, isOpen: false })} title="Customer Master" maxWidth="max-w-4xl">
+        <CustomerForm initialData={customerModal.initialData} prefilledName={customerModal.prefilledName} onSubmit={(c) => { setCustomerModal({ ...customerModal, isOpen: false }); loadDependencies(); }} onCancel={() => setCustomerModal({ ...customerModal, isOpen: false })} />
       </Modal>
 
       <PaymentModal 
@@ -309,7 +310,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
           setFormData({ ...formData, payment_details: payments, status: 'Paid' });
           setShowPaymentModal(false);
         }}
-        billNumber={formData.bill_number || 'New'}
+        billNumber={formData.invoice_number || 'New'}
         totalAmount={formData.grand_total}
         initialPayments={Array.isArray(formData.payment_details) ? formData.payment_details : (formData.payment_details ? [formData.payment_details] : [])}
       />
@@ -337,7 +338,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         <div className="border border-slate-200 dark:border-slate-800 rounded-md p-4 sm:p-8 bg-white dark:bg-slate-900 space-y-6 shadow-sm">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Date</label><input required value={toDisplayValue(formData.displayDate)} onChange={e => updateFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) updateFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px]" /></div>
-                <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Bill No</label><input required value={toDisplayValue(formData.bill_number)} onChange={e => updateFormData({...formData, bill_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono uppercase" /></div>
+                <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Invoice No</label><input required value={toDisplayValue(formData.invoice_number)} onChange={e => updateFormData({...formData, invoice_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono uppercase" /></div>
                 <div className="space-y-1.5">
                   <label className="text-[14px] font-medium dark:text-slate-300 capitalize">Status</label>
                   <select 
@@ -358,12 +359,12 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
             </div>
 
             <div className="space-y-1.5">
-                <label className="text-[14px] font-medium dark:text-slate-300 capitalize">Vendor Name</label>
+                <label className="text-[14px] font-medium dark:text-slate-300 capitalize">Customer Name</label>
                 <div className="flex gap-3">
-                  <input required list="vlist" value={toDisplayValue(formData.vendor_name)} onChange={e => updateFormData({...formData, vendor_name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] uppercase font-bold" />
-                  <button type="button" onClick={() => setVendorModal({ isOpen: true, initialData: vendors.find(v=>v.name===formData.vendor_name), prefilledName: formData.vendor_name })} className="h-10 w-10 flex items-center justify-center rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"><UserRoundPen className="w-4 h-4 text-slate-400" /></button>
+                  <input required list="clist" value={toDisplayValue(formData.customer_name)} onChange={e => updateFormData({...formData, customer_name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] uppercase font-bold" />
+                  <button type="button" onClick={() => setCustomerModal({ isOpen: true, initialData: customers.find(c=>c.name===formData.customer_name), prefilledName: formData.customer_name })} className="h-10 w-10 flex items-center justify-center rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"><UserRoundPen className="w-4 h-4 text-slate-400" /></button>
                 </div>
-                <datalist id="vlist">{vendors.map(v => <option key={v.id} value={v.name} />)}</datalist>
+                <datalist id="clist">{customers.map(c => <option key={c.id} value={c.name} />)}</datalist>
             </div>
 
             <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-x-auto mt-6 bg-white dark:bg-slate-900">
@@ -450,7 +451,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                         </div>
                     ))}
                     <div className="flex items-center justify-between w-full max-w-sm text-[14px] border-t border-slate-100 dark:border-slate-800 pt-5">
-                        <span className="text-slate-900 dark:text-slate-100 font-bold uppercase text-right pr-4 tracking-tighter">Net Total Bill</span>
+                        <span className="text-slate-900 dark:text-slate-100 font-bold uppercase text-right pr-4 tracking-tighter">Net Total Invoice</span>
                         <span className="font-mono font-bold text-[20px] sm:text-[24px] text-link">{formatCurrency(formData.grand_total)}</span>
                     </div>
                 </div>
@@ -460,7 +461,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         <div className="flex items-center justify-end space-x-6">
             <button type="button" onClick={onCancel} className="text-[14px] text-slate-400 hover:text-slate-800 font-medium capitalize">Discard</button>
             <button type="submit" disabled={loading} className="bg-primary text-white px-10 py-3 rounded font-bold text-[14px] hover:bg-primary-dark shadow-lg active:scale-95 flex items-center capitalize">
-                {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}{initialData ? 'Update Bill' : 'Save Statement'}
+                {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}{initialData ? 'Update Invoice' : 'Save Invoice'}
             </button>
         </div>
       </form>
@@ -468,4 +469,4 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   );
 };
 
-export default BillForm;
+export default SalesInvoiceForm;
