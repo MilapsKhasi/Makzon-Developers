@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, ToggleLeft, ToggleRight, Printer } from 'lucide-react';
 import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
 import CustomerForm from './CustomerForm';
 import PaymentModal from './PaymentModal';
 import { recordActivity } from '../utils/activityTracker';
+import { InvoicePrintModal } from './InvoicePrintModal';
 
 interface SalesInvoiceFormProps {
   initialData?: any;
-  onSubmit: (invoice: any) => void;
+  onSubmit: (invoice: any, shouldPrint?: boolean) => void;
   onCancel: () => void;
 }
 
@@ -85,6 +86,8 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [customerModal, setCustomerModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const shouldPrintRef = useRef(false);
 
   const parseNumber = (val: string) => {
     if (!val) return 0;
@@ -290,7 +293,8 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       await ensureParty(formData.customer_name, 'customer', cid);
       if (payload.status === 'Paid' && savedRes.data) await syncTransactionToCashbook(savedRes.data[0]);
       window.dispatchEvent(new Event('appSettingsChanged'));
-      onSubmit(payload);
+      const finalInv = (savedRes.data && savedRes.data[0]) ? savedRes.data[0] : { ...payload, bill_number: payload.invoice_number };
+      onSubmit(finalInv, shouldPrintRef.current);
     } catch (err: any) { alert("Error: " + err.message); } finally { setLoading(false); }
   };
 
@@ -458,13 +462,34 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
             </div>
         </div>
 
-        <div className="flex items-center justify-end space-x-6">
-            <button type="button" onClick={onCancel} className="text-[14px] text-slate-400 hover:text-slate-800 font-medium capitalize">Discard</button>
-            <button type="submit" disabled={loading} className="bg-primary text-white px-10 py-3 rounded font-bold text-[14px] hover:bg-primary-dark shadow-lg active:scale-95 flex items-center capitalize">
-                {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}{initialData ? 'Update Invoice' : 'Save Invoice'}
+        <div className="flex items-center justify-end space-x-4">
+            <button type="button" onClick={() => setShowPrintModal(true)} className="border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-5 py-3 rounded font-bold text-[14px] hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center shadow-sm active:scale-95 transition-all">
+                <Printer className="w-4 h-4 mr-2 text-red-600" /> Print Preview
+            </button>
+            <button type="button" onClick={onCancel} className="text-[14px] text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium capitalize px-2">Discard</button>
+            <button type="submit" onClick={() => { shouldPrintRef.current = false; }} disabled={loading} className="bg-slate-800 dark:bg-slate-700 text-white px-6 py-3 rounded font-bold text-[14px] hover:bg-slate-900 shadow active:scale-95 flex items-center capitalize transition-all">
+                {loading && !shouldPrintRef.current && <Loader2 className="w-4 h-4 animate-spin mr-2" />}{initialData ? 'Update' : 'Save'}
+            </button>
+            <button type="submit" onClick={() => { shouldPrintRef.current = true; }} disabled={loading} className="bg-primary text-white px-8 py-3 rounded font-bold text-[14px] hover:bg-primary-dark shadow-lg active:scale-95 flex items-center capitalize transition-all">
+                {loading && shouldPrintRef.current && <Loader2 className="w-4 h-4 animate-spin mr-2" />}<Printer className="w-4 h-4 mr-2 inline" />{initialData ? 'Update & Print' : 'Save & Print'}
             </button>
         </div>
       </form>
+
+      <InvoicePrintModal 
+        isOpen={showPrintModal} 
+        onClose={() => setShowPrintModal(false)} 
+        invoice={{
+          ...formData,
+          bill_number: formData.invoice_number || 'DRAFT',
+          items: formData.items,
+          items_raw: {
+            line_items: formData.items,
+            duties_and_taxes: formData.duties_and_taxes,
+            payment_details: formData.payment_details
+          }
+        }} 
+      />
     </div>
   );
 };

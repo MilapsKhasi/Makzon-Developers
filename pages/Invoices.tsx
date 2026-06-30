@@ -1,17 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Trash2, Loader2, Download, ReceiptText, Plus } from 'lucide-react';
-import { formatCurrency, formatDate, getActiveCompanyId } from '../utils/helpers';
+import { Search, Edit, Trash2, Loader2, Download, ReceiptText, Plus, Printer } from 'lucide-react';
+import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import SalesInvoiceForm from '../components/SalesInvoiceForm';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { supabase } from '../lib/supabase';
+import { InvoicePrintModal } from '../components/InvoicePrintModal';
 
 const Invoices = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<any | null>(null);
+  const [printModalInvoice, setPrintModalInvoice] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; invoice: any | null }>({
@@ -25,18 +27,16 @@ const Invoices = () => {
     if (!cid) return;
     
     const { data } = await supabase
-        .from('bills')
+        .from('sales_invoices')
         .select('*')
         .eq('company_id', cid)
         .eq('is_deleted', false)
-        .eq('type', 'Sale')
         .order('date', { ascending: false });
 
-    const mappedData = (data || []).map(item => ({
-        ...item,
-        customer_name: item.vendor_name,
-        invoice_number: item.bill_number
-    }));
+    const mappedData = (data || []).map(item => {
+        const norm = normalizeBill(item);
+        return norm ? { ...norm, type: 'Sale' } : null;
+    }).filter(Boolean) as any[];
 
     setInvoices(mappedData);
     setLoading(false);
@@ -48,7 +48,7 @@ const Invoices = () => {
 
   const confirmDelete = async () => {
     if (!deleteDialog.invoice) return;
-    const { error } = await supabase.from('bills').update({ is_deleted: true }).eq('id', deleteDialog.invoice.id);
+    const { error } = await supabase.from('sales_invoices').update({ is_deleted: true }).eq('id', deleteDialog.invoice.id);
     if (!error) { loadData(); window.dispatchEvent(new Event('appSettingsChanged')); }
   };
 
@@ -59,7 +59,7 @@ const Invoices = () => {
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingInvoice ? "Edit Sales Invoice" : "Generate Sales Invoice"} maxWidth="max-w-full">
-        <SalesInvoiceForm initialData={editingInvoice} onSubmit={() => { setIsModalOpen(false); loadData(); }} onCancel={() => setIsModalOpen(false)} />
+        <SalesInvoiceForm initialData={editingInvoice} onSubmit={(inv, shouldPrint) => { setIsModalOpen(false); loadData(); if (shouldPrint && inv) setPrintModalInvoice(inv); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>
 
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, invoice: null })} onConfirm={confirmDelete} title="Archive Invoice" message={`Are you sure you want to move invoice ${deleteDialog.invoice?.invoice_number} to the trash?`} />
@@ -107,8 +107,9 @@ const Invoices = () => {
                     <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 text-right font-bold text-slate-900 dark:text-slate-100 text-lg">{formatCurrency(inv.grand_total)}</td>
                     <td className="py-5 px-8 text-center">
                       <div className="flex justify-center space-x-3 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"><Edit className="w-5 h-5" /></button>
-                          <button onClick={() => setDeleteDialog({ isOpen: true, invoice: inv })} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all"><Trash2 className="w-5 h-5" /></button>
+                          <button onClick={() => setPrintModalInvoice(inv)} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all" title="Print Invoice"><Printer className="w-5 h-5" /></button>
+                          <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all" title="Edit Invoice"><Edit className="w-5 h-5" /></button>
+                          <button onClick={() => setDeleteDialog({ isOpen: true, invoice: inv })} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all" title="Delete Invoice"><Trash2 className="w-5 h-5" /></button>
                       </div>
                     </td>
                   </tr>
@@ -119,6 +120,12 @@ const Invoices = () => {
           )}
         </div>
       </div>
+
+      <InvoicePrintModal 
+        isOpen={!!printModalInvoice} 
+        onClose={() => setPrintModalInvoice(null)} 
+        invoice={printModalInvoice} 
+      />
     </div>
   );
 };

@@ -27,7 +27,7 @@ const Purchases = () => {
 
     try {
       const { data, error } = await supabase
-        .from('bills')
+        .from('purchase_bills')
         .select('*')
         .eq('company_id', cid)
         .eq('is_deleted', false)
@@ -36,8 +36,11 @@ const Purchases = () => {
       if (error) throw error;
 
       const purchaseOnly = (data || [])
-        .map(normalizeBill)
-        .filter(b => b.type === 'Purchase');
+        .map(b => {
+          const norm = normalizeBill(b);
+          return norm ? { ...norm, type: 'Purchase' } : null;
+        })
+        .filter(Boolean);
 
       setBills(purchaseOnly);
     } catch (err: any) {
@@ -55,7 +58,7 @@ const Purchases = () => {
 
   const confirmDelete = async () => {
     if (!deleteDialog.bill) return;
-    const { error } = await supabase.from('bills').update({ is_deleted: true }).eq('id', deleteDialog.bill.id);
+    const { error } = await supabase.from('purchase_bills').update({ is_deleted: true }).eq('id', deleteDialog.bill.id);
     if (error) alert('Error deleting: ' + error.message);
     else loadData();
   };

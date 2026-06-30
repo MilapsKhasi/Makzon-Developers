@@ -21,7 +21,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
     setLoading(true);
     try {
       const { data: voucherData } = await supabase
-        .from('bills')
+        .from('purchase_bills')
         .select('*')
         .eq('company_id', cid)
         .eq('is_deleted', false);
@@ -33,7 +33,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         .eq('is_deleted', false);
 
       const allVouchers = [
-        ...(voucherData || []).map(v => ({ ...normalizeBill(v), source: 'bills' })),
+        ...(voucherData || []).map(v => ({ ...normalizeBill(v), source: 'purchase_bills' })),
         ...(salesData || []).map(v => ({ ...normalizeBill(v), source: 'sales_invoices' }))
       ];
 

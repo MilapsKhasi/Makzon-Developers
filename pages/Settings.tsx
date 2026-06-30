@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor, Percent, CheckCircle2, RotateCcw, Trash, Filter, ShieldCheck, BadgeCheck } from 'lucide-react';
+import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor, Percent, CheckCircle2, RotateCcw, Trash, Filter, ShieldCheck, BadgeCheck, HardDrive, Download, Cpu, FolderSymlink, Laptop } from 'lucide-react';
 import { getActiveCompanyId, safeSupabaseSave, getAppSettings, formatDate } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { exportFullDatabaseToFolder, downloadStandaloneOfflineLauncher, downloadWindowsExePackage } from '../utils/offlineHelper';
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -24,10 +25,49 @@ const Settings = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [licenseId, setLicenseId] = useState('26401');
   
+  // Offline & Desktop State
+  const [offlineActionLoading, setOfflineActionLoading] = useState(false);
+  const [offlineStatusMsg, setOfflineStatusMsg] = useState('');
+
   // Recycle Bin State
   const [recycleTab, setRecycleTab] = useState('All');
   const [deletedItems, setDeletedItems] = useState<any[]>([]);
   const [recycleLoading, setRecycleLoading] = useState(false);
+
+  const handleExportDiskFolder = async () => {
+    setOfflineActionLoading(true);
+    setOfflineStatusMsg('Syncing all database records to disk folder...');
+    try {
+      const res = await exportFullDatabaseToFolder();
+      if (res?.success) {
+        setOfflineStatusMsg(`✅ Data saved successfully to local disk folder (${res.folder || res.filename}).`);
+      } else if (res?.aborted) {
+        setOfflineStatusMsg('Sync canceled by user.');
+      }
+    } catch (err: any) {
+      setOfflineStatusMsg(`❌ Error: ${err.message}`);
+    } finally {
+      setOfflineActionLoading(false);
+    }
+  };
+
+  const handleDownloadOfflineHtml = async () => {
+    setOfflineActionLoading(true);
+    setOfflineStatusMsg('Generating standalone offline HTML application snapshot...');
+    try {
+      await downloadStandaloneOfflineLauncher();
+      setOfflineStatusMsg('✅ Standalone offline app downloaded to your hard disk.');
+    } catch (err: any) {
+      setOfflineStatusMsg(`❌ Error: ${err.message}`);
+    } finally {
+      setOfflineActionLoading(false);
+    }
+  };
+
+  const handleDownloadExeBuilder = () => {
+    downloadWindowsExePackage();
+    setOfflineStatusMsg('✅ Desktop .EXE compiler package downloaded. Double-click the file on Windows to launch standalone application.');
+  };
 
   const recycleTabs = [
     'All', 'Workspace', 'Sales Invoices', 'Purchase Bills', 
@@ -85,11 +125,12 @@ const Settings = () => {
         supabase.from('companies').select('id, name, created_at').eq('is_deleted', true).eq('id', cid), 
         supabase.from('companies').select('id, name, created_at').eq('is_deleted', true).not('id', 'eq', cid), 
         supabase.from('sales_invoices').select('id, invoice_number, customer_name, date').eq('is_deleted', true).eq('company_id', cid),
-        supabase.from('bills').select('id, bill_number, vendor_name, date').eq('is_deleted', true).eq('company_id', cid),
+        supabase.from('purchase_bills').select('id, bill_number, vendor_name, date').eq('is_deleted', true).eq('company_id', cid),
         supabase.from('vendors').select('id, name, party_type, is_customer').eq('is_deleted', true).eq('company_id', cid),
         supabase.from('stock_items').select('id, name').eq('is_deleted', true).eq('company_id', cid),
         supabase.from('cashbooks').select('id, date').eq('is_deleted', true).eq('company_id', cid),
-        supabase.from('duties_taxes').select('id, name').eq('is_deleted', true).eq('company_id', cid)
+        supabase.from('duties_taxes').select('id, name').eq('is_deleted', true).eq('company_id', cid),
+        supabase.from('customers').select('id, name, party_type, is_customer').eq('is_deleted', true).eq('company_id', cid)
       ];
 
       const results = await Promise.all(queries) as any[];
@@ -98,14 +139,16 @@ const Settings = () => {
       results[0].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Workspace', label: i.name, table: 'companies' }));
       results[1].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Workspace', label: i.name, table: 'companies' }));
       results[2].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Sales Invoices', label: `${i.invoice_number} (${i.customer_name})`, table: 'sales_invoices' }));
-      results[3].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Purchase Bills', label: `${i.bill_number} (${i.vendor_name})`, table: 'bills' }));
+      results[3].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Purchase Bills', label: `${i.bill_number} (${i.vendor_name})`, table: 'purchase_bills' }));
       results[4].data?.forEach((i: any) => {
-        const type = (i.is_customer || i.party_type === 'customer') ? 'Customers' : 'Vendors';
-        allItems.push({ ...i, origin: type, label: i.name, table: 'vendors' });
+        allItems.push({ ...i, origin: 'Vendors', label: i.name, table: 'vendors' });
       });
       results[5].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Stock Master', label: i.name, table: 'stock_items' }));
       results[6].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Cashbook', label: `Statement ${i.date}`, table: 'cashbooks' }));
       results[7].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Duties & Taxes', label: i.name, table: 'duties_taxes' }));
+      results[8].data?.forEach((i: any) => {
+        allItems.push({ ...i, origin: 'Customers', label: i.name, table: 'customers' });
+      });
 
       setDeletedItems(allItems);
     } catch (err) {
@@ -412,6 +455,91 @@ const Settings = () => {
                 </tbody>
               </table>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Offline Execution & Desktop .EXE Package */}
+      <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800 text-left">
+        <div className="flex items-center space-x-2">
+          <HardDrive className="w-4 h-4 text-primary dark:text-red-400" />
+          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Offline Execution & Desktop (.EXE) Backup</h3>
+        </div>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-6 space-y-6 shadow-sm">
+          <div>
+            <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Local Hard Disk Sync & Offline Mode</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Run your billing register completely offline without internet. Save live data directly to your local computer folder or compile a standalone Windows Desktop (.EXE) launcher.
+            </p>
+          </div>
+
+          {offlineStatusMsg && (
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-700 dark:text-slate-200 flex items-center justify-between">
+              <span>{offlineStatusMsg}</span>
+              <button onClick={() => setOfflineStatusMsg('')} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 ml-4 font-bold">✕</button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+            <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4.5 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col justify-between">
+              <div className="space-y-1.5 mb-4">
+                <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-xs">
+                  <FolderSymlink className="w-4 h-4 text-amber-500" />
+                  <span>Save Data in Hard Disk Folder</span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Export all invoices, inventory, customers, and cashbook records directly to a chosen folder on your local hard disk drive.
+                </p>
+              </div>
+              <button 
+                onClick={handleExportDiskFolder} 
+                disabled={offlineActionLoading}
+                className="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-800 dark:text-slate-200 font-bold text-xs rounded shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all flex items-center justify-center active:scale-95"
+              >
+                {offlineActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <HardDrive className="w-3.5 h-3.5 mr-2 text-amber-500" />}
+                Sync to Hard Disk Folder
+              </button>
+            </div>
+
+            <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4.5 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col justify-between">
+              <div className="space-y-1.5 mb-4">
+                <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-xs">
+                  <Laptop className="w-4 h-4 text-emerald-500" />
+                  <span>Standalone Offline App (.html)</span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Download a 100% self-contained single-file offline application. Double click anytime on PC or tablet to view & print statements without server.
+                </p>
+              </div>
+              <button 
+                onClick={handleDownloadOfflineHtml} 
+                disabled={offlineActionLoading}
+                className="w-full py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-800 dark:text-slate-200 font-bold text-xs rounded shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all flex items-center justify-center active:scale-95"
+              >
+                {offlineActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <Download className="w-3.5 h-3.5 mr-2 text-emerald-500" />}
+                Download Offline App
+              </button>
+            </div>
+
+            <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4.5 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-bl">Desktop</div>
+              <div className="space-y-1.5 mb-4">
+                <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-xs">
+                  <Cpu className="w-4 h-4 text-blue-500" />
+                  <span>Windows Desktop (.EXE) File</span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Package Stock Register as a native Windows Desktop (.exe) application executable with native window frame and offline storage capability.
+                </p>
+              </div>
+              <button 
+                onClick={handleDownloadExeBuilder} 
+                className="w-full py-2 px-3 bg-primary hover:bg-primary-dark text-white font-bold text-xs rounded shadow transition-all flex items-center justify-center active:scale-95"
+              >
+                <Download className="w-3.5 h-3.5 mr-2" />
+                Build Desktop .EXE
+              </button>
+            </div>
           </div>
         </div>
       </div>

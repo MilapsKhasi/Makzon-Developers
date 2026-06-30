@@ -53,8 +53,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
             party_type: 'customer'
         };
         
-        // Unified parties table 'vendors' handles both vendors and customers
-        const result = await safeSupabaseSave('vendors', payload, initialData?.id);
+        // Save to customers table instead of vendors
+        const result = await safeSupabaseSave('customers', payload, initialData?.id);
         onSubmit(result.data[0]);
       } catch (err: any) { 
         alert("Error saving customer: " + err.message); 

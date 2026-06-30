@@ -29,13 +29,19 @@ const Reports = () => {
     setCompanyInfo(company);
 
     const [{ data: purchaseData }, { data: saleData }] = await Promise.all([
-      supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false),
+      supabase.from('purchase_bills').select('*').eq('company_id', cid).eq('is_deleted', false),
       supabase.from('sales_invoices').select('*').eq('company_id', cid).eq('is_deleted', false)
     ]);
     
     const combined = [
-      ...(purchaseData || []).map(normalizeBill),
-      ...(saleData || []).map(normalizeBill)
+      ...(purchaseData || []).map(b => {
+        const norm = normalizeBill(b);
+        return norm ? { ...norm, type: 'Purchase' } : null;
+      }).filter(Boolean),
+      ...(saleData || []).map(s => {
+        const norm = normalizeBill(s);
+        return norm ? { ...norm, type: 'Sale' } : null;
+      }).filter(Boolean)
     ];
 
     const filterFn = (item: any) => {

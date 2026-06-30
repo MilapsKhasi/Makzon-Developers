@@ -41,7 +41,7 @@ const Bills = () => {
     }
     
     try {
-      let query = supabase.from('bills')
+      let query = supabase.from('purchase_bills')
         .select('*')
         .eq('company_id', cid)
         .eq('is_deleted', false);
@@ -55,8 +55,11 @@ const Bills = () => {
       if (error) throw error;
       
       const normalizedData = (data || [])
-        .map(normalizeBill)
-        .filter(b => b.type === 'Purchase');
+        .map(b => {
+          const norm = normalizeBill(b);
+          return norm ? { ...norm, type: 'Purchase' } : null;
+        })
+        .filter(Boolean);
         
       setBills(normalizedData);
     } catch (err: any) {
@@ -158,7 +161,7 @@ const Bills = () => {
 
   const confirmDelete = async () => {
     if (!deleteDialog.bill) return;
-    const { error } = await supabase.from('bills').update({ is_deleted: true }).eq('id', deleteDialog.bill.id);
+    const { error } = await supabase.from('purchase_bills').update({ is_deleted: true }).eq('id', deleteDialog.bill.id);
     if (!error) {
       loadData();
       window.dispatchEvent(new Event('appSettingsChanged'));

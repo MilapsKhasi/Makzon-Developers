@@ -50,10 +50,13 @@ const Customers = () => {
     if (!cid) return;
 
     try {
-      const { data: partyData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false).order('name');
-      const { data: voucherData } = await supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false);
+      const { data: partyData } = await supabase.from('customers').select('*').eq('company_id', cid).eq('is_deleted', false).order('name');
+      const { data: voucherData } = await supabase.from('sales_invoices').select('*').eq('company_id', cid).eq('is_deleted', false);
 
-      const normalizedInvoices = (voucherData || []).map(normalizeBill).filter(v => v.type === 'Sale');
+      const normalizedInvoices = (voucherData || []).map(s => {
+        const norm = normalizeBill(s);
+        return norm ? { ...norm, type: 'Sale' } : null;
+      }).filter(Boolean) as any[];
       const customerNamesFromBills = new Set(normalizedInvoices.map(v => v.vendor_name?.toLowerCase().trim()));
 
       const customerOnly = (partyData || []).filter(p => {
@@ -85,7 +88,7 @@ const Customers = () => {
 
   const confirmDeleteCustomer = async () => {
       if (!deleteDialog.customer) return;
-      await supabase.from('vendors').update({ is_deleted: true }).eq('id', deleteDialog.customer.id);
+      await supabase.from('customers').update({ is_deleted: true }).eq('id', deleteDialog.customer.id);
       loadData();
       if (selectedCustomerId === deleteDialog.customer.id) setSelectedCustomerId(null);
       setDeleteDialog({ isOpen: false, customer: null });

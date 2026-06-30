@@ -45,7 +45,7 @@ const Vendors = () => {
         .eq('is_deleted', false)
         .order('name');
       const { data: billData, error: bErr } = await supabase
-        .from('bills')
+        .from('purchase_bills')
         .select('*')
         .eq('company_id', cid)
         .eq('is_deleted', false);
@@ -53,7 +53,10 @@ const Vendors = () => {
       if (bErr) throw bErr;
 
       const vendorOnly = (partyData || []).filter(p => p.party_type === 'vendor' || (!p.party_type && p.is_customer !== true));
-      const normalizedBills = (billData || []).map(normalizeBill);
+      const normalizedBills = (billData || []).map(b => {
+        const norm = normalizeBill(b);
+        return norm ? { ...norm, type: 'Purchase' } : null;
+      }).filter(Boolean);
 
       setVendors(vendorOnly);
       setBills(normalizedBills);

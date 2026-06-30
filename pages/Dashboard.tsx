@@ -32,7 +32,7 @@ const Dashboard = () => {
     }
 
     try {
-      let billQuery = supabase.from('bills').select('*').eq('company_id', cid).eq('is_deleted', false);
+      let billQuery = supabase.from('purchase_bills').select('*').eq('company_id', cid).eq('is_deleted', false);
       let saleQuery = supabase.from('sales_invoices').select('*').eq('company_id', cid).eq('is_deleted', false);
 
       if (dateRange.startDate && dateRange.endDate) {
@@ -43,11 +43,18 @@ const Dashboard = () => {
       const [{ data: bills }, { data: sales }] = await Promise.all([billQuery, saleQuery]);
       
       const { count: vendorCount } = await supabase.from('vendors').select('*', { count: 'exact', head: true }).eq('company_id', cid).eq('party_type', 'vendor').eq('is_deleted', false);
-      const { count: customerCount } = await supabase.from('vendors').select('*', { count: 'exact', head: true }).eq('company_id', cid).eq('party_type', 'customer').eq('is_deleted', false);
+      const { count: customerCount } = await supabase.from('customers').select('*', { count: 'exact', head: true }).eq('company_id', cid).eq('is_deleted', false);
       const { count: itemCount } = await supabase.from('stock_items').select('*', { count: 'exact', head: true }).eq('company_id', cid).eq('is_deleted', false);
 
-      const normalizedPurchases = (bills || []).map(normalizeBill);
-      const normalizedSales = (sales || []).map(normalizeBill);
+      const normalizedPurchases = (bills || []).map(b => {
+        const norm = normalizeBill(b);
+        return norm ? { ...norm, type: 'Purchase' } : null;
+      }).filter(Boolean) as any[];
+
+      const normalizedSales = (sales || []).map(s => {
+        const norm = normalizeBill(s);
+        return norm ? { ...norm, type: 'Sale' } : null;
+      }).filter(Boolean) as any[];
 
       setStats({ 
         totalSales: normalizedSales.reduce((acc, b) => acc + Number(b.grand_total || 0), 0), 

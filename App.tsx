@@ -153,9 +153,22 @@ CREATE TABLE public.login_verifications (
   created_at timestamptz DEFAULT now()
 );
 
+-- 2.2 Create Users Table
+CREATE TABLE public.users (
+  id uuid PRIMARY KEY,
+  email text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
+-- 2.3 Create Vendors and Customers Tables
 CREATE TABLE public.vendors (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, name text NOT NULL, email text, phone text, gstin text, pan text, state text, account_number text, account_name text, ifsc_code text, address text, balance numeric DEFAULT 0, party_type text DEFAULT 'vendor', is_customer boolean DEFAULT false, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());
-CREATE TABLE public.bills (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, vendor_name text NOT NULL, bill_number text NOT NULL, date date NOT NULL DEFAULT CURRENT_DATE, total_without_gst numeric DEFAULT 0, total_gst numeric DEFAULT 0, grand_total numeric DEFAULT 0, status text DEFAULT 'Pending', is_deleted boolean DEFAULT false, description text, items jsonb DEFAULT '{}'::jsonb, round_off numeric DEFAULT 0, created_at timestamptz DEFAULT now());
+CREATE TABLE public.customers (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, name text NOT NULL, email text, phone text, gstin text, pan text, state text, account_number text, account_name text, ifsc_code text, address text, balance numeric DEFAULT 0, party_type text DEFAULT 'customer', is_customer boolean DEFAULT true, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());
+
+-- 2.4 Create Bills and Invoices Tables
+CREATE TABLE public.purchase_bills (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, vendor_name text NOT NULL, bill_number text NOT NULL, date date NOT NULL DEFAULT CURRENT_DATE, total_without_gst numeric DEFAULT 0, total_gst numeric DEFAULT 0, grand_total numeric DEFAULT 0, status text DEFAULT 'Pending', is_deleted boolean DEFAULT false, description text, items jsonb DEFAULT '{}'::jsonb, round_off numeric DEFAULT 0, created_at timestamptz DEFAULT now());
 CREATE TABLE public.sales_invoices (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, customer_name text NOT NULL, invoice_number text NOT NULL, date date NOT NULL DEFAULT CURRENT_DATE, total_without_gst numeric DEFAULT 0, total_gst numeric DEFAULT 0, grand_total numeric DEFAULT 0, status text DEFAULT 'Pending', is_deleted boolean DEFAULT false, description text, items jsonb DEFAULT '{}'::jsonb, round_off numeric DEFAULT 0, created_at timestamptz DEFAULT now());
+
+-- 2.5 Create Stock, Duties and Taxes, and Cashbook Tables
 CREATE TABLE public.stock_items (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, name text NOT NULL, hsn text, rate numeric DEFAULT 0, tax_rate numeric DEFAULT 0, unit text DEFAULT 'PCS', in_stock numeric DEFAULT 0, sku text, description text, kg_per_bag numeric DEFAULT 0, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());
 CREATE TABLE public.duties_taxes (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, name text NOT NULL, type text DEFAULT 'Charge', calc_method text DEFAULT 'Percentage', rate numeric DEFAULT 0, fixed_amount numeric DEFAULT 0, apply_on text DEFAULT 'Subtotal', is_default boolean DEFAULT false, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());
 CREATE TABLE public.cashbooks (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, date date NOT NULL, income_total numeric DEFAULT 0, expense_total numeric DEFAULT 0, balance numeric DEFAULT 0, raw_data jsonb DEFAULT '{}'::jsonb, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());
@@ -163,8 +176,10 @@ CREATE TABLE public.cashbooks (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, co
 -- 3. Enable RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.bills ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.purchase_bills ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sales_invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.stock_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.duties_taxes ENABLE ROW LEVEL SECURITY;
@@ -174,8 +189,10 @@ ALTER TABLE public.login_verifications ENABLE ROW LEVEL SECURITY;
 -- 4. Set Policies
 CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL TO authenticated USING (auth.uid() = id);
 CREATE POLICY "Manage own companies" ON public.companies FOR ALL TO authenticated USING (auth.uid() = created_by);
-CREATE POLICY "Manage company data" ON public.vendors FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
-CREATE POLICY "Manage company bills" ON public.bills FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
+CREATE POLICY "Manage own users" ON public.users FOR ALL TO authenticated USING (auth.uid() = id);
+CREATE POLICY "Manage company vendors" ON public.vendors FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
+CREATE POLICY "Manage company customers" ON public.customers FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
+CREATE POLICY "Manage company purchase bills" ON public.purchase_bills FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
 CREATE POLICY "Manage company sales" ON public.sales_invoices FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
 CREATE POLICY "Manage company stock" ON public.stock_items FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
 CREATE POLICY "Manage company taxes" ON public.duties_taxes FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));

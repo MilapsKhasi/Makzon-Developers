@@ -19,14 +19,40 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+        const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
         if (loginError) throw loginError;
         
+        // Save user info to 'users' table
+        if (authData?.user) {
+          try {
+            await supabase.from('users').upsert({
+              id: authData.user.id,
+              email: authData.user.email,
+              created_at: authData.user.created_at || new Date().toISOString()
+            });
+          } catch (upsertErr) {
+            console.error("Failed to upsert to users table:", upsertErr);
+          }
+        }
+
         // On success, navigate to companies selection immediately
         navigate('/companies');
       } else {
-        const { error: signUpError } = await supabase.auth.signUp({ email, password });
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
         if (signUpError) throw signUpError;
+        
+        // Save user info to 'users' table
+        if (signUpData?.user) {
+          try {
+            await supabase.from('users').upsert({
+              id: signUpData.user.id,
+              email: signUpData.user.email,
+              created_at: signUpData.user.created_at || new Date().toISOString()
+            });
+          } catch (upsertErr) {
+            console.error("Failed to upsert to users table:", upsertErr);
+          }
+        }
         alert('Check your email for the confirmation link!');
       }
     } catch (err: any) {

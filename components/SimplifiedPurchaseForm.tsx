@@ -72,10 +72,10 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
 
       let error;
       if (initialData?.id) {
-        const { error: err } = await supabase.from('bills').update(payload).eq('id', initialData.id);
+        const { error: err } = await supabase.from('purchase_bills').update(payload).eq('id', initialData.id);
         error = err;
       } else {
-        const { error: err } = await supabase.from('bills').insert([payload]);
+        const { error: err } = await supabase.from('purchase_bills').insert([payload]);
         error = err;
       }
 

@@ -284,7 +284,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
           }
       };
       
-      const savedRes = await safeSupabaseSave('bills', payload, initialData?.id);
+      const savedRes = await safeSupabaseSave('purchase_bills', payload, initialData?.id);
       await ensureStockItems(formData.items, cid);
       await ensureParty(formData.vendor_name, 'vendor', cid);
       if (payload.status === 'Paid' && savedRes.data) await syncTransactionToCashbook(savedRes.data[0]);

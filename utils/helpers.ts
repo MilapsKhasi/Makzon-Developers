@@ -135,7 +135,14 @@ export const safeSupabaseSave = async (table: string, payload: any, id?: string)
 
 export const normalizeBill = (data: any) => {
   if (!data) return null;
-  const isSale = data.customer_name !== undefined || data.invoice_number !== undefined;
+  let isSale = false;
+  if (data.type === 'Sale') {
+    isSale = true;
+  } else if (data.type === 'Purchase') {
+    isSale = false;
+  } else {
+    isSale = !!(data.customer_name || data.invoice_number) && !(data.vendor_name || data.bill_number);
+  }
   const partyName = data.customer_name || data.vendor_name || 'Unknown';
   const docNumber = data.invoice_number || data.bill_number || 'N/A';
   const itemsRaw = data.items || {};
@@ -199,7 +206,8 @@ export const ensureStockItems = async (items: any[], company_id: string) => {
 
 export const ensureParty = async (name: string, type: 'customer' | 'vendor', company_id: string) => {
   if (!name || !name.trim()) return;
-  const { data: existing } = await supabase.from('vendors').select('*').eq('company_id', company_id).eq('name', name.trim()).eq('is_deleted', false).maybeSingle();
+  const table = type === 'customer' ? 'customers' : 'vendors';
+  const { data: existing } = await supabase.from(table).select('*').eq('company_id', company_id).eq('name', name.trim()).eq('is_deleted', false).maybeSingle();
   if (!existing) {
     const payload = {
       name: name.trim(),
@@ -209,7 +217,7 @@ export const ensureParty = async (name: string, type: 'customer' | 'vendor', com
       is_deleted: false,
       balance: 0
     };
-    await safeSupabaseSave('vendors', payload);
+    await safeSupabaseSave(table, payload);
   }
 };
 

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, Edit, Trash2, Plus } from 'lucide-react';
+import { Search, Loader2, Edit, Trash2, Plus, Printer } from 'lucide-react';
 import { formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import SalesInvoiceForm from '../components/SalesInvoiceForm';
@@ -8,12 +8,14 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import DateFilter, { DateFilterHandle } from '../components/DateFilter';
 import EmptyState from '../components/EmptyState';
 import { supabase } from '../lib/supabase';
+import { InvoicePrintModal } from '../components/InvoicePrintModal';
 
 const Sales = () => {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<any | null>(null);
+  const [printModalInvoice, setPrintModalInvoice] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
   
@@ -177,7 +179,7 @@ const Sales = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingInvoice(null); }} title={editingInvoice ? "Update Sale Invoice" : "Generate Sale Invoice"} maxWidth="max-w-6xl">
-        <SalesInvoiceForm initialData={editingInvoice} onSubmit={() => { setIsModalOpen(false); setEditingInvoice(null); loadData(); }} onCancel={() => { setIsModalOpen(false); setEditingInvoice(null); }} />
+        <SalesInvoiceForm initialData={editingInvoice} onSubmit={(inv, shouldPrint) => { setIsModalOpen(false); setEditingInvoice(null); loadData(); if (shouldPrint && inv) setPrintModalInvoice(inv); }} onCancel={() => { setIsModalOpen(false); setEditingInvoice(null); }} />
       </Modal>
 
       <ConfirmDialog 
@@ -271,8 +273,9 @@ const Sales = () => {
                         </td>
                         <td className="text-center">
                             <div className="flex justify-center space-x-2">
-                                <button onClick={(e) => { e.stopPropagation(); setEditingInvoice(inv); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all"><Edit className="w-4 h-4" /></button>
-                                <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, invoice: inv }); }} className="p-1.5 text-slate-400 hover:text-rose-50 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded transition-all"><Trash2 className="w-4 h-4" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); setPrintModalInvoice(inv); }} className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all" title="Print Invoice"><Printer className="w-4 h-4" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); setEditingInvoice(inv); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all" title="Edit Invoice"><Edit className="w-4 h-4" /></button>
+                                <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, invoice: inv }); }} className="p-1.5 text-slate-400 hover:text-rose-50 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded transition-all" title="Delete Invoice"><Trash2 className="w-4 h-4" /></button>
                             </div>
                         </td>
                         </tr>
@@ -286,6 +289,12 @@ const Sales = () => {
             </div>
         </>
       )}
+
+      <InvoicePrintModal 
+        isOpen={!!printModalInvoice} 
+        onClose={() => setPrintModalInvoice(null)} 
+        invoice={printModalInvoice} 
+      />
     </div>
   );
 };
