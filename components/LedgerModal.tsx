@@ -377,11 +377,11 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
             {/* Top Row Profile Header Banner Block */}
             <div className="grid grid-cols-12 border-b border-black/40 text-[11px] tracking-wide text-black/70 font-medium">
               <div className="col-span-5 p-1.5">
-                GSTIN: {companyInfo?.gstin || '24CMAPK3117Q1ZZ'}
+                GSTIN: {companyInfo?.gstin || ''}
               </div>
               <div className="col-span-3 p-1.5"></div>
               <div className="col-span-4 p-1.5 text-right">
-                PHONE: {companyInfo?.phone || '79907 13846'}
+                PHONE: {party?.phone || ''}
               </div>
             </div>
 
@@ -391,7 +391,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
                 {companyInfo?.name?.toUpperCase() || 'SK ENTERPRISE'}
               </h1>
               <p className="text-[9px] text-black/60 uppercase tracking-wide mt-1 leading-snug font-medium">
-                {companyInfo?.address || 'SHOP NO 28, SHIVOM CIRCLE, GOLDEN POINT, PHASE III, DARED, JAMNAGAR'}
+                {companyInfo?.address || ''}
               </p>
             </div>
 
