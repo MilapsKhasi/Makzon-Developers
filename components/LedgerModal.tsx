@@ -20,7 +20,6 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
     if (!party || !cid) return;
     setLoading(true);
     try {
-      // Fetch company details
       const { data: company } = await supabase
         .from('companies')
         .select('*')
@@ -63,12 +62,11 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
     if (isOpen) loadLedgerData();
   }, [isOpen, party, cid]);
 
-  const { ledgerRows, finalBalance } = useMemo(() => {
+  const { ledgerRows } = useMemo(() => {
     if (!party) return { ledgerRows: [], finalBalance: 0 };
     const rows: any[] = [];
     let runningBalance = Number(party.balance) || 0;
 
-    // Opening Balance Row
     if (runningBalance !== 0) {
       rows.push({
         date: '',
@@ -83,9 +81,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
       const amount = Number(t.grand_total) || 0;
       const isSale = t.type === 'Sale';
       
-      // Bill/Invoice Row
       if (isSale) {
-        // Customer: Sales Bill is Debit (Increases Receivable)
         runningBalance += amount;
         rows.push({
           date: t.date,
@@ -95,7 +91,6 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
           balance: runningBalance
         });
       } else {
-        // Vendor: Purchase Bill is Credit (Increases Payable)
         runningBalance += amount;
         rows.push({
           date: t.date,
@@ -106,7 +101,6 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         });
       }
 
-      // Payment Row (if Paid)
       if (t.status === 'Paid') {
         const pDetailsRaw = t.items_raw?.payment_details;
         const payments = Array.isArray(pDetailsRaw) ? pDetailsRaw : (pDetailsRaw ? [pDetailsRaw] : [{
@@ -118,24 +112,21 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         payments.forEach((p: any) => {
           const pAmount = Number(p.payment_amount) || 0;
           const pDate = p.payment_date || t.date;
-          const pMethod = p.payment_method || 'Cash';
 
           if (isSale) {
-            // Customer: Payment Received is Credit (Decreases Receivable)
             runningBalance -= pAmount;
             rows.push({
               date: pDate,
-              particulars: `Payment Received (Bill ${t.bill_number}) - ${pMethod}`,
+              particulars: `Payment Received (Bill ${t.bill_number})`,
               debit: 0,
               credit: pAmount,
               balance: runningBalance
             });
           } else {
-            // Vendor: Payment Made is Debit (Decreases Payable)
             runningBalance -= pAmount;
             rows.push({
               date: pDate,
-              particulars: `Payment Made (Bill ${t.bill_number}) - ${pMethod}`,
+              particulars: `Payment Made (Bill ${t.bill_number})`,
               debit: pAmount,
               credit: 0,
               balance: runningBalance
@@ -155,7 +146,6 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
     }), { debit: 0, credit: 0 });
   }, [ledgerRows]);
 
-  // Dynamic Date Formatting for Indian Style Ledger
   const formatMmmYyDate = (dateStr: string) => {
     if (!dateStr) return '';
     const parts = dateStr.split('-');
@@ -217,7 +207,6 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
     return row.particulars;
   };
 
-  // Generate exactly 25 rows for the printed ledger
   const printRows = useMemo(() => {
     const list = [...ledgerRows];
     while (list.length < 25) {
@@ -230,19 +219,18 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         balance: 0
       });
     }
-    return list;
+    return list.slice(0, 25);
   }, [ledgerRows]);
 
   const debitSum = totals.debit;
   const creditSum = totals.credit;
-  const netBalance = Math.abs(debitSum - creditSum);
-  const isDebitHigher = debitSum > creditSum;
+  const netClosingBalance = Math.abs(debitSum - creditSum);
 
   if (!isOpen || !party) return null;
 
   return (
     <>
-      {/* SCREEN MODAL VIEW (print:hidden) */}
+      {/* SCREEN MODAL VIEW */}
       <div className="fixed inset-0 z-[550] flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300 print:hidden">
         <div className="bg-white dark:bg-slate-900 w-full max-w-6xl h-full sm:h-[90vh] rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
           {/* Header */}
@@ -282,11 +270,8 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
             </div>
             <div className="p-4 sm:p-6 flex flex-col items-center justify-center bg-slate-50/30 dark:bg-slate-800/20">
               <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 sm:mb-2">Net Balance</p>
-              <p className={`text-xl sm:text-2xl font-mono font-bold ${finalBalance > 0 ? (type === 'customer' ? 'text-red-500' : 'text-emerald-500') : (finalBalance < 0 ? (type === 'customer' ? 'text-emerald-500' : 'text-red-500') : 'text-slate-400')}`}>
-                {formatCurrency(Math.abs(finalBalance))}
-                <span className="text-[10px] sm:text-xs ml-1 sm:ml-2 uppercase opacity-50">
-                  {finalBalance === 0 ? '' : (type === 'customer' ? (finalBalance > 0 ? 'Dr' : 'Cr') : (finalBalance > 0 ? 'Cr' : 'Dr'))}
-                </span>
+              <p className="text-xl sm:text-2xl font-mono font-bold text-slate-900 dark:text-white">
+                {formatCurrency(netClosingBalance)}
               </p>
             </div>
           </div>
@@ -328,9 +313,6 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
                         <td className="p-4 text-right font-mono font-bold text-emerald-500/80">{row.credit > 0 ? formatCurrency(row.credit, false) : '-'}</td>
                         <td className="p-4 text-right font-mono font-bold text-slate-900 dark:text-white bg-slate-50/30 dark:bg-slate-800/30">
                           {formatCurrency(Math.abs(row.balance), false)}
-                          <span className="text-[10px] ml-1 uppercase opacity-40">
-                            {row.balance === 0 ? '' : (type === 'customer' ? (row.balance > 0 ? 'Dr' : 'Cr') : (row.balance > 0 ? 'Cr' : 'Dr'))}
-                          </span>
                         </td>
                       </tr>
                     ))}
@@ -351,82 +333,101 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         </div>
       </div>
 
-      {/* EXACT ACCURATE PRINT LAYOUT (print:block hidden) */}
-      <div className="hidden print:block fixed inset-0 bg-white text-black z-[99999] p-0 m-0 font-sans leading-normal">
+      {/* ISOLATED PRINT PREVIEW TARGET */}
+      <div className="ledger-print-wrapper text-black/80 font-sans bg-white">
         <style dangerouslySetInnerHTML={{ __html: `
-          @media print {
-            body {
-              background: white !important;
-              color: black !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            #root, .print\\:hidden, .fixed, .modal {
+          @media screen {
+            .ledger-print-wrapper {
               display: none !important;
             }
-            .print\\:block {
-              display: block !important;
+          }
+
+          @media print {
+            body * {
+              visibility: hidden !important;
             }
+            
+            .ledger-print-wrapper,
+            .ledger-print-wrapper * {
+              visibility: visible !important;
+            }
+
+            .ledger-print-wrapper {
+              display: block !important;
+              position: absolute !important;
+              left: 0mm !important;
+              top: 0mm !important;
+              width: 100% !important;
+              background-color: #ffffff !important;
+              color: rgba(0, 0, 0, 0.8) !important;
+              padding: 0mm !important;
+              margin: 0mm !important;
+            }
+
             @page {
               size: A4 portrait;
-              margin: 1.2cm;
+              margin: 12mm 12mm 12mm 12mm;
             }
           }
         `}} />
         
-        {/* Ledger Outer border Box */}
-        <div className="border-2 border-black w-full min-h-[265mm] flex flex-col justify-between p-0 m-0 text-black">
+        {/* Main Framework frame box container with softer text/border controls */}
+        <div className="border border-black/40 w-full min-h-[262mm] flex flex-col justify-between p-0 m-0 bg-white text-black/80 font-medium">
           <div>
-            {/* Top compartmental row (GSTIN & PHONE) */}
-            <div className="grid grid-cols-12 border-b-2 border-black text-[10px] font-bold uppercase tracking-wide">
-              <div className="col-span-4 p-2 border-r-2 border-black">
-                GSTIN : {companyInfo?.gstin || '24CMAPK3117Q1ZZ'}
+            {/* Top Row Profile Header Banner Block */}
+            <div className="grid grid-cols-12 border-b border-black/40 text-[11px] tracking-wide text-black/70 font-medium">
+              <div className="col-span-5 p-1.5">
+                GSTIN: {companyInfo?.gstin || '24CMAPK3117Q1ZZ'}
               </div>
-              <div className="col-span-4 p-2 border-r-2 border-black"></div>
-              <div className="col-span-4 p-2 text-right">
-                PHONE : {party?.phone || companyInfo?.phone || '79907 13846'}
+              <div className="col-span-3 p-1.5"></div>
+              <div className="col-span-4 p-1.5 text-right">
+                PHONE: {companyInfo?.phone || '79907 13846'}
               </div>
             </div>
 
-            {/* Centered Business Name and Address block */}
-            <div className="text-center py-4 border-b-2 border-black px-6">
-              <h1 className="text-xl font-extrabold tracking-widest text-black mb-1">
+            {/* Business Brand Information Banner Section */}
+            <div className="text-center py-2.5 border-b border-black/40 px-4">
+              <h1 className="text-lg font-bold tracking-wide text-black/60 m-0 leading-tight">
                 {companyInfo?.name?.toUpperCase() || 'SK ENTERPRISE'}
               </h1>
-              <p className="text-[9px] font-semibold text-gray-700 uppercase tracking-wide">
+              <p className="text-[9px] text-black/60 uppercase tracking-wide mt-1 leading-snug font-medium">
                 {companyInfo?.address || 'SHOP NO 28, SHIVOM CIRCLE, GOLDEN POINT, PHASE III, DARED, JAMNAGAR'}
               </p>
             </div>
 
-            {/* Account Info and Period grid block */}
-            <div className="grid grid-cols-12 text-[10px] border-b-2 border-black font-semibold">
-              <div className="col-span-7 p-3 border-r-2 border-black space-y-1.5 uppercase">
-                <div>ACCOUNT : <span className="font-extrabold text-sm ml-2">{party?.name?.toUpperCase() || 'KRAFT AQUATECH'}</span></div>
-                <div>GSTIN : <span className="font-extrabold text-sm ml-2">{party?.gstin || '24AANFK2769B1ZD'}</span></div>
-              </div>
-              <div className="col-span-5 p-3 space-y-1.5 uppercase">
-                <div className="flex justify-between">
-                  <span>FROM DATE</span> 
-                  <span className="font-extrabold mr-12">{fromDateFormatted}</span>
+            {/* Meta Profile Info Account Box Data Layout */}
+            <div className="grid grid-cols-12 text-[11px] border-b border-black/40 text-black/80 font-medium">
+              <div className="col-span-7 p-2 space-y-1">
+                <div className="flex items-baseline">
+                  <span className="w-20 shrink-0 text-black/60">ACCOUNT:</span>
+                  <span className="col-span-7 font-bold text-black/90">{party?.name?.toUpperCase() || ''}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>TO DATE</span> 
-                  <span className="font-extrabold mr-12">{toDateFormatted}</span>
+                <div className="flex items-baseline mt-1">
+                  <span className="w-20 shrink-0 text-black/60">GSTIN:</span>
+                  <span className="col-span-7 font-bold text-black/90">{party?.gstin || ''}</span>
+                </div>
+              </div>
+              <div className="col-span-5 p-2 flex flex-col justify-center text-black/70">
+                <div className="grid grid-cols-12 gap-x-1">
+                  <span className="col-span-5 text-black/60">FROM DATE</span>
+                  <span className="col-span-7 font-bold text-black/90">{fromDateFormatted}</span>
+                </div>
+                <div className="grid grid-cols-12 gap-x-1 mt-1.5">
+                  <span className="col-span-5 text-black/60">TO DATE</span>
+                  <span className="col-span-7 font-bold text-black/90">{toDateFormatted}</span>
                 </div>
               </div>
             </div>
 
-            {/* Main Ledger Book grid table */}
-            <table className="w-full text-[10px] border-collapse text-black">
+            {/* Core Statement Ledger Table presentation layout */}
+            <table className="w-full text-[11px] border-collapse text-black/80 table-fixed font-medium">
               <thead>
-                <tr className="border-b-2 border-black text-left font-bold italic text-black">
-                  <th className="p-2 border-r-2 border-black text-center w-12">SR NO</th>
-                  <th className="p-2 border-r-2 border-black text-center w-24">DATE</th>
-                  <th className="p-2 border-r-2 border-black px-3">PARTICULARS</th>
-                  <th className="p-2 border-r-2 border-black text-right w-32 px-3">DEBIT</th>
-                  <th className="p-2 text-right w-32 px-3">CREDIT</th>
+                <tr className="border-b border-black/40 text-left text-black/70 h-[8mm]">
+                  <th className="p-1 text-center w-[14%] font-bold">SR NO</th>
+                  <th className="p-1 text-center w-[16%] font-bold">DATE</th>
+                  <th className="p-1 px-2 w-[42%] font-bold">PARTICULARS</th>
+                  <th className="p-1 text-right w-[14%] px-2 font-bold">DEBIT</th>
+                  <th className="p-1 text-right w-[14%] px-2 font-bold">CREDIT</th>
                 </tr>
               </thead>
               <tbody>
@@ -435,18 +436,18 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
                   const isPlaceholder = row.isPlaceholder;
                   
                   return (
-                    <tr key={idx} className="border-b border-gray-300 h-[7.5mm]">
-                      <td className="p-1 border-r-2 border-black text-center font-bold">{srNo}</td>
-                      <td className="p-1 border-r-2 border-black text-center font-medium">
+                    <tr key={idx} className="h-[7.4mm] text-black/70 font-medium">
+                      <td className="p-1 text-center">{srNo}</td>
+                      <td className="p-1 text-center">
                         {isPlaceholder ? '' : (row.date ? formatLedgerDate(row.date) : '')}
                       </td>
-                      <td className="p-1 border-r-2 border-black px-3 italic font-medium">
+                      <td className="p-1 px-2 truncate text-left">
                         {isPlaceholder ? '' : getPrintParticulars(row)}
                       </td>
-                      <td className="p-1 border-r-2 border-black text-right font-bold px-3">
+                      <td className="p-1 text-right px-2">
                         {isPlaceholder || !row.debit ? '' : Number(row.debit).toFixed(2)}
                       </td>
-                      <td className="p-1 text-right font-bold px-3">
+                      <td className="p-1 text-right px-2">
                         {isPlaceholder || !row.credit ? '' : Number(row.credit).toFixed(2)}
                       </td>
                     </tr>
@@ -456,28 +457,31 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
             </table>
           </div>
 
-          {/* Table Totals & Closing balances row block */}
-          <div className="border-t-2 border-black text-[10px]">
-            <div className="grid grid-cols-12 font-bold uppercase tracking-wide border-b border-black">
-              <div className="col-span-8 p-2 text-right border-r-2 border-black">
+          {/* Table Summary Calculations Frame Footer block */}
+          <div className="border-t border-black/40 text-[11px] bg-white font-medium text-black/80">
+            {/* Combined rows summary totals layout block row */}
+            <div className="grid grid-cols-12 uppercase border-b border-black/40 h-[8mm] items-center text-black/70">
+              <div className="col-span-8 text-right pr-2 font-bold text-black/80">
                 TOTAL OF DEBIT CREDIT
               </div>
-              <div className="col-span-2 p-2 text-right border-r-2 border-black font-extrabold px-3">
+              <div className="col-span-2 text-right font-bold text-black/90 px-2">
                 {debitSum.toFixed(2)}
               </div>
-              <div className="col-span-2 p-2 text-right font-extrabold px-3">
+              <div className="col-span-2 text-right font-bold text-black/90 px-2">
                 {creditSum.toFixed(2)}
               </div>
             </div>
-            <div className="grid grid-cols-12 font-bold uppercase tracking-wide">
-              <div className="col-span-8 p-2 text-right border-r-2 border-black">
+            
+            {/* Account statement net closure tracking row line item */}
+            <div className="grid grid-cols-12 uppercase h-[8mm] items-center text-black/70">
+              <div className="col-span-8 text-right pr-2 font-bold text-black/80">
                 NET CLOSING BALANCE
               </div>
-              <div className="col-span-2 p-2 text-right border-r-2 border-black font-extrabold px-3">
-                {!isDebitHigher && netBalance > 0 ? netBalance.toFixed(2) : ''}
+              <div className="col-span-2 text-right font-bold text-black/90 px-2">
+                {debitSum > creditSum ? netClosingBalance.toFixed(2) : ''}
               </div>
-              <div className="col-span-2 p-2 text-right font-extrabold px-3">
-                {isDebitHigher && netBalance > 0 ? netBalance.toFixed(2) : ''}
+              <div className="col-span-2 text-right font-bold text-black/90 px-2">
+                {creditSum > debitSum ? netClosingBalance.toFixed(2) : ''}
               </div>
             </div>
           </div>
