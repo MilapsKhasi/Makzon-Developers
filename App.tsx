@@ -64,18 +64,20 @@ const AppContent = () => {
         
         if (error) {
           console.error("Auth init session error:", error);
-          if (
-            error.message?.includes('Refresh Token Not Found') ||
-            error.message?.includes('Invalid Refresh Token') ||
-            error.message?.includes('refresh_token_not_found')
-          ) {
-            // Sign out the user to completely clear any corrupted session state or invalid local storage tokens
-            await supabase.auth.signOut();
+          if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+            setDbError("CONNECTION_ERROR");
+          } else {
+            // For any other authentication errors (like missing or invalid refresh token),
+            // we perform a clean reset of localStorage and local auth state.
+            localStorage.clear();
+            try {
+              await supabase.auth.signOut({ scope: 'local' });
+            } catch (signOutError) {
+              console.error("Local sign out error during recovery:", signOutError);
+            }
             setSession(null);
             setAuthLoading(false);
             return;
-          } else if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
-            setDbError("CONNECTION_ERROR");
           }
         }
 
@@ -124,6 +126,25 @@ const AppContent = () => {
 
   const copySql = () => {
     const sql = `
+-- 0. Clean up any old/conflicting triggers, functions, and tables to prevent uuid/bigint type conflicts
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users CASCADE;
+DROP TRIGGER IF EXISTS on_user_created ON auth.users CASCADE;
+DROP TRIGGER IF EXISTS sync_user ON auth.users CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS public.sync_user() CASCADE;
+
+DROP TABLE IF EXISTS public.profiles CASCADE;
+DROP TABLE IF EXISTS public.companies CASCADE;
+DROP TABLE IF EXISTS public.login_verifications CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+DROP TABLE IF EXISTS public.vendors CASCADE;
+DROP TABLE IF EXISTS public.customers CASCADE;
+DROP TABLE IF EXISTS public.purchase_bills CASCADE;
+DROP TABLE IF EXISTS public.sales_invoices CASCADE;
+DROP TABLE IF EXISTS public.stock_items CASCADE;
+DROP TABLE IF EXISTS public.duties_taxes CASCADE;
+DROP TABLE IF EXISTS public.cashbooks CASCADE;
+
 -- 1. Create Profiles Table for Multi-tenancy Context
 CREATE TABLE public.profiles (
   id uuid REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,

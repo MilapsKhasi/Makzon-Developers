@@ -28,6 +28,14 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data, error } = await supabase.auth.getSession();
       if (error) {
         console.error("Context refresh session error:", error);
+        if (!error.message?.includes('Failed to fetch') && !error.message?.includes('NetworkError')) {
+          localStorage.clear();
+          try {
+            await supabase.auth.signOut({ scope: 'local' });
+          } catch (signOutError) {
+            console.error("Local sign out error during context recovery:", signOutError);
+          }
+        }
         setActiveCompany(null);
         return;
       }
