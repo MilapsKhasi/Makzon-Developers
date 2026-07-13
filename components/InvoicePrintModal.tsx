@@ -101,29 +101,34 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   const totalQty = displayLineItems.reduce((sum, item) => sum + (parseFloat(item.qty || item.quantity) || 0), 0);
   const totalTaxableVal = displayLineItems.reduce((sum, item) => sum + (parseFloat(item.taxableAmount) || ((parseFloat(item.qty) || 0) * (parseFloat(item.rate) || 0))), 0);
   
+  const isInterState = invoice.gst_type === 'Inter-State' || invoice.gstType === 'IGST' || invoice.items_raw?.gst_type === 'Inter-State';
+
   // HSN Breakdown calculations
-  const hsnMap: { [key: string]: { taxable: number; cgstRate: number; cgstAmt: number; sgstRate: number; sgstAmt: number; totalTax: number } } = {};
+  const hsnMap: { [key: string]: { taxable: number; cgstRate: number; cgstAmt: number; sgstRate: number; sgstAmt: number; igstRate: number; igstAmt: number; totalTax: number } } = {};
   displayLineItems.forEach(item => {
     const hsn = item.hsnCode || item.hsn || '';
     const taxable = parseFloat(item.taxableAmount) || ((parseFloat(item.qty) || 0) * (parseFloat(item.rate) || 0));
     const taxRate = parseFloat(item.tax_rate) || 0;
     const cgstRate = taxRate / 2;
     const sgstRate = taxRate / 2;
+    const igstRate = taxRate;
     const taxAmt = taxable * (taxRate / 100);
     
     if (hsn) {
       if (!hsnMap[hsn]) {
-        hsnMap[hsn] = { taxable: 0, cgstRate, cgstAmt: 0, sgstRate, sgstAmt: 0, totalTax: 0 };
+        hsnMap[hsn] = { taxable: 0, cgstRate, cgstAmt: 0, sgstRate, sgstAmt: 0, igstRate, igstAmt: 0, totalTax: 0 };
       }
       hsnMap[hsn].taxable += taxable;
       hsnMap[hsn].cgstAmt += taxAmt / 2;
       hsnMap[hsn].sgstAmt += taxAmt / 2;
+      hsnMap[hsn].igstAmt += taxAmt;
       hsnMap[hsn].totalTax += taxAmt;
     }
   });
 
   const totalCgstVal = Object.values(hsnMap).reduce((s, d) => s + d.cgstAmt, 0);
   const totalSgstVal = Object.values(hsnMap).reduce((s, d) => s + d.sgstAmt, 0);
+  const totalIgstVal = Object.values(hsnMap).reduce((s, d) => s + d.igstAmt, 0);
   const totalTaxVal = Object.values(hsnMap).reduce((s, d) => s + d.totalTax, 0);
   
   // Final calculations
@@ -396,15 +401,30 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
               <tr className="bg-slate-50 border-b border-slate-300 text-slate-700 font-extrabold divide-x divide-slate-300">
                 <th rowSpan={2} className="py-1 px-2 w-16 text-center">HSN</th>
                 <th rowSpan={2} className="py-1 px-2 text-right">Taxable Amount</th>
-                <th colSpan={2} className="py-0.5 px-2 text-center border-b border-slate-300">CGST</th>
-                <th colSpan={2} className="py-0.5 px-2 text-center border-b border-slate-300">SGST</th>
+                {isInterState ? (
+                  <th colSpan={2} className="py-0.5 px-2 text-center border-b border-slate-300">IGST</th>
+                ) : (
+                  <>
+                    <th colSpan={2} className="py-0.5 px-2 text-center border-b border-slate-300">CGST</th>
+                    <th colSpan={2} className="py-0.5 px-2 text-center border-b border-slate-300">SGST</th>
+                  </>
+                )}
                 <th rowSpan={2} className="py-1 px-2 text-right">Total Tax Amount</th>
               </tr>
               <tr className="bg-slate-50 border-b border-slate-300 text-slate-500 font-bold divide-x divide-slate-300 text-[9px]">
-                <th className="py-0.5 px-2">Rate</th>
-                <th className="py-0.5 px-2 text-right">Amount</th>
-                <th className="py-0.5 px-2">Rate</th>
-                <th className="py-0.5 px-2 text-right">Amount</th>
+                {isInterState ? (
+                  <>
+                    <th className="py-0.5 px-2">Rate</th>
+                    <th className="py-0.5 px-2 text-right">Amount</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="py-0.5 px-2">Rate</th>
+                    <th className="py-0.5 px-2 text-right">Amount</th>
+                    <th className="py-0.5 px-2">Rate</th>
+                    <th className="py-0.5 px-2 text-right">Amount</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 font-mono text-slate-800 divide-x divide-slate-200">
@@ -412,10 +432,19 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
                 <tr key={hsn} className="h-[22px] divide-x divide-slate-200">
                   <td className="py-0.5 px-2 font-bold text-slate-900 text-center">{hsn}</td>
                   <td className="py-0.5 px-2 text-right">Rs. {data.taxable.toFixed(2)}</td>
-                  <td className="py-0.5 px-2 text-center">{data.cgstRate.toFixed(1)}%</td>
-                  <td className="py-0.5 px-2 text-right">Rs. {data.cgstAmt.toFixed(2)}</td>
-                  <td className="py-0.5 px-2 text-center">{data.sgstRate.toFixed(1)}%</td>
-                  <td className="py-0.5 px-2 text-right">Rs. {data.sgstAmt.toFixed(2)}</td>
+                  {isInterState ? (
+                    <>
+                      <td className="py-0.5 px-2 text-center">{data.igstRate.toFixed(1)}%</td>
+                      <td className="py-0.5 px-2 text-right">Rs. {data.igstAmt.toFixed(2)}</td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-0.5 px-2 text-center">{data.cgstRate.toFixed(1)}%</td>
+                      <td className="py-0.5 px-2 text-right">Rs. {data.cgstAmt.toFixed(2)}</td>
+                      <td className="py-0.5 px-2 text-center">{data.sgstRate.toFixed(1)}%</td>
+                      <td className="py-0.5 px-2 text-right">Rs. {data.sgstAmt.toFixed(2)}</td>
+                    </>
+                  )}
                   <td className="py-0.5 px-2 text-right font-bold text-slate-900">Rs. {data.totalTax.toFixed(2)}</td>
                 </tr>
               ))}
@@ -423,10 +452,19 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
               <tr className="bg-slate-50 font-bold text-slate-900 border-t border-slate-300 divide-x divide-slate-300 h-[24px]">
                 <td className="py-1 px-2 text-center">Total</td>
                 <td className="py-1 px-2 text-right">Rs. {totalTaxableVal.toFixed(2)}</td>
-                <td></td>
-                <td className="py-1 px-2 text-right">Rs. {totalCgstVal.toFixed(2)}</td>
-                <td></td>
-                <td className="py-1 px-2 text-right">Rs. {totalSgstVal.toFixed(2)}</td>
+                {isInterState ? (
+                  <>
+                    <td></td>
+                    <td className="py-1 px-2 text-right">Rs. {totalIgstVal.toFixed(2)}</td>
+                  </>
+                ) : (
+                  <>
+                    <td></td>
+                    <td className="py-1 px-2 text-right">Rs. {totalCgstVal.toFixed(2)}</td>
+                    <td></td>
+                    <td className="py-1 px-2 text-right">Rs. {totalSgstVal.toFixed(2)}</td>
+                  </>
+                )}
                 <td className="py-1 px-2 text-right font-extrabold text-slate-950">Rs. {totalTaxVal.toFixed(2)}</td>
               </tr>
             </tbody>

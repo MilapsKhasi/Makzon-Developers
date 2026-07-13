@@ -71,7 +71,7 @@ const Settings = () => {
 
   const recycleTabs = [
     'All', 'Workspace', 'Sales Invoices', 'Purchase Bills', 
-    'Customers', 'Vendors', 'Stock Master', 'Cashbook', 'Duties & Taxes'
+    'Customers', 'Vendors', 'Stock Master', 'Cashbook', 'Additional Charges'
   ];
 
   const loadProfile = async () => {
@@ -145,7 +145,7 @@ const Settings = () => {
       });
       results[5].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Stock Master', label: i.name, table: 'stock_items' }));
       results[6].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Cashbook', label: `Statement ${i.date}`, table: 'cashbooks' }));
-      results[7].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Duties & Taxes', label: i.name, table: 'duties_taxes' }));
+      results[7].data?.forEach((i: any) => allItems.push({ ...i, origin: 'Additional Charges', label: i.name, table: 'duties_taxes' }));
       results[8].data?.forEach((i: any) => {
         allItems.push({ ...i, origin: 'Customers', label: i.name, table: 'customers' });
       });

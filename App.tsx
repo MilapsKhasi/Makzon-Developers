@@ -12,7 +12,7 @@ import Masters from './pages/Masters';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Purchases from './pages/Purchases';
-import DutiesTaxes from './pages/DutiesTaxes';
+import AdditionalCharges from './pages/AdditionalCharges';
 import Cashbook from './pages/Cashbook';
 import Auth from './pages/Auth';
 import Companies from './pages/Companies';
@@ -288,7 +288,7 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
           <Route path="vendors" element={<Vendors />} />
           <Route path="customers" element={<Customers />} />
           <Route path="cashbook" element={<Cashbook />} />
-          <Route path="duties-taxes" element={<DutiesTaxes />} />
+          <Route path="additional-charges" element={<AdditionalCharges />} />
           <Route path="stock" element={<Stock />} />
           <Route path="reports" element={<Reports />} />
           <Route path="user-activity" element={<UserActivity />} />

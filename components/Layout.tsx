@@ -204,7 +204,7 @@ const Layout = () => {
     { icon: Users, label: 'Vendors', path: '/vendors' },
     { icon: Package, label: 'Stock Master', path: '/stock' },
     { icon: BookOpen, label: 'Cashbook', path: '/cashbook' },
-    { icon: Percent, label: 'Duties & Taxes', path: '/duties-taxes' },
+    { icon: Percent, label: 'Additional Charges', path: '/additional-charges' },
     { icon: BarChart3, label: 'Reports', path: '/reports' },
     { icon: MonitorPlay, label: 'User Activity', path: '/user-activity' },
     { icon: SettingsIcon, label: 'Settings', path: '/settings' },

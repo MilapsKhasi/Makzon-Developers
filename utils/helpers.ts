@@ -175,6 +175,23 @@ export const getSelectedLedgerIds = () => {
   try { return JSON.parse(localStorage.getItem(`selectedLedgers_${cid}`) || '[]'); } catch { return []; }
 };
 
+export const READONLY_LEDGERS = [
+  { id: 'ro_cgst_2_5', name: 'CGST @2.5', type: 'Charge', calc_method: 'Percentage', rate: 2.5, fixed_amount: 0, apply_on: 'Subtotal', is_default: false, is_readonly: true },
+  { id: 'ro_cgst_6', name: 'CGST @6', type: 'Charge', calc_method: 'Percentage', rate: 6, fixed_amount: 0, apply_on: 'Subtotal', is_default: false, is_readonly: true },
+  { id: 'ro_cgst_9', name: 'CGST @9', type: 'Charge', calc_method: 'Percentage', rate: 9, fixed_amount: 0, apply_on: 'Subtotal', is_default: false, is_readonly: true },
+  { id: 'ro_cgst_14', name: 'CGST @14', type: 'Charge', calc_method: 'Percentage', rate: 14, fixed_amount: 0, apply_on: 'Subtotal', is_default: false, is_readonly: true },
+
+  { id: 'ro_sgst_2_5', name: 'SGST @2.5', type: 'Charge', calc_method: 'Percentage', rate: 2.5, fixed_amount: 0, apply_on: 'Subtotal', is_default: false, is_readonly: true },
+  { id: 'ro_sgst_6', name: 'SGST @6', type: 'Charge', calc_method: 'Percentage', rate: 6, fixed_amount: 0, apply_on: 'Subtotal', is_default: false, is_readonly: true },
+  { id: 'ro_sgst_9', name: 'SGST @9', type: 'Charge', calc_method: 'Percentage', rate: 9, fixed_amount: 0, apply_on: 'Subtotal', is_default: false, is_readonly: true },
+  { id: 'ro_sgst_14', name: 'SGST @14', type: 'Charge', calc_method: 'Percentage', rate: 14, fixed_amount: 0, apply_on: 'Subtotal', is_default: false, is_readonly: true },
+
+  { id: 'ro_igst_5', name: 'IGST @5', type: 'Charge', calc_method: 'Percentage', rate: 5, fixed_amount: 0, apply_on: 'Subtotal', is_default: false, is_readonly: true },
+  { id: 'ro_igst_12', name: 'IGST @12', type: 'Charge', calc_method: 'Percentage', rate: 12, fixed_amount: 0, apply_on: 'Subtotal', is_default: false, is_readonly: true },
+  { id: 'ro_igst_18', name: 'IGST @18', type: 'Charge', calc_method: 'Percentage', rate: 18, fixed_amount: 0, apply_on: 'Subtotal', is_default: false, is_readonly: true },
+  { id: 'ro_igst_28', name: 'IGST @28', type: 'Charge', calc_method: 'Percentage', rate: 28, fixed_amount: 0, apply_on: 'Subtotal', is_default: false, is_readonly: true }
+];
+
 export const toggleSelectedLedgerId = (ledgerId: string) => {
   const cid = getActiveCompanyId();
   if (!cid) return [];

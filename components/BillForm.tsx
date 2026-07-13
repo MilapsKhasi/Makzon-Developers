@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, ToggleLeft, ToggleRight } from 'lucide-react';
-import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue } from '../utils/helpers';
+import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import Modal from './Modal';
 import VendorForm from './VendorForm';
@@ -25,7 +25,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     bill_number: '', 
     date: today, 
     displayDate: formatDate(today), 
-    gst_type: appSettings.gstType || 'CGST - SGST',
+    gst_type: appSettings.gstType === 'IGST' ? 'Inter-State' : 'Intra-State',
     items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', rate: '', discount: 0, discount_type: 'Percentage', tax_rate: 0, taxableAmount: 0, itemTotal: 0 }],
     total_without_gst: 0, 
     total_gst: 0, 
@@ -41,7 +41,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
   const [formData, setFormData] = useState<any>(getInitialState());
   const [history, setHistory] = useState<any[]>([]);
   const [future, setFuture] = useState<any[]>([]);
-  const [isGstEnabled, setIsGstEnabled] = useState(true);
+  const [isGstEnabled, setIsGstEnabled] = useState(appSettings.gstEnabled);
 
   const updateFormData = useCallback((next: any, skipHistory = false) => {
     if (!skipHistory) {
@@ -153,31 +153,34 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
     // Dynamic injection/correction of CGST, SGST, IGST in duties_and_taxes if they are missing
     let duties = [...(state.duties_and_taxes || [])];
+    
+    // Always filter out existing GST category duties (CGST, SGST, IGST or containing GST) to prevent double calculation or duplicate items,
+    // except for system-generated virtual GST ledgers.
+    const isGstLedger = (name: string) => {
+      const upper = name.toUpperCase();
+      return upper.includes('CGST') || upper.includes('SGST') || upper.includes('IGST') || upper.includes('GST');
+    };
+    duties = duties.filter((d: any) => !isGstLedger(d.name) || d.id?.startsWith('virtual_'));
+
     if (currentGstEnabled && appSettings.gstEnabled) {
-      const requiredNames = appSettings.gstType === 'CGST - SGST' ? ['CGST', 'SGST'] : ['IGST'];
+      // Determine required GST ledgers based on state.gst_type (default to Intra-State mappings if not set)
+      const currentGstType = state.gst_type || (appSettings.gstType === 'IGST' ? 'Inter-State' : 'Intra-State');
+      const requiredNames = currentGstType === 'Inter-State' ? ['IGST'] : ['CGST', 'SGST'];
+      
       requiredNames.forEach(name => {
-        const exists = duties.some((d: any) => d.name === name);
-        if (!exists) {
-          duties.push({
-            id: 'virtual_' + name + '_' + Date.now(),
-            name: name,
-            amount: 0,
-            type: 'Charge',
-            calc_method: 'Fixed',
-            fixed_amount: 0,
-            rate: 0,
-            apply_on: 'Subtotal',
-            is_default: true,
-            is_deleted: false
-          });
-        }
+        duties.push({
+          id: 'virtual_' + name + '_' + Date.now(),
+          name: name,
+          amount: 0,
+          type: 'Charge',
+          calc_method: 'Fixed',
+          fixed_amount: 0,
+          rate: 0,
+          apply_on: 'Subtotal',
+          is_default: true,
+          is_deleted: false
+        });
       });
-      // Also remove or zero out non-required GST types
-      const nonRequiredNames = appSettings.gstType === 'CGST - SGST' ? ['IGST'] : ['CGST', 'SGST'];
-      duties = duties.filter((d: any) => !nonRequiredNames.includes(d.name));
-    } else {
-      // If GST is disabled, remove any CGST, SGST, IGST duties
-      duties = duties.filter((d: any) => !['CGST', 'SGST', 'IGST'].includes(d.name));
     }
     state.duties_and_taxes = duties;
 
@@ -192,17 +195,25 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       if (sourceDutyId === d.id) {
         calcAmt = parseNumber(sourceVal);
       } else if (currentGstEnabled && appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST')) {
-          if (appSettings.gstType === 'CGST - SGST') {
+          const currentGstType = state.gst_type || (appSettings.gstType === 'IGST' ? 'Inter-State' : 'Intra-State');
+          if (currentGstType === 'Intra-State') {
               if (d.name === 'CGST' || d.name === 'SGST') calcAmt = autoGstSum / 2;
-          } else if (appSettings.gstType === 'IGST') {
+          } else if (currentGstType === 'Inter-State') {
               if (d.name === 'IGST') calcAmt = autoGstSum;
           }
       } else if (!manualOverrides.current.has(d.id)) {
         const base = d.apply_on === 'Net Total' ? (taxable + gst) : taxable;
         const rate = parseFloat(d.bill_rate !== undefined ? d.bill_rate : d.rate) || 0;
         const fixed = parseFloat(d.bill_fixed_amount !== undefined ? d.bill_fixed_amount : d.fixed_amount) || 0;
-        calcAmt = d.calc_method === 'Percentage' ? base * (rate / 100) : fixed;
+        const val = d.calc_method === 'Percentage' ? base * (rate / 100) : fixed;
+        calcAmt = d.type === 'Deduction' ? -Math.abs(val) : Math.abs(val);
       }
+
+      // Ensure deduction is always treated as a negative adjustment (subtraction)
+      if (d.type === 'Deduction' && calcAmt > 0) {
+        calcAmt = -calcAmt;
+      }
+
       runningTotal += calcAmt;
       return { ...d, amount: calcAmt };
     });
@@ -222,7 +233,14 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     
     const { data: allDuties } = await supabase.from('duties_taxes').select('*').eq('company_id', cid).eq('is_deleted', false);
     const selectedIds = getSelectedLedgerIds();
-    const activeDuties = (allDuties || []).filter(d => d.is_default || selectedIds.includes(d.id));
+    // Filter out GST category ledgers from active/manual duties so users CANNOT select them in Purchase
+    const isGstLedger = (name: string) => {
+      const upper = name.toUpperCase();
+      return upper.includes('CGST') || upper.includes('SGST') || upper.includes('IGST') || upper.includes('GST');
+    };
+    const activeDuties = (allDuties || [])
+      .filter(d => !isGstLedger(d.name))
+      .filter(d => d.is_default || selectedIds.includes(d.id));
 
     if (!initialData) {
       setFormData((prev: any) => {
@@ -232,14 +250,26 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     } else {
         const normalized = normalizeBill(initialData);
         normalized.items_raw?.duties_and_taxes?.forEach((d:any) => { if(d.amount !== 0) manualOverrides.current.add(d.id); });
+        
+        const hasGstInSavedItems = normalized.items?.some((it: any) => parseFloat(it.tax_rate) > 0) || normalized.total_gst > 0;
+        const isGst = appSettings.gstEnabled && (hasGstInSavedItems || normalized.total_gst > 0);
+        setIsGstEnabled(isGst);
+
+        // Map old or saved gst_type if they are in older formats like 'CGST - SGST' or 'IGST' to the new 'Intra-State' / 'Inter-State' modes
+        let savedGstType = normalized?.items_raw?.gst_type || normalized?.gst_type;
+        if (savedGstType === 'CGST - SGST') savedGstType = 'Intra-State';
+        else if (savedGstType === 'IGST') savedGstType = 'Inter-State';
+        if (!savedGstType) savedGstType = appSettings.gstType === 'IGST' ? 'Inter-State' : 'Intra-State';
+
         setFormData(recalculate({ 
           ...getInitialState(), 
           ...normalized, 
           description: normalized.description || '', 
           displayDate: formatDate(normalized.date), 
+          gst_type: savedGstType,
           duties_and_taxes: (normalized.items_raw?.duties_and_taxes || []),
           payment_details: normalized.items_raw?.payment_details || null
-        }));
+        }, undefined, undefined, undefined, isGst));
     }
   };
 
@@ -317,15 +347,19 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-4">
-            <button type="button" onClick={() => {
-              const nextVal = !isGstEnabled;
-              setIsGstEnabled(nextVal);
-              setFormData(recalculate({ ...formData }, undefined, undefined, undefined, nextVal));
-            }} className="flex items-center space-x-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-md text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-              {isGstEnabled ? <ToggleRight className="w-5 h-5 text-primary" /> : <ToggleLeft className="w-5 h-5 text-slate-400" />}
-              <span>Enable GST</span>
-            </button>
-            <div className="h-4 w-[1px] bg-slate-200 dark:border-slate-700" />
+            {appSettings.gstEnabled && (
+              <>
+                <button type="button" onClick={() => {
+                  const nextVal = !isGstEnabled;
+                  setIsGstEnabled(nextVal);
+                  setFormData(recalculate({ ...formData }, undefined, undefined, undefined, nextVal));
+                }} className="flex items-center space-x-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-md text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                  {isGstEnabled ? <ToggleRight className="w-5 h-5 text-primary" /> : <ToggleLeft className="w-5 h-5 text-slate-400" />}
+                  <span>Enable GST</span>
+                </button>
+                <div className="h-4 w-[1px] bg-slate-200 dark:border-slate-700" />
+              </>
+            )}
             <button type="button" onClick={undo} disabled={history.length === 0} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 transition-colors" title="Undo (Ctrl+Z)">
               <Undo2 className="w-4 h-4" />
             </button>
@@ -335,7 +369,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
           </div>
         </div>
         <div className="border border-slate-200 dark:border-slate-800 rounded-md p-4 sm:p-8 bg-white dark:bg-slate-900 space-y-6 shadow-sm">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className={`grid grid-cols-1 ${appSettings.gstEnabled ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-6`}>
                 <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Date</label><input required value={toDisplayValue(formData.displayDate)} onChange={e => updateFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) updateFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px]" /></div>
                 <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Bill No</label><input required value={toDisplayValue(formData.bill_number)} onChange={e => updateFormData({...formData, bill_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono uppercase" /></div>
                 <div className="space-y-1.5">
@@ -355,6 +389,25 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                     <option value="Paid">Paid</option>
                   </select>
                 </div>
+                {appSettings.gstEnabled && (
+                  <div className="space-y-1.5">
+                    <label className="text-[14px] font-medium dark:text-slate-300 capitalize">GST Mode</label>
+                    <div className="relative">
+                      <select 
+                        value={formData.gst_type || 'Intra-State'} 
+                        onChange={e => {
+                          const nextGstType = e.target.value;
+                          updateFormData(recalculate({ ...formData, gst_type: nextGstType }));
+                        }} 
+                        className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] appearance-none cursor-pointer bg-white dark:bg-slate-800"
+                      >
+                        <option value="Intra-State">Intra-State (CGST + SGST)</option>
+                        <option value="Inter-State">Inter-State (IGST)</option>
+                      </select>
+                      <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
             </div>
 
             <div className="space-y-1.5">
@@ -435,7 +488,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                         <span className="text-slate-500 font-bold uppercase tracking-tight pr-4">GST Amount</span>
                         <input type="text" value={formatWhileTyping(formData.total_gst.toString())} onFocus={(e) => { e.target.value = formData.total_gst.toString(); e.target.select(); }} onBlur={(e) => { e.target.value = formatWhileTyping(formData.total_gst.toString()) }} onChange={e => updateFormData(recalculate({...formData}, 'total_gst', undefined, e.target.value))} className="px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono font-bold text-right w-40 sm:w-48" />
                     </div>
-                    {formData.duties_and_taxes.filter((d: any) => !['CGST', 'SGST', 'IGST'].includes(d.name)).map((d: any) => (
+                    {formData.duties_and_taxes.map((d: any) => (
                         <div key={d.id} className="flex items-center justify-between w-full max-w-sm text-[14px]">
                             <span className="text-slate-500 font-bold uppercase tracking-tight pr-4">{d.name}</span>
                             <input 
@@ -444,8 +497,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                               onFocus={(e) => { e.target.value = d.amount.toString(); e.target.select(); }} 
                               onBlur={(e) => { e.target.value = formatWhileTyping(d.amount.toString()) }} 
                               onChange={e => updateFormData(recalculate({...formData}, undefined, d.id, e.target.value))} 
-                              className={`px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-right w-40 sm:w-48 ${appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST') ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed' : 'bg-white dark:bg-slate-800'}`}
-                              readOnly={appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST')}
+                              className={`px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-right w-40 sm:w-48 ${(d.is_readonly || (isGstEnabled && appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST'))) ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed text-slate-500' : 'bg-white dark:bg-slate-800'}`}
+                              readOnly={d.is_readonly || (isGstEnabled && appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST'))}
                             />
                         </div>
                     ))}

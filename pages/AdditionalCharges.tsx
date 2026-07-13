@@ -1,12 +1,16 @@
-
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Loader2, X, ChevronDown } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, X, ChevronDown, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getActiveCompanyId, safeSupabaseSave, getSelectedLedgerIds, toggleSelectedLedgerId } from '../utils/helpers';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 
-const DutiesTaxes = () => {
+const isGstLedger = (name: string) => {
+  const upper = name.toUpperCase();
+  return upper.includes('CGST') || upper.includes('SGST') || upper.includes('IGST') || upper.includes('GST');
+};
+
+const AdditionalCharges = () => {
   const [taxes, setTaxes] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,9 +55,12 @@ const DutiesTaxes = () => {
         .order('name');
       
       if (error) throw error;
-      setTaxes(data || []);
+      
+      // Never show GST-related ledgers here
+      const filtered = (data || []).filter((d: any) => !isGstLedger(d.name));
+      setTaxes(filtered);
     } catch (err) {
-      console.error("Error loading taxes:", err);
+      console.error("Error loading charges:", err);
     } finally {
       setLoading(false);
     }
@@ -66,6 +73,10 @@ const DutiesTaxes = () => {
     const cid = getActiveCompanyId();
     if (!cid) return alert("No active workspace selected.");
     
+    if (isGstLedger(formData.name)) {
+      return alert("Additional Charges must never contain GST-related ledgers (CGST, SGST, IGST, or GST).");
+    }
+
     setSaving(true);
     try {
       const payload = { 
@@ -96,7 +107,7 @@ const DutiesTaxes = () => {
             const { error } = await supabase.from('duties_taxes').update({ is_deleted: true }).eq('id', deleteDialog.tax.id);
             if (!error) await loadData();
         }}
-        title="Archive Ledger"
+        title="Archive Charge/Deduction"
         message={`Are you sure you want to delete "${deleteDialog.tax?.name}"?`}
       />
 
@@ -105,7 +116,7 @@ const DutiesTaxes = () => {
             <div className="absolute inset-0 bg-slate-900/30" onClick={() => setIsModalOpen(false)} />
             <div className="relative bg-white w-full max-w-[650px] border border-slate-300 overflow-hidden rounded-md flex flex-col max-h-[90vh]">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white shrink-0">
-                    <h2 className="text-[18px] font-medium text-slate-900 capitalize">{editingTax ? "Edit Tax" : "Create New Tax"}</h2>
+                    <h2 className="text-[18px] font-medium text-slate-900 capitalize">{editingTax ? "Edit Charge/Deduction" : "Create New Charge/Deduction"}</h2>
                     <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-none">
                         <X className="w-5 h-5" />
                     </button>
@@ -115,8 +126,8 @@ const DutiesTaxes = () => {
                     <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 bg-white custom-scrollbar">
                         <div className="border border-slate-200 rounded-md p-4 sm:p-8 space-y-6 bg-white">
                             <div className="space-y-1.5">
-                                <label className="text-[14px] font-medium text-slate-900 capitalize">Ledger Name</label>
-                                <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white" placeholder="Ledger name..." />
+                                <label className="text-[14px] font-medium text-slate-900 capitalize">Charge/Deduction Name</label>
+                                <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white" placeholder="Freight, Labour, Discount, etc..." />
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -124,8 +135,8 @@ const DutiesTaxes = () => {
                                     <label className="text-[14px] font-medium text-slate-900 capitalize">Type</label>
                                     <div className="relative">
                                         <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full h-10 px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white appearance-none">
-                                            <option value="Charge">Charge</option>
-                                            <option value="Deduction">Deduction</option>
+                                            <option value="Charge">Charge (+)</option>
+                                            <option value="Deduction">Deduction (-)</option>
                                         </select>
                                         <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                     </div>
@@ -157,7 +168,7 @@ const DutiesTaxes = () => {
                             className="bg-primary text-white px-8 py-2.5 rounded font-medium text-[14px] hover:bg-primary-dark transition-none flex items-center justify-center capitalize w-full sm:w-auto"
                         >
                             {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                            Save Ledger
+                            Save Charge
                         </button>
                     </div>
                 </form>
@@ -166,22 +177,22 @@ const DutiesTaxes = () => {
       )}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Duties & Taxes</h1>
+        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Additional Charges</h1>
         {taxes.length > 0 && (
           <button 
             onClick={() => { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); }} 
             className="bg-primary text-white px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-none capitalize w-full sm:w-auto"
           >
-            New Ledger
+            New Charge
           </button>
         )}
       </div>
 
       {!loading && taxes.length === 0 ? (
         <EmptyState 
-          title="No Tax Ledgers" 
-          message="Configure your GST, VAT, or other charges/deductions to automate calculation on your invoices and bills." 
-          actionLabel="Create First Ledger" 
+          title="No Additional Charges" 
+          message="Configure user-defined adjustments such as Labour, Freight, or Discounts to apply them on your invoices and bills." 
+          actionLabel="Create First Charge" 
           onAction={() => { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); }} 
         />
       ) : (
@@ -190,7 +201,7 @@ const DutiesTaxes = () => {
             <thead>
                 <tr>
                 <th className="w-20 text-center font-medium capitalize">Select</th>
-                <th className="font-medium capitalize">Ledger Name</th>
+                <th className="font-medium capitalize">Name</th>
                 <th className="font-medium capitalize">Type</th>
                 <th className="font-medium capitalize">Calculation</th>
                 <th className="font-medium capitalize">Value</th>
@@ -199,7 +210,7 @@ const DutiesTaxes = () => {
             </thead>
             <tbody>
                 {loading ? (
-                <tr><td colSpan={6} className="text-center py-20 text-slate-400">Loading ledgers...</td></tr>
+                <tr><td colSpan={6} className="text-center py-20 text-slate-400">Loading charges...</td></tr>
                 ) : taxes.map((tax) => {
                 const isSelected = selectedIds.includes(tax.id) || tax.is_default;
                 return (
@@ -211,14 +222,18 @@ const DutiesTaxes = () => {
                             window.dispatchEvent(new Event('appSettingsChanged'));
                         }} className={`w-4 h-4 rounded border ${isSelected ? 'bg-primary border-slate-900' : 'bg-white border-slate-300'} mx-auto transition-none`} />
                     </td>
-                    <td className="font-medium text-slate-700">{tax.name}</td>
-                    <td className="text-[11px] font-medium capitalize">{tax.type}</td>
+                    <td className="font-medium text-slate-700">
+                      <span>{tax.name}</span>
+                    </td>
+                    <td className="text-[11px] font-medium capitalize">
+                      {tax.type === 'Deduction' ? 'Deduction (-)' : 'Charge (+)'}
+                    </td>
                     <td className="text-[11px] text-slate-400 capitalize">{tax.calc_method}</td>
                     <td className="font-mono text-[13px]">{tax.calc_method === 'Percentage' ? `${tax.rate}%` : tax.fixed_amount.toFixed(2)}</td>
                     <td className="text-right">
                         <div className="flex justify-end space-x-2">
-                        <button onClick={() => { setEditingTax(tax); setFormData(tax); setIsModalOpen(true); }} className="text-slate-400 hover:text-slate-900 transition-none"><Edit className="w-4 h-4" /></button>
-                        <button onClick={() => setDeleteDialog({ isOpen: true, tax })} className="text-slate-400 hover:text-red-500 transition-none"><Trash2 className="w-4 h-4" /></button>
+                          <button onClick={() => { setEditingTax(tax); setFormData(tax); setIsModalOpen(true); }} className="text-slate-400 hover:text-slate-900 transition-none"><Edit className="w-4 h-4" /></button>
+                          <button onClick={() => setDeleteDialog({ isOpen: true, tax })} className="text-slate-400 hover:text-red-500 transition-none"><Trash2 className="w-4 h-4" /></button>
                         </div>
                     </td>
                     </tr>
@@ -232,4 +247,4 @@ const DutiesTaxes = () => {
   );
 };
 
-export default DutiesTaxes;
+export default AdditionalCharges;

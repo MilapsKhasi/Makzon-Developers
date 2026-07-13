@@ -11,7 +11,7 @@ const Sidebar = () => {
     { name: 'Vendors', path: '/vendors', icon: Users, shortcut: 'V' },
     { name: 'Stock Master', path: '/stock', icon: Package, shortcut: 'S' },
     { name: 'Cashbook', path: '/cashbook', icon: Wallet, shortcut: 'K' },
-    { name: 'Duties & Taxes', path: '/duties-taxes', icon: Calculator, shortcut: 'T' },
+    { name: 'Additional Charges', path: '/additional-charges', icon: Calculator, shortcut: 'T' },
     { name: 'Reports', path: '/reports', icon: BarChart3, shortcut: 'R' },
   ];
 
