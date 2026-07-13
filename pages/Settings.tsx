@@ -300,7 +300,7 @@ const Settings = () => {
               <div className="flex justify-end">
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 px-4 py-2 rounded-lg flex items-center">
                   <BadgeCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mr-2" />
-                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-tighter">Version ZP-26.5.01</span>
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-tighter">Version ZP-26.06.01</span>
                 </div>
               </div>
             </div>
