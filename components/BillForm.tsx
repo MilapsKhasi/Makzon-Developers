@@ -154,13 +154,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     // Dynamic injection/correction of CGST, SGST, IGST in duties_and_taxes if they are missing
     let duties = [...(state.duties_and_taxes || [])];
     
-    // Always filter out existing GST category duties (CGST, SGST, IGST or containing GST) to prevent double calculation or duplicate items,
-    // except for system-generated virtual GST ledgers.
-    const isGstLedger = (name: string) => {
-      const upper = name.toUpperCase();
-      return upper.includes('CGST') || upper.includes('SGST') || upper.includes('IGST') || upper.includes('GST');
-    };
-    duties = duties.filter((d: any) => !isGstLedger(d.name) || d.id?.startsWith('virtual_'));
+    // Always filter out existing CGST, SGST, IGST to prevent double calculation or duplicate items
+    duties = duties.filter((d: any) => !['CGST', 'SGST', 'IGST'].includes(d.name));
 
     if (currentGstEnabled && appSettings.gstEnabled) {
       // Determine required GST ledgers based on state.gst_type (default to Intra-State mappings if not set)
