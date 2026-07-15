@@ -72,8 +72,20 @@ const Stock = () => {
 
   const handleSaveItem = async (itemData: any) => {
     const cid = getActiveCompanyId();
-    if (editingItem) await supabase.from('stock_items').update({ ...itemData }).eq('id', editingItem.id);
-    else await supabase.from('stock_items').insert([{ ...itemData, company_id: cid }]);
+    let res;
+    if (editingItem) {
+      res = await supabase.from('stock_items').update({ ...itemData }).eq('id', editingItem.id);
+      if (res.error && (res.error.message?.includes('selling_price') || res.error.code === 'PGRST204' || res.error.code === '42703')) {
+        const { selling_price, ...cleanData } = itemData;
+        res = await supabase.from('stock_items').update(cleanData).eq('id', editingItem.id);
+      }
+    } else {
+      res = await supabase.from('stock_items').insert([{ ...itemData, company_id: cid }]);
+      if (res.error && (res.error.message?.includes('selling_price') || res.error.code === 'PGRST204' || res.error.code === '42703')) {
+        const { selling_price, ...cleanData } = itemData;
+        res = await supabase.from('stock_items').insert([{ ...cleanData, company_id: cid }]);
+      }
+    }
     loadData(); setIsModalOpen(false); setEditingItem(null);
   };
 

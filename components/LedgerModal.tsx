@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, ArrowUpRight, ArrowDownLeft, Calculator, Printer, History, Loader2 } from 'lucide-react';
 import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
@@ -15,6 +15,67 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
   const [transactions, setTransactions] = useState<any[]>([]);
   const [companyInfo, setCompanyInfo] = useState<any>(null);
   const cid = getActiveCompanyId();
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = () => {
+    if (!printRef.current) return;
+    const htmlContent = printRef.current.outerHTML;
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>${party?.name || 'Party'} - Ledger Statement</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+              
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                box-sizing: border-box;
+              }
+              
+              body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #ffffff;
+                color: #000000;
+              }
+
+              @page {
+                size: A4 portrait;
+              }
+
+              @media print {
+                body {
+                  background: white !important;
+                  color: black !important;
+                }
+              }
+            </style>
+          </head>
+          <body class="p-4 bg-white">
+            <div class="max-w-[850px] mx-auto bg-white">
+              ${htmlContent}
+            </div>
+            <script>
+              window.addEventListener('load', () => {
+                setTimeout(() => {
+                  window.print();
+                  window.close();
+                }, 600);
+              });
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
 
   const loadLedgerData = async () => {
     if (!party || !cid) return;
@@ -258,7 +319,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
             </div>
             <div className="flex items-center space-x-2 sm:space-x-3">
               <button 
-                onClick={() => window.print()}
+                onClick={handlePrint}
                 className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer"
               >
                 <Printer className="w-4 h-4 text-primary" />
@@ -377,7 +438,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         `}} />
         
         {/* Ledger Outer border Box */}
-        <div className="border-2 border-black w-full min-h-[265mm] flex flex-col justify-between p-0 m-0 text-black">
+        <div ref={printRef} className="border-2 border-black w-full min-h-[265mm] flex flex-col justify-between p-0 m-0 text-black">
           <div>
             {/* Top compartmental row (GSTIN & PHONE) */}
             <div className="grid grid-cols-12 border-b-2 border-black text-[10px] font-bold uppercase tracking-wide">
