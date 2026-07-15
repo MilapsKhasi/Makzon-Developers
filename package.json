@@ -1,6 +1,6 @@
 {
   "name": "purchase-master",
-  "version": "ZP-26.06.01",
+  "version": "ZP-26.06.02",
   "private": true,
   "type": "module",
   "scripts": {
