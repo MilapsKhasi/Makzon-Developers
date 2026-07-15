@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import Logo from './Logo';
 import Modal from './Modal';
@@ -24,26 +24,8 @@ const Layout = () => {
 
   useEffect(() => {
     const fetchUser = async () => {
-      try {
-        const { data, error } = await supabase.auth.getUser();
-        if (error) {
-          if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
-            console.warn("Layout fetchUser offline connection warning:", error.message);
-          } else {
-            console.error("Layout fetchUser error:", error);
-          }
-          setUser(null);
-        } else {
-          setUser(data?.user || null);
-        }
-      } catch (err: any) {
-        if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {
-          console.warn("Layout fetchUser offline connection unexpected warning:", err?.message || err);
-        } else {
-          console.error("Layout fetchUser unexpected error:", err);
-        }
-        setUser(null);
-      }
+      const u = await getAuthUser();
+      setUser(u);
     };
     fetchUser();
   }, []);
@@ -151,7 +133,7 @@ const Layout = () => {
     if (!wsFormData.name.trim()) return;
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (!user) throw new Error("Auth session not found");
 
       const payload = {

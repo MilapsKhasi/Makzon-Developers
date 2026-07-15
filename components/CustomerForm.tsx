@@ -2,18 +2,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { getActiveCompanyId, safeSupabaseSave, toStorageValue, toDisplayValue } from '../utils/helpers';
-import { supabase } from '../lib/supabase';
+import { supabase, getAuthUser } from '../lib/supabase';
 import { recordActivity } from '../utils/activityTracker';
 
 interface CustomerFormProps {
   initialData?: any | null;
   prefilledName?: string;
-  onSubmit: (customer: any) => void;
+  onSubmit: (customer: any, isSaveAndNew?: boolean) => void;
   onCancel: () => void;
 }
 
 const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName, onSubmit, onCancel }) => {
   const [loading, setLoading] = useState(false);
+  const [isSaveAndNew, setIsSaveAndNew] = useState(false);
   const [formData, setFormData] = useState<any>({
     name: prefilledName || '', email: '', phone: '', gstin: '', pan: '', state: '',
     account_number: '', account_name: '', ifsc_code: '', address: '', balance: 0,
@@ -40,7 +41,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
       if (!formData.name.trim()) return alert("Customer Name is required.");
       setLoading(true);
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await getAuthUser();
         if (user) recordActivity(user.id, user.email || '');
 
         const cid = getActiveCompanyId();
@@ -55,7 +56,15 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
         
         // Save to customers table instead of vendors
         const result = await safeSupabaseSave('customers', payload, initialData?.id);
-        onSubmit(result.data[0]);
+        onSubmit(result.data[0], isSaveAndNew);
+        if (isSaveAndNew) {
+          setFormData({
+            name: '', email: '', phone: '', gstin: '', pan: '', state: '',
+            account_number: '', account_name: '', ifsc_code: '', address: '', balance: 0,
+            is_customer: true, party_type: 'customer'
+          });
+          setTimeout(() => firstInputRef.current?.focus(), 100);
+        }
       } catch (err: any) { 
         alert("Error saving customer: " + err.message); 
       } finally { 
@@ -205,14 +214,24 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ initialData, prefilledName,
         </div>
 
         {/* Fixed Footer */}
-        <div className="px-8 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end space-x-8 bg-white dark:bg-slate-900 shrink-0">
+        <div className="px-8 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end space-x-4 bg-white dark:bg-slate-900 shrink-0">
             <button type="button" onClick={onCancel} className="text-[13px] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-none font-normal">Discard</button>
             <button 
                 type="submit"
+                onClick={() => setIsSaveAndNew(true)}
+                disabled={loading}
+                className="bg-emerald-600 text-white px-6 py-2.5 rounded font-normal text-[14px] hover:bg-emerald-700 transition-none flex items-center shadow-lg"
+            >
+                {loading && isSaveAndNew && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                Save & New
+            </button>
+            <button 
+                type="submit"
+                onClick={() => setIsSaveAndNew(false)}
                 disabled={loading}
                 className="bg-link text-white px-10 py-2.5 rounded font-normal text-[14px] hover:bg-link/90 transition-none flex items-center shadow-lg shadow-link/10"
             >
-                {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                {loading && !isSaveAndNew && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                 {initialData ? 'Update Profile' : 'Register Customer'}
             </button>
         </div>

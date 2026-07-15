@@ -70,7 +70,7 @@ const Stock = () => {
     return () => window.removeEventListener('appSettingsChanged', loadData);
   }, []);
 
-  const handleSaveItem = async (itemData: any) => {
+  const handleSaveItem = async (itemData: any, isSaveAndNew?: boolean) => {
     const cid = getActiveCompanyId();
     let res;
     if (editingItem) {
@@ -86,7 +86,11 @@ const Stock = () => {
         res = await supabase.from('stock_items').insert([{ ...cleanData, company_id: cid }]);
       }
     }
-    loadData(); setIsModalOpen(false); setEditingItem(null);
+    loadData();
+    if (!isSaveAndNew) {
+      setIsModalOpen(false);
+      setEditingItem(null);
+    }
   };
 
   const confirmDelete = async () => {

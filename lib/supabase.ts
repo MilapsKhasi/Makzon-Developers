@@ -19,3 +19,28 @@ export const supabase = createClient(finalUrl, supabaseAnonKey, {
     fetch: (...args) => fetch(...args)
   }
 });
+
+export async function getAuthUser() {
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      if (error.message?.includes('Lock broken by another request')) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        return sessionData?.session?.user || null;
+      }
+      return null;
+    }
+    return data?.user || null;
+  } catch (err: any) {
+    const errMsg = err?.message || (typeof err === 'string' ? err : '');
+    if (errMsg.includes('Lock broken by another request') || errMsg.includes('steal')) {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        return sessionData?.session?.user || null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+}

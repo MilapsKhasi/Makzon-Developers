@@ -17,6 +17,7 @@ const AdditionalCharges = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTax, setEditingTax] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [isSaveAndNew, setIsSaveAndNew] = useState(false);
 
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; tax: any | null }>({
     isOpen: false,
@@ -88,7 +89,11 @@ const AdditionalCharges = () => {
       
       await safeSupabaseSave('duties_taxes', payload, editingTax?.id);
 
-      setIsModalOpen(false);
+      if (!isSaveAndNew) {
+        setIsModalOpen(false);
+      } else {
+        setFormData(getInitialFormData());
+      }
       await loadData();
       window.dispatchEvent(new Event('appSettingsChanged'));
     } catch (err: any) {
@@ -164,10 +169,20 @@ const AdditionalCharges = () => {
                         <button type="button" onClick={() => setIsModalOpen(false)} className="text-[13px] text-slate-500 hover:text-slate-800 transition-none font-medium capitalize w-full sm:w-auto">Discard</button>
                         <button 
                             type="submit"
+                            onClick={() => setIsSaveAndNew(true)}
+                            disabled={saving}
+                            className="bg-emerald-600 text-white px-6 py-2.5 rounded font-medium text-[14px] hover:bg-emerald-700 transition-none flex items-center justify-center capitalize w-full sm:w-auto"
+                        >
+                            {saving && isSaveAndNew && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                            Save & New
+                        </button>
+                        <button 
+                            type="submit"
+                            onClick={() => setIsSaveAndNew(false)}
                             disabled={saving}
                             className="bg-primary text-white px-8 py-2.5 rounded font-medium text-[14px] hover:bg-primary-dark transition-none flex items-center justify-center capitalize w-full sm:w-auto"
                         >
-                            {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                            {saving && !isSaveAndNew && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                             Save Charge
                         </button>
                     </div>

@@ -35,6 +35,7 @@ const Payments = () => {
   const [amount, setAmount] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [isSaveAndNew, setIsSaveAndNew] = useState(false);
 
   // Dropdown options
   const [customers, setCustomers] = useState<any[]>([]);
@@ -290,7 +291,9 @@ const Payments = () => {
       }
 
       window.dispatchEvent(new Event('appSettingsChanged'));
-      setIsModalOpen(false);
+      if (!isSaveAndNew) {
+        setIsModalOpen(false);
+      }
       resetForm();
       loadData();
     } catch (err: any) {
@@ -637,10 +640,19 @@ const Payments = () => {
             </button>
             <button
               type="submit"
+              onClick={() => setIsSaveAndNew(true)}
+              disabled={saving}
+              className="px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 text-xs flex items-center shadow-sm disabled:opacity-50"
+            >
+              {saving && isSaveAndNew && <Loader2 className="w-3 h-3 animate-spin mr-1.5" />} Save & New
+            </button>
+            <button
+              type="submit"
+              onClick={() => setIsSaveAndNew(false)}
               disabled={saving}
               className="px-5 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark text-xs flex items-center shadow-sm disabled:opacity-50"
             >
-              {saving && <Loader2 className="w-3 h-3 animate-spin mr-1.5" />} Save Entry
+              {saving && !isSaveAndNew && <Loader2 className="w-3 h-3 animate-spin mr-1.5" />} Save Entry
             </button>
           </div>
         </form>

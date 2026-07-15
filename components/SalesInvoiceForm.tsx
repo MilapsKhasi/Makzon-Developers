@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, ToggleLeft, ToggleRight, Printer } from 'lucide-react';
 import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS } from '../utils/helpers';
-import { supabase } from '../lib/supabase';
+import { supabase, getAuthUser } from '../lib/supabase';
 import Modal from './Modal';
 import CustomerForm from './CustomerForm';
 import PaymentModal from './PaymentModal';
@@ -10,7 +10,7 @@ import { InvoicePrintModal } from './InvoicePrintModal';
 
 interface SalesInvoiceFormProps {
   initialData?: any;
-  onSubmit: (invoice: any, shouldPrint?: boolean) => void;
+  onSubmit: (invoice: any, shouldPrint?: boolean, isSaveAndNew?: boolean) => void;
   onCancel: () => void;
 }
 
@@ -42,6 +42,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   const [history, setHistory] = useState<any[]>([]);
   const [future, setFuture] = useState<any[]>([]);
   const [isGstEnabled, setIsGstEnabled] = useState(appSettings.gstEnabled);
+  const [isSaveAndNew, setIsSaveAndNew] = useState(false);
 
   const updateFormData = useCallback((next: any, skipHistory = false) => {
     if (!skipHistory) {
@@ -284,7 +285,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     if (!formData.customer_name || !formData.invoice_number) return alert("Required: Customer Name and Invoice No");
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (user) recordActivity(user.id, user.email || '');
 
       const payload: any = {
@@ -312,7 +313,13 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       if (payload.status === 'Paid' && savedRes.data) await syncTransactionToCashbook(savedRes.data[0]);
       window.dispatchEvent(new Event('appSettingsChanged'));
       const finalInv = (savedRes.data && savedRes.data[0]) ? savedRes.data[0] : { ...payload, bill_number: payload.invoice_number };
-      onSubmit(finalInv, shouldPrintRef.current);
+      onSubmit(finalInv, shouldPrintRef.current, isSaveAndNew);
+      if (isSaveAndNew) {
+        setFormData(getInitialState());
+        setIsGstEnabled(appSettings.gstEnabled);
+        manualOverrides.current = new Set();
+        loadDependencies();
+      }
     } catch (err: any) { alert("Error: " + err.message); } finally { setLoading(false); }
   };
 
@@ -363,7 +370,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         </div>
         <div className="border border-slate-200 dark:border-slate-800 rounded-md p-4 sm:p-8 bg-white dark:bg-slate-900 space-y-6 shadow-sm">
             <div className={`grid grid-cols-1 ${appSettings.gstEnabled ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-6`}>
-                <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Date</label><input required value={toDisplayValue(formData.displayDate)} onChange={e => updateFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) updateFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px]" /></div>
+                <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Date</label><input required type="date" value={formData.date || ''} onChange={e => { const d = e.target.value; updateFormData({...formData, date: d, displayDate: formatDate(d)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px]" /></div>
                 <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Invoice No</label><input required value={toDisplayValue(formData.invoice_number)} onChange={e => updateFormData({...formData, invoice_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono uppercase" /></div>
                 {appSettings.gstEnabled && (
                   <div className="space-y-1.5">
@@ -491,10 +498,13 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                 <Printer className="w-4 h-4 mr-2 text-red-600" /> Print Preview
             </button>
             <button type="button" onClick={onCancel} className="text-[14px] text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium capitalize px-2">Discard</button>
-            <button type="submit" onClick={() => { shouldPrintRef.current = false; }} disabled={loading} className="bg-slate-800 dark:bg-slate-700 text-white px-6 py-3 rounded font-bold text-[14px] hover:bg-slate-900 shadow active:scale-95 flex items-center capitalize transition-all">
-                {loading && !shouldPrintRef.current && <Loader2 className="w-4 h-4 animate-spin mr-2" />}{initialData ? 'Update' : 'Save'}
+            <button type="submit" onClick={() => { shouldPrintRef.current = false; setIsSaveAndNew(true); }} disabled={loading} className="bg-emerald-600 text-white px-6 py-3 rounded font-bold text-[14px] hover:bg-emerald-700 shadow active:scale-95 flex items-center capitalize transition-all">
+                {loading && isSaveAndNew && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Save & New
             </button>
-            <button type="submit" onClick={() => { shouldPrintRef.current = true; }} disabled={loading} className="bg-primary text-white px-8 py-3 rounded font-bold text-[14px] hover:bg-primary-dark shadow-lg active:scale-95 flex items-center capitalize transition-all">
+            <button type="submit" onClick={() => { shouldPrintRef.current = false; setIsSaveAndNew(false); }} disabled={loading} className="bg-slate-800 dark:bg-slate-700 text-white px-6 py-3 rounded font-bold text-[14px] hover:bg-slate-900 shadow active:scale-95 flex items-center capitalize transition-all">
+                {loading && !shouldPrintRef.current && !isSaveAndNew && <Loader2 className="w-4 h-4 animate-spin mr-2" />}{initialData ? 'Update' : 'Save'}
+            </button>
+            <button type="submit" onClick={() => { shouldPrintRef.current = true; setIsSaveAndNew(false); }} disabled={loading} className="bg-primary text-white px-8 py-3 rounded font-bold text-[14px] hover:bg-primary-dark shadow-lg active:scale-95 flex items-center capitalize transition-all">
                 {loading && shouldPrintRef.current && <Loader2 className="w-4 h-4 animate-spin mr-2" />}<Printer className="w-4 h-4 mr-2 inline" />{initialData ? 'Update & Print' : 'Save & Print'}
             </button>
         </div>

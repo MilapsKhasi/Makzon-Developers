@@ -6,7 +6,7 @@ import Modal from '../components/Modal';
 import Logo from '../components/Logo';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
-import { supabase } from '../lib/supabase';
+import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 
 const Companies = () => {
@@ -68,9 +68,8 @@ const Companies = () => {
     setCreating(true);
 
     try {
-      const { data, error: userError } = await supabase.auth.getUser();
-      if (userError || !data?.user) throw new Error(userError?.message || "Auth Session Not Found");
-      const user = data.user;
+      const user = await getAuthUser();
+      if (!user) throw new Error("Auth Session Not Found");
 
       const payload = {
         name: formData.name.trim().toUpperCase(),

@@ -180,7 +180,7 @@ const Sales = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingInvoice(null); }} title={editingInvoice ? "Update Sale Invoice" : "Generate Sale Invoice"} maxWidth="max-w-6xl">
-        <SalesInvoiceForm initialData={editingInvoice} onSubmit={(inv, shouldPrint) => { setIsModalOpen(false); setEditingInvoice(null); loadData(); if (shouldPrint && inv) setPrintModalInvoice(inv); }} onCancel={() => { setIsModalOpen(false); setEditingInvoice(null); }} />
+        <SalesInvoiceForm initialData={editingInvoice} onSubmit={(inv, shouldPrint, isSaveAndNew) => { if (!isSaveAndNew) { setIsModalOpen(false); setEditingInvoice(null); } loadData(); if (shouldPrint && inv) setPrintModalInvoice(inv); }} onCancel={() => { setIsModalOpen(false); setEditingInvoice(null); }} />
       </Modal>
 
       <ConfirmDialog 

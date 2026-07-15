@@ -200,7 +200,7 @@ const Customers = () => {
   return (
     <div className="space-y-6 h-full flex flex-col animate-in fade-in duration-300">
       <Modal isOpen={isFormOpen} onClose={() => { setIsFormOpen(false); setEditingCustomer(null); }} title={editingCustomer ? "Edit Customer Ledger" : "Register New Customer"} maxWidth="max-w-4xl">
-          <CustomerForm initialData={editingCustomer} onSubmit={(saved) => { setIsFormOpen(false); setEditingCustomer(null); loadData(saved.id); }} onCancel={() => { setIsFormOpen(false); setEditingCustomer(null); }} />
+          <CustomerForm initialData={editingCustomer} onSubmit={(saved, isSaveAndNew) => { if (!isSaveAndNew) { setIsFormOpen(false); setEditingCustomer(null); } loadData(saved.id); }} onCancel={() => { setIsFormOpen(false); setEditingCustomer(null); }} />
       </Modal>
 
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, customer: null })} onConfirm={confirmDeleteCustomer} title="Delete Customer" message={`Delete customer account for "${deleteDialog.customer?.name}"? (Press Shift + D + C again to confirm)`} />

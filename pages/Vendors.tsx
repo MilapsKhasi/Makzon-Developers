@@ -80,9 +80,11 @@ const Vendors = () => {
     return () => window.removeEventListener('appSettingsChanged', handleSync);
   }, []);
 
-  const handleSaveVendor = async (vendorData: any) => {
-    setIsFormOpen(false);
-    setEditingVendor(null);
+  const handleSaveVendor = async (vendorData: any, isSaveAndNew?: boolean) => {
+    if (!isSaveAndNew) {
+      setIsFormOpen(false);
+      setEditingVendor(null);
+    }
     await loadData(vendorData.id);
   };
 

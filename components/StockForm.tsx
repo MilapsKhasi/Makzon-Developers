@@ -3,17 +3,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Save, Package, Tag, Box, Hash, Scale, X } from 'lucide-react';
 import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES } from '../utils/helpers';
 import { recordActivity } from '../utils/activityTracker';
-import { supabase } from '../lib/supabase';
+import { supabase, getAuthUser } from '../lib/supabase';
 
 interface StockFormProps {
   initialData?: any;
-  onSubmit: (item: any) => void;
+  onSubmit: (item: any, isSaveAndNew?: boolean) => void;
   onCancel: () => void;
 }
 
 const TAX_RATES = [0, 5, 12, 18, 28];
 
 const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }) => {
+  const [isSaveAndNew, setIsSaveAndNew] = useState(false);
   const [formData, setFormData] = useState<any>({
       name: '', sku: '', unit: 'PCS', hsn: '', rate: 0, selling_price: 0, in_stock: 0, description: '', tax_rate: 18, kg_per_bag: 0
   });
@@ -47,7 +48,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
       e.preventDefault();
       if (!formData.name.trim()) return alert("Item name is mandatory.");
       
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (user) recordActivity(user.id, user.email || '');
 
       const storageData = { 
@@ -58,7 +59,13 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
         in_stock: toStorageValue(formData.in_stock),
         kg_per_bag: toStorageValue(formData.kg_per_bag)
       };
-      onSubmit(storageData);
+      onSubmit(storageData, isSaveAndNew);
+      if (isSaveAndNew) {
+        setFormData({
+          name: '', sku: '', unit: 'PCS', hsn: '', rate: 0, selling_price: 0, in_stock: 0, description: '', tax_rate: 18, kg_per_bag: 0
+        });
+        setTimeout(() => firstInputRef.current?.focus(), 100);
+      }
   }
 
   return (
@@ -172,9 +179,12 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
                 </div>
             </div>
 
-            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end space-x-6">
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end space-x-4">
                 <button type="button" onClick={onCancel} className="text-[13px] text-slate-400 dark:text-slate-500 font-normal hover:text-slate-700 dark:hover:text-slate-300 transition-none">Discard Changes</button>
-                <button type="submit" className="bg-primary text-white px-10 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center">
+                <button type="submit" onClick={() => setIsSaveAndNew(true)} className="bg-emerald-600 text-white px-6 py-2.5 rounded font-normal text-[14px] hover:bg-emerald-700 transition-none flex items-center">
+                    Save & New
+                </button>
+                <button type="submit" onClick={() => setIsSaveAndNew(false)} className="bg-primary text-white px-10 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center">
                     <Save className="w-4 h-4 mr-2" /> {initialData ? 'Update Record' : 'Create Item'}
                 </button>
             </div>
