@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Printer, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getActiveCompanyId, formatDate } from '../utils/helpers';
@@ -14,6 +14,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   const [company, setCompany] = useState<any>({});
   const [customer, setCustomer] = useState<any>(null);
   const invoiceRef = useRef<HTMLDivElement>(null);
+
+  // Print customization states
+  const [userScale, setUserScale] = useState<number | 'auto'>('auto');
+  const [marginSize, setMarginSize] = useState<string>('6mm');
+  const [rowPadding, setRowPadding] = useState<'compact' | 'normal' | 'extra-compact'>('compact');
 
   useEffect(() => {
     if (!isOpen || !invoice) return;
@@ -36,12 +41,25 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
     fetchDetails();
   }, [isOpen, invoice, cid]);
 
-  if (!isOpen || !invoice) return null;
-
-  const itemsRaw = invoice.items_raw || {};
+  const itemsRaw = invoice?.items_raw || {};
   let lineItems: any[] = [];
-  if (Array.isArray(invoice.items)) lineItems = invoice.items;
-  else if (Array.isArray(itemsRaw.line_items)) lineItems = itemsRaw.line_items;
+  if (invoice) {
+    if (Array.isArray(invoice.items)) lineItems = invoice.items;
+    else if (Array.isArray(itemsRaw.line_items)) lineItems = itemsRaw.line_items;
+  }
+
+  const itemLen = lineItems.length;
+  const autoScale = useMemo(() => {
+    if (itemLen <= 5) return 1.0;
+    if (itemLen <= 8) return 0.95;
+    if (itemLen <= 12) return 0.84;
+    if (itemLen <= 16) return 0.73;
+    if (itemLen <= 22) return 0.63;
+    if (itemLen <= 28) return 0.53;
+    return 0.45;
+  }, [itemLen]);
+
+  if (!isOpen || !invoice) return null;
 
   const payment = itemsRaw.payment_details || {};
 
@@ -73,6 +91,18 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   // Item List
   let displayLineItems = [...lineItems];
 
+  const activeScale = userScale === 'auto' ? autoScale : userScale;
+
+  // Dynamic row, cell, section and inner layout classes
+  const rowHeightClass = rowPadding === 'extra-compact' ? 'h-[18px]' : rowPadding === 'compact' ? 'h-[22px]' : 'h-[28px]';
+  const cellPaddingClass = rowPadding === 'extra-compact' ? 'py-0.5 px-2 text-[9px]' : rowPadding === 'compact' ? 'py-1 px-2 text-[10px]' : 'py-1.5 px-3 text-[11px]';
+  const sectionPaddingClass = rowPadding === 'extra-compact' ? 'p-2.5' : rowPadding === 'compact' ? 'p-3.5' : 'p-5';
+  const innerPaddingClass = rowPadding === 'extra-compact' ? 'p-2 space-y-0.5 text-[10px]' : rowPadding === 'compact' ? 'p-3 space-y-1 text-[11px]' : 'p-4 space-y-1';
+  const hsnRowHeightClass = rowPadding === 'extra-compact' ? 'h-[16px]' : rowPadding === 'compact' ? 'h-[19px]' : 'h-[24px]';
+  const hsnCellPaddingClass = rowPadding === 'extra-compact' ? 'py-0.5 px-1.5 text-[8.5px]' : rowPadding === 'compact' ? 'py-0.5 px-2 text-[9px]' : 'py-1 px-2 text-[10px]';
+  const footerPaddingClass = rowPadding === 'extra-compact' ? 'p-2 text-[8.5px]' : rowPadding === 'compact' ? 'p-3 text-[9.5px]' : 'p-4 text-[10px]';
+  const summaryPaddingClass = rowPadding === 'extra-compact' ? 'py-1 px-2.5 text-[9px]' : rowPadding === 'compact' ? 'py-2 px-3 text-[10px]' : 'py-2.5 px-3';
+
   // Calculate total discount
   const totalDiscount = lineItems.reduce((sum, item) => {
     const qty = parseFloat(item.qty || item.quantity) || 0;
@@ -91,7 +121,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   }, 0);
 
   // Padding rows to make sure vertical borders span the entire table height
-  const minRows = 8;
+  const minRows = rowPadding === 'extra-compact' ? 4 : rowPadding === 'compact' ? 6 : 8;
   const paddedItems = [...displayLineItems];
   while (paddedItems.length < minRows) {
     paddedItems.push({ isPadding: true });
@@ -181,30 +211,46 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
 
               @page {
                 size: A4 portrait;
-                margin: 6mm 8mm 6mm 8mm;
+                margin: ${marginSize} !important;
               }
 
               @media print {
                 body {
                   background: white;
                   color: black;
+                  margin: 0 !important;
+                  padding: 0 !important;
                 }
                 .print\\:hidden {
                   display: none !important;
                 }
                 .print-container {
-                  border: 1px solid #94a3b8 !important;
-                  height: 275mm !important;
-                  max-height: 275mm !important;
+                  border: 1px solid #cbd5e1 !important;
+                  width: 100% !important;
+                  height: calc(297mm - 2 * ${marginSize}) !important;
+                  max-height: calc(297mm - 2 * ${marginSize}) !important;
+                  zoom: ${activeScale} !important;
                   display: flex !important;
                   flex-direction: column !important;
                   justify-content: space-between !important;
+                  overflow: hidden !important;
+                  box-sizing: border-box !important;
+                  margin: 0 !important;
+                  box-shadow: none !important;
+                }
+                tr {
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                }
+                .avoid-break {
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
                 }
               }
             </style>
           </head>
-          <body class="p-4 bg-white">
-            <div class="max-w-[850px] mx-auto bg-white">
+          <body class="p-4 bg-white print:p-0 print:bg-white">
+            <div class="max-w-[850px] mx-auto bg-white print:max-w-none print:w-full">
               ${htmlContent}
             </div>
             <script>
@@ -223,33 +269,106 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0 font-sans">
-      {/* Top Controls - Hidden during printing */}
-      <div className="fixed top-4 right-4 flex items-center space-x-3 bg-slate-800 text-white px-4 py-2.5 rounded-lg shadow-xl print:hidden z-[101] border border-slate-700">
-        <button 
-          onClick={handlePrint} 
-          className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold text-sm transition-all shadow-md active:scale-95"
-        >
-          <Printer className="w-4 h-4" />
-          <span>Print Tax Invoice</span>
-        </button>
-        <button 
-          onClick={onClose} 
-          className="p-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white rounded transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div className="fixed inset-0 z-[100] flex flex-col items-center bg-slate-900/90 backdrop-blur-sm p-4 pt-24 pb-8 overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0 font-sans">
+      {/* Top Controls - Floating Pill Dashboard */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 flex flex-wrap items-center gap-3 bg-slate-950/95 text-white px-5 py-2.5 rounded-full shadow-2xl print:hidden z-[101] border border-slate-800 backdrop-blur-md max-w-[95%] sm:max-w-max select-none">
+        <div className="flex items-center space-x-2 border-r border-slate-800 pr-3 mr-1 shrink-0">
+          <Printer className="w-4 h-4 text-red-500 animate-pulse" />
+          <span className="font-extrabold text-[11px] uppercase tracking-wider text-slate-300">A4 Single-Page Studio</span>
+        </div>
+
+        {/* Margins */}
+        <div className="flex items-center space-x-1.5 text-[11px] font-bold text-slate-400">
+          <span>Margins:</span>
+          <select 
+            value={marginSize} 
+            onChange={(e) => setMarginSize(e.target.value)}
+            className="bg-slate-900 border border-slate-800 text-[11px] rounded-full px-2.5 py-1 outline-none text-slate-200 font-bold focus:border-red-500 hover:border-slate-700 transition-colors cursor-pointer"
+          >
+            <option value="0mm">Zero (0mm)</option>
+            <option value="4mm">Narrow (4mm)</option>
+            <option value="6mm">Compact (6mm)</option>
+            <option value="8mm">Default (8mm)</option>
+            <option value="12mm">Wide (12mm)</option>
+          </select>
+        </div>
+
+        {/* Scale/Zoom */}
+        <div className="flex items-center space-x-1.5 text-[11px] font-bold text-slate-400">
+          <span>Zoom Scale:</span>
+          <select 
+            value={userScale} 
+            onChange={(e) => {
+              const val = e.target.value;
+              setUserScale(val === 'auto' ? 'auto' : parseFloat(val));
+            }}
+            className="bg-slate-900 border border-slate-800 text-[11px] rounded-full px-2.5 py-1 outline-none text-slate-200 font-bold focus:border-red-500 hover:border-slate-700 transition-colors cursor-pointer"
+          >
+            <option value="auto">Auto-Fit (1 Page) ~ {Math.round(autoScale * 100)}%</option>
+            <option value="1">100% (Original)</option>
+            <option value="0.95">95%</option>
+            <option value="0.9">90%</option>
+            <option value="0.85">85%</option>
+            <option value="0.8">80%</option>
+            <option value="0.75">75%</option>
+            <option value="0.7">70%</option>
+            <option value="0.65">65%</option>
+            <option value="0.6">60%</option>
+            <option value="0.55">55%</option>
+            <option value="0.5">50%</option>
+          </select>
+        </div>
+
+        {/* Row Density */}
+        <div className="flex items-center space-x-1.5 text-[11px] font-bold text-slate-400">
+          <span>Density:</span>
+          <select 
+            value={rowPadding} 
+            onChange={(e) => setRowPadding(e.target.value as any)}
+            className="bg-slate-900 border border-slate-800 text-[11px] rounded-full px-2.5 py-1 outline-none text-slate-200 font-bold focus:border-red-500 hover:border-slate-700 transition-colors cursor-pointer"
+          >
+            <option value="normal">Loose</option>
+            <option value="compact">Compact</option>
+            <option value="extra-compact">Super Compact</option>
+          </select>
+        </div>
+
+        <div className="h-5 w-[1px] bg-slate-800 shrink-0 mx-1"></div>
+
+        {/* Primary buttons */}
+        <div className="flex items-center space-x-1.5 shrink-0">
+          <button 
+            onClick={handlePrint} 
+            className="flex items-center space-x-1.5 bg-red-600 hover:bg-red-700 text-white px-3.5 py-1 rounded-full font-extrabold text-[11px] uppercase tracking-wider transition-all shadow-md active:scale-95"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>Print Invoice</span>
+          </button>
+          <button 
+            onClick={onClose} 
+            className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white rounded-full transition-colors"
+            title="Close Preview"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Invoice Paper A4 Sheet */}
       <div 
         ref={invoiceRef} 
-        className="print-container bg-white text-slate-900 w-full max-w-[820px] print:max-w-none print:w-full print:h-[275mm] print:max-h-[275mm] shadow-2xl mx-auto my-8 print:my-0 print:shadow-none border border-slate-400 text-[11px] relative flex flex-col justify-between overflow-hidden select-text leading-normal"
-        style={{ contentVisibility: 'auto' }}
+        className="print-container bg-white text-slate-900 w-full max-w-[820px] print:max-w-none print:w-full shadow-2xl mx-auto my-0 print:my-0 print:shadow-none border border-slate-400 text-[11px] relative flex flex-col justify-between overflow-hidden print:overflow-hidden select-text leading-normal"
+        style={{ 
+          contentVisibility: 'visible',
+          height: '280mm',
+          maxHeight: '280mm',
+          zoom: activeScale,
+          padding: marginSize,
+        }}
       >
         {/* 1. Header Section */}
         <div className="grid grid-cols-2 divide-x divide-slate-300 border-b border-slate-300">
-          <div className="p-5 space-y-1 text-left">
+          <div className={`${sectionPaddingClass} space-y-1 text-left`}>
             <h1 className="text-[25px] font-[800] text-red-600 uppercase tracking-tight leading-none mb-1">{companyName}</h1>
             <p className="text-slate-500 font-semibold text-[11px] leading-relaxed max-w-[95%]">{companyAddress}</p>
             <div className="pt-1 space-y-0.5 text-slate-800 font-semibold text-[11px]">
@@ -259,7 +378,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
             </div>
           </div>
           
-          <div className="p-5 flex flex-col justify-between text-left">
+          <div className={`${sectionPaddingClass} flex flex-col justify-between text-left`}>
             <div className="flex justify-between items-start">
               <h2 className="text-[22px] font-[800] text-slate-900 tracking-wider uppercase leading-none">Tax Invoice</h2>
               <span className="text-[8px] font-[800] text-slate-400 tracking-widest uppercase border border-slate-200 px-1.5 py-0.5 rounded">Original For Recipient</span>
@@ -280,7 +399,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         <div className="grid grid-cols-2 divide-x divide-slate-300 border-b border-slate-300">
           <div className="flex flex-col text-left">
             <div className="bg-slate-50 border-b border-slate-300 py-1 px-4 text-[9px] font-[800] text-slate-400 uppercase tracking-widest">Bill To</div>
-            <div className="p-4 space-y-1">
+            <div className={`${innerPaddingClass}`}>
               <p className="text-[12px] font-bold text-slate-950 capitalize">{customerName}</p>
               <p className="text-slate-500 font-semibold leading-relaxed">{customerAddress}</p>
               <p className="text-slate-800 font-semibold">Pin: <span className="font-mono text-slate-950 font-bold">{customerPin}</span></p>
@@ -297,7 +416,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
 
           <div className="flex flex-col text-left">
             <div className="bg-slate-50 border-b border-slate-300 py-1 px-4 text-[9px] font-[800] text-slate-400 uppercase tracking-widest">Ship To</div>
-            <div className="p-4 space-y-1">
+            <div className={`${innerPaddingClass}`}>
               <p className="text-[12px] font-bold text-slate-950 capitalize">{shipToName}</p>
               <p className="text-slate-500 font-semibold leading-relaxed">{shipToAddress}</p>
               <p className="text-slate-800 font-semibold">Pin: <span className="font-mono text-slate-950 font-bold">{shipToPin}</span></p>
@@ -306,7 +425,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         </div>
 
         {/* 3. Items Table Container */}
-        <div className="flex-1 relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+        <div className="flex-1 relative overflow-hidden flex flex-col justify-between min-h-0">
           {/* Subtle Flame-Gear Watermark */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.035] select-none z-0">
             <svg className="w-64 h-64 text-slate-900" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="1.2">
@@ -321,27 +440,27 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
           <table className="w-full text-left border-collapse z-10 relative">
             <thead>
               <tr className="bg-red-600 text-white text-[10px] font-extrabold uppercase tracking-wider border-b border-red-700 divide-x divide-red-500">
-                <th className="py-2.5 px-2 w-[5%] text-center">S. No.</th>
-                <th className="py-2.5 px-3 w-[35%] text-left">Item</th>
-                <th className="py-2.5 px-2 w-[10%] text-center">HSN</th>
-                <th className="py-2.5 px-3 w-[12%] text-right">Quantity</th>
-                <th className="py-2.5 px-3 w-[12%] text-right">Rate</th>
-                <th className="py-2.5 px-3 w-[13%] text-right">Tax/Unit</th>
-                <th className="py-2.5 px-3 w-[13%] text-right">Amount</th>
+                <th className={`${rowPadding === 'extra-compact' ? 'py-1 px-1.5' : 'py-2 px-3'} w-[5%] text-center`}>S.</th>
+                <th className={`${rowPadding === 'extra-compact' ? 'py-1 px-1.5' : 'py-2 px-3'} w-[35%] text-left`}>Item</th>
+                <th className={`${rowPadding === 'extra-compact' ? 'py-1 px-1.5' : 'py-2 px-3'} w-[10%] text-center`}>HSN</th>
+                <th className={`${rowPadding === 'extra-compact' ? 'py-1 px-1.5' : 'py-2 px-3'} w-[12%] text-right`}>Qty</th>
+                <th className={`${rowPadding === 'extra-compact' ? 'py-1 px-1.5' : 'py-2 px-3'} w-[12%] text-right`}>Rate</th>
+                <th className={`${rowPadding === 'extra-compact' ? 'py-1 px-1.5' : 'py-2 px-3'} w-[13%] text-right`}>Tax</th>
+                <th className={`${rowPadding === 'extra-compact' ? 'py-1 px-1.5' : 'py-2 px-3'} w-[13%] text-right`}>Amount</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
               {paddedItems.map((item: any, idx: number) => {
                 if (item.isPadding) {
                   return (
-                    <tr key={`pad-${idx}`} className="h-[24px] divide-x divide-slate-300">
-                      <td className="py-1 px-2"></td>
-                      <td className="py-1 px-3"></td>
-                      <td className="py-1 px-2"></td>
-                      <td className="py-1 px-3"></td>
-                      <td className="py-1 px-3"></td>
-                      <td className="py-1 px-3"></td>
-                      <td className="py-1 px-3"></td>
+                    <tr key={`pad-${idx}`} className={`${rowHeightClass} divide-x divide-slate-300`}>
+                      <td className={cellPaddingClass}></td>
+                      <td className={cellPaddingClass}></td>
+                      <td className={cellPaddingClass}></td>
+                      <td className={cellPaddingClass}></td>
+                      <td className={cellPaddingClass}></td>
+                      <td className={cellPaddingClass}></td>
+                      <td className={cellPaddingClass}></td>
                     </tr>
                   );
                 }
@@ -353,24 +472,24 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
                 const amount = parseFloat(item.itemTotal || item.amount) || (qty * rate * (1 + taxRate/100));
 
                 return (
-                  <tr key={idx} className="h-[24px] divide-x divide-slate-300 hover:bg-slate-50/20">
-                    <td className="py-1 px-2 text-center font-mono text-slate-400 text-[10px]">{idx + 1}</td>
-                    <td className="py-1 px-3 text-left font-bold text-slate-900">{item.itemName || item.name || 'Item'}</td>
-                    <td className="py-1 px-2 text-center font-mono text-slate-600">{item.hsnCode || item.hsn || '808'}</td>
-                    <td className="py-1 px-3 text-right font-mono">{qty} {item.unit || 'KG'}</td>
-                    <td className="py-1 px-3 text-right font-mono">Rs. {rate.toFixed(2)}</td>
-                    <td className="py-1 px-3 text-right font-mono text-slate-600">Rs. {taxUnit} ({taxRate}%)</td>
-                    <td className="py-1 px-3 text-right font-mono font-bold text-slate-950">Rs. {amount.toFixed(2)}</td>
+                  <tr key={idx} className={`${rowHeightClass} divide-x divide-slate-300 hover:bg-slate-50/20`}>
+                    <td className={`${cellPaddingClass} text-center font-mono text-slate-400`}>{idx + 1}</td>
+                    <td className={`${cellPaddingClass} text-left font-bold text-slate-900 truncate max-w-[200px]`}>{item.itemName || item.name || 'Item'}</td>
+                    <td className={`${cellPaddingClass} text-center font-mono text-slate-600`}>{item.hsnCode || item.hsn || '808'}</td>
+                    <td className={`${cellPaddingClass} text-right font-mono`}>{qty} {item.unit || 'KG'}</td>
+                    <td className={`${cellPaddingClass} text-right font-mono`}>Rs. {rate.toFixed(2)}</td>
+                    <td className={`${cellPaddingClass} text-right font-mono text-slate-600`}>Rs. {taxUnit} ({taxRate}%)</td>
+                    <td className={`${cellPaddingClass} text-right font-mono font-bold text-slate-950`}>Rs. {amount.toFixed(2)}</td>
                   </tr>
                 );
               })}
 
               {/* Discount Row */}
               {totalDiscount > 0 && (
-                <tr className="h-[24px] divide-x divide-slate-300 bg-slate-50/20 border-t border-slate-200">
-                  <td className="py-1 px-2"></td>
-                  <td colSpan={5} className="py-1 px-3 text-right font-bold text-slate-700">Discount</td>
-                  <td className="py-1 px-3 text-right font-mono font-bold text-red-600">- Rs. {totalDiscount.toFixed(2)}</td>
+                <tr className={`${rowHeightClass} divide-x divide-slate-300 bg-slate-50/20 border-t border-slate-200`}>
+                  <td className={cellPaddingClass}></td>
+                  <td colSpan={5} className={`${cellPaddingClass} text-right font-bold text-slate-700`}>Discount</td>
+                  <td className={`${cellPaddingClass} text-right font-mono font-bold text-red-600`}>- Rs. {totalDiscount.toFixed(2)}</td>
                 </tr>
               )}
             </tbody>
@@ -378,7 +497,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         </div>
 
         {/* 4. Total Summary Line */}
-        <div className="grid grid-cols-7 border-t border-b border-slate-300 py-2.5 px-3 font-extrabold text-slate-900 bg-slate-50 items-center">
+        <div className={`grid grid-cols-7 border-t border-b border-slate-300 ${summaryPaddingClass} font-extrabold text-slate-900 bg-slate-50 items-center avoid-break`}>
           <div className="col-span-3 text-left uppercase text-[10px] tracking-wider text-slate-500">Total</div>
           <div className="text-right font-mono pr-2">{totalQty} {displayLineItems[0]?.unit || 'KG'}</div>
           <div></div>
@@ -387,20 +506,20 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         </div>
 
         {/* 5. Payment Ledger Strip */}
-        <div className="grid grid-cols-4 divide-x divide-slate-300 border-b border-slate-300 bg-slate-50/30 py-2 px-4 text-center text-[10px] font-bold text-slate-700">
-          <div>Received Amount <span className="font-mono font-extrabold text-slate-950 ml-1.5">Rs. {receivedAmount.toFixed(2)}</span></div>
-          <div>Balance Amount <span className="font-mono font-extrabold text-red-600 ml-1.5">Rs. {balanceAmount.toFixed(2)}</span></div>
-          <div>Previous Balance <span className="font-mono font-extrabold text-slate-950 ml-1.5">Rs. {previousBalance.toFixed(2)}</span></div>
-          <div>Current Balance <span className="font-mono font-extrabold text-slate-950 ml-1.5">Rs. {currentBalance.toFixed(2)}</span></div>
+        <div className={`grid grid-cols-4 divide-x divide-slate-300 border-b border-slate-300 bg-slate-50/30 ${rowPadding === 'extra-compact' ? 'py-1 px-2 text-[9px]' : 'py-2 px-4 text-[10px]'} text-center font-bold text-slate-700 avoid-break`}>
+          <div>Received <span className="font-mono font-extrabold text-slate-950 ml-1.5">Rs. {receivedAmount.toFixed(2)}</span></div>
+          <div>Balance <span className="font-mono font-extrabold text-red-600 ml-1.5">Rs. {balanceAmount.toFixed(2)}</span></div>
+          <div>Prev. Bal. <span className="font-mono font-extrabold text-slate-950 ml-1.5">Rs. {previousBalance.toFixed(2)}</span></div>
+          <div>Curr. Bal. <span className="font-mono font-extrabold text-slate-950 ml-1.5">Rs. {currentBalance.toFixed(2)}</span></div>
         </div>
 
         {/* 6. HSN GST Breakdown Table */}
-        <div className="border-b border-slate-300">
+        <div className="border-b border-slate-300 avoid-break">
           <table className="w-full text-center border-collapse text-[10px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-300 text-slate-700 font-extrabold divide-x divide-slate-300">
-                <th rowSpan={2} className="py-1 px-2 w-16 text-center">HSN</th>
-                <th rowSpan={2} className="py-1 px-2 text-right">Taxable Amount</th>
+                <th rowSpan={2} className={`${hsnCellPaddingClass} w-16 text-center`}>HSN</th>
+                <th rowSpan={2} className={`${hsnCellPaddingClass} text-right`}>Taxable Amount</th>
                 {isInterState ? (
                   <th colSpan={2} className="py-0.5 px-2 text-center border-b border-slate-300">IGST</th>
                 ) : (
@@ -409,7 +528,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
                     <th colSpan={2} className="py-0.5 px-2 text-center border-b border-slate-300">SGST</th>
                   </>
                 )}
-                <th rowSpan={2} className="py-1 px-2 text-right">Total Tax Amount</th>
+                <th rowSpan={2} className={`${hsnCellPaddingClass} text-right`}>Total Tax Amount</th>
               </tr>
               <tr className="bg-slate-50 border-b border-slate-300 text-slate-500 font-bold divide-x divide-slate-300 text-[9px]">
                 {isInterState ? (
@@ -429,78 +548,77 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
             </thead>
             <tbody className="divide-y divide-slate-200 font-mono text-slate-800 divide-x divide-slate-200">
               {Object.entries(hsnMap).map(([hsn, data]) => (
-                <tr key={hsn} className="h-[22px] divide-x divide-slate-200">
-                  <td className="py-0.5 px-2 font-bold text-slate-900 text-center">{hsn}</td>
-                  <td className="py-0.5 px-2 text-right">Rs. {data.taxable.toFixed(2)}</td>
+                <tr key={hsn} className={`${hsnRowHeightClass} divide-x divide-slate-200`}>
+                  <td className={`${hsnCellPaddingClass} font-bold text-slate-900 text-center`}>{hsn}</td>
+                  <td className={`${hsnCellPaddingClass} text-right`}>Rs. {data.taxable.toFixed(2)}</td>
                   {isInterState ? (
                     <>
-                      <td className="py-0.5 px-2 text-center">{data.igstRate.toFixed(1)}%</td>
-                      <td className="py-0.5 px-2 text-right">Rs. {data.igstAmt.toFixed(2)}</td>
+                      <td className={`${hsnCellPaddingClass} text-center`}>{data.igstRate.toFixed(1)}%</td>
+                      <td className={`${hsnCellPaddingClass} text-right`}>Rs. {data.igstAmt.toFixed(2)}</td>
                     </>
                   ) : (
                     <>
-                      <td className="py-0.5 px-2 text-center">{data.cgstRate.toFixed(1)}%</td>
-                      <td className="py-0.5 px-2 text-right">Rs. {data.cgstAmt.toFixed(2)}</td>
-                      <td className="py-0.5 px-2 text-center">{data.sgstRate.toFixed(1)}%</td>
-                      <td className="py-0.5 px-2 text-right">Rs. {data.sgstAmt.toFixed(2)}</td>
+                      <td className={`${hsnCellPaddingClass} text-center`}>{data.cgstRate.toFixed(1)}%</td>
+                      <td className={`${hsnCellPaddingClass} text-right`}>Rs. {data.cgstAmt.toFixed(2)}</td>
+                      <td className={`${hsnCellPaddingClass} text-center`}>{data.sgstRate.toFixed(1)}%</td>
+                      <td className={`${hsnCellPaddingClass} text-right`}>Rs. {data.sgstAmt.toFixed(2)}</td>
                     </>
                   )}
-                  <td className="py-0.5 px-2 text-right font-bold text-slate-900">Rs. {data.totalTax.toFixed(2)}</td>
+                  <td className={`${hsnCellPaddingClass} text-right font-bold text-slate-900`}>Rs. {data.totalTax.toFixed(2)}</td>
                 </tr>
               ))}
               {/* Total Row */}
-              <tr className="bg-slate-50 font-bold text-slate-900 border-t border-slate-300 divide-x divide-slate-300 h-[24px]">
-                <td className="py-1 px-2 text-center">Total</td>
-                <td className="py-1 px-2 text-right">Rs. {totalTaxableVal.toFixed(2)}</td>
+              <tr className={`bg-slate-50 font-bold text-slate-900 border-t border-slate-300 divide-x divide-slate-300 ${hsnRowHeightClass}`}>
+                <td className={hsnCellPaddingClass}>Total</td>
+                <td className={`${hsnCellPaddingClass} text-right`}>Rs. {totalTaxableVal.toFixed(2)}</td>
                 {isInterState ? (
                   <>
                     <td></td>
-                    <td className="py-1 px-2 text-right">Rs. {totalIgstVal.toFixed(2)}</td>
+                    <td className={`${hsnCellPaddingClass} text-right`}>Rs. {totalIgstVal.toFixed(2)}</td>
                   </>
                 ) : (
                   <>
                     <td></td>
-                    <td className="py-1 px-2 text-right">Rs. {totalCgstVal.toFixed(2)}</td>
+                    <td className={`${hsnCellPaddingClass} text-right`}>Rs. {totalCgstVal.toFixed(2)}</td>
                     <td></td>
-                    <td className="py-1 px-2 text-right">Rs. {totalSgstVal.toFixed(2)}</td>
+                    <td className={`${hsnCellPaddingClass} text-right`}>Rs. {totalSgstVal.toFixed(2)}</td>
                   </>
                 )}
-                <td className="py-1 px-2 text-right font-extrabold text-slate-950">Rs. {totalTaxVal.toFixed(2)}</td>
+                <td className={`${hsnCellPaddingClass} text-right font-extrabold text-slate-950`}>Rs. {totalTaxVal.toFixed(2)}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
         {/* 7. Remark Strip */}
-        <div className="border-b border-slate-300 p-2.5 bg-slate-50/10 flex items-center space-x-3 text-[11px] leading-tight text-left">
+        <div className={`border-b border-slate-300 ${rowPadding === 'extra-compact' ? 'p-1.5 text-[10px]' : 'p-2.5 text-[11px]'} bg-slate-50/10 flex items-center space-x-3 leading-tight text-left avoid-break`}>
           <strong className="text-slate-900 uppercase tracking-wider block shrink-0">Remark</strong>
           <span className="text-slate-700 italic font-medium">{remarkText}</span>
         </div>
 
         {/* 8. Footer Section (Terms, Bank Details & Signature) */}
-        <div className="grid grid-cols-3 divide-x divide-slate-300 p-4 bg-white items-stretch text-[10px]">
+        <div className={`grid grid-cols-3 divide-x divide-slate-300 ${footerPaddingClass} bg-white items-stretch avoid-break`}>
           <div className="pr-3 space-y-1 text-left">
-            <strong className="text-slate-900 uppercase tracking-wider block mb-1.5 border-b border-slate-200 pb-0.5 text-[9px]">Terms & Conditions</strong>
-            <ol className="list-decimal list-inside space-y-0.5 text-[10px] text-slate-600 font-medium leading-relaxed">
-              {/* No fixed terms items, keeping blank unless we have user values */}
+            <strong className="text-slate-900 uppercase tracking-wider block mb-1 border-b border-slate-200 pb-0.5 text-[9px]">Terms & Conditions</strong>
+            <ol className="list-decimal list-inside space-y-0.5 text-slate-600 font-medium leading-relaxed">
+              {/* Terms are empty or custom */}
             </ol>
           </div>
 
-          <div className="px-3 space-y-0.5 text-left text-[10px] text-slate-700">
-            <strong className="text-slate-900 uppercase tracking-wider block mb-1.5 border-b border-slate-200 pb-0.5 text-[9px]">Bank Details</strong>
-            <p><span className="text-slate-500">Account holder:</span> <strong className="text-slate-950">{bankHolder}</strong></p>
-            <p><span className="text-slate-500">Account number:</span> <strong className="font-mono text-slate-950">{bankAccount}</strong></p>
-            <p><span className="text-slate-500">Bank:</span> <strong className="text-slate-950">{bankName}</strong></p>
-            <p><span className="text-slate-500">Branch:</span> <strong className="text-slate-950">{bankBranch}</strong></p>
-            <p><span className="text-slate-500">IFSC code:</span> <strong className="font-mono text-slate-950">{bankIfsc}</strong></p>
-            <p><span className="text-slate-500">UPI ID:</span> <strong className="font-mono text-slate-950">{bankUpi}</strong></p>
+          <div className="px-3 space-y-0.5 text-left text-slate-700">
+            <strong className="text-slate-900 uppercase tracking-wider block mb-1 border-b border-slate-200 pb-0.5 text-[9px]">Bank Details</strong>
+            <p><span className="text-slate-500">Holder:</span> <strong className="text-slate-950">{bankHolder}</strong></p>
+            <p><span className="text-slate-500">A/C No:</span> <strong className="font-mono text-slate-950">{bankAccount}</strong></p>
+            <p><span className="text-slate-500">Bank:</span> <strong className="text-slate-950 text-[9.5px]">{bankName}</strong></p>
+            <p><span className="text-slate-500">IFSC:</span> <strong className="font-mono text-slate-950">{bankIfsc}</strong></p>
+            <p><span className="text-slate-500">UPI ID:</span> <strong className="font-mono text-slate-950 text-[9.5px]">{bankUpi}</strong></p>
           </div>
 
-          <div className="pl-3 flex flex-col justify-between text-center min-h-[80px]">
+          <div className="pl-3 flex flex-col justify-between text-center min-h-[60px]">
             <div></div>
-            <div className="border-t border-slate-300 pt-1.5">
-              <span className="text-[9px] font-bold text-slate-500 block uppercase tracking-wider">Authorised Signatory For</span>
-              <span className="text-[11px] font-[800] text-red-600 block mt-0.5 truncate uppercase">{companyName}</span>
+            <div className="border-t border-slate-300 pt-1">
+              <span className="text-[8.5px] font-bold text-slate-500 block uppercase tracking-wider">Authorised Signatory For</span>
+              <span className="text-[10px] font-[800] text-red-600 block mt-0.5 truncate uppercase">{companyName}</span>
             </div>
           </div>
         </div>

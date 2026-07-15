@@ -93,14 +93,20 @@ const Layout = () => {
         .order('name');
       if (error) throw error;
       setWorkspaces(data || []);
-    } catch (err) {
-      console.error("Error loading workspaces:", err);
+    } catch (err: any) {
+      if (err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError') || err?.name === 'TypeError' || err?.status === 401 || err?.message?.includes('Auth') || err?.message?.includes('JWT')) {
+        console.warn("Offline or unauthorized while loading workspaces:", err?.message || err);
+      } else {
+        console.error("Error loading workspaces:", err);
+      }
     }
   };
 
   useEffect(() => {
-    loadWorkspaces();
-  }, []);
+    if (user) {
+      loadWorkspaces();
+    }
+  }, [user]);
 
   const handleSwitchWorkspace = async (ws: any) => {
     await setCompany(ws);
