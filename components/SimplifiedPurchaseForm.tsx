@@ -16,7 +16,7 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<any>({
     date: '', displayDate: '', bill_number: '', vendor_name: '',
-    total_without_gst: 0, total_gst: 0, round_off: 0, grand_total: 0, status: 'Pending'
+    total_without_gst: 0, total_gst: 0, round_off: 0, grand_total: 0, status: 'Paid'
   });
 
   useEffect(() => {
@@ -30,7 +30,7 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
         total_gst: initialData.total_gst || 0,
         round_off: initialData.round_off || 0,
         grand_total: initialData.grand_total || 0,
-        status: initialData.status || 'Pending'
+        status: initialData.status || 'Paid'
       });
     }
   }, [initialData]);
@@ -122,13 +122,7 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
         </div>
       </div>
 
-      <div className="space-y-1">
-        <label className="text-[10px] font-bold text-slate-500 uppercase">Status</label>
-        <select value={formData.status || 'Pending'} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded text-sm bg-white outline-none focus:border-slate-400">
-          <option value="Pending">Unpaid (Pending)</option>
-          <option value="Paid">Paid</option>
-        </select>
-      </div>
+
 
       <div className="bg-slate-50 p-6 border border-slate-200 rounded space-y-3 boxy-shadow">
           <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">

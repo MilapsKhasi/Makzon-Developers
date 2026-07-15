@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, Edit, Trash2, Plus, Printer } from 'lucide-react';
-import { formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
+import { formatDate, getActiveCompanyId, normalizeBill, unsyncTransactionFromCashbook } from '../utils/helpers';
 import Modal from '../components/Modal';
 import SalesInvoiceForm from '../components/SalesInvoiceForm';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -50,7 +50,7 @@ const Sales = () => {
       
       if (error) throw error;
       
-      const normalizedData = (data || []).map(normalizeBill);
+      const normalizedData = (data || []).map(normalizeBill).filter(b => b && !b.items_raw?.is_payment_voucher);
       setInvoices(normalizedData);
     } catch (err: any) {
       console.error("Error loading sales:", err.message || err);
@@ -81,6 +81,7 @@ const Sales = () => {
     if (!deleteDialog.invoice) return;
     const { error } = await supabase.from('sales_invoices').update({ is_deleted: true }).eq('id', deleteDialog.invoice.id);
     if (!error) {
+        await unsyncTransactionFromCashbook(deleteDialog.invoice);
         loadData();
         window.dispatchEvent(new Event('appSettingsChanged'));
     }
@@ -246,13 +247,12 @@ const Sales = () => {
                         <th className="text-right capitalize">Taxable</th>
                         <th className="text-right capitalize">Gst</th>
                         <th className="text-right capitalize">Net Total</th>
-                        <th className="text-center capitalize">Status</th>
                         <th className="text-center capitalize">Manage</th>
                     </tr>
                     </thead>
                     <tbody>
                     {loading ? (
-                        <tr><td colSpan={9} className="text-center py-20 text-slate-400 dark:text-slate-500 font-medium tracking-widest text-[10px] capitalize">Loading register...</td></tr>
+                        <tr><td colSpan={8} className="text-center py-20 text-slate-400 dark:text-slate-500 font-medium tracking-widest text-[10px] capitalize">Loading register...</td></tr>
                     ) : filtered.map((inv, i) => (
                         <tr 
                             key={inv.id} 
@@ -267,11 +267,6 @@ const Sales = () => {
                         <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(inv.total_gst) || 0).toFixed(2)}</td>
                         <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{(Number(inv.grand_total) || 0).toFixed(2)}</td>
                         <td className="text-center">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-sm capitalize ${inv.status === 'Paid' ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>
-                            {inv.status}
-                            </span>
-                        </td>
-                        <td className="text-center">
                             <div className="flex justify-center space-x-2">
                                 <button onClick={(e) => { e.stopPropagation(); setPrintModalInvoice(inv); }} className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all" title="Print Invoice"><Printer className="w-4 h-4" /></button>
                                 <button onClick={(e) => { e.stopPropagation(); setEditingInvoice(inv); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all" title="Edit Invoice"><Edit className="w-4 h-4" /></button>
@@ -281,7 +276,7 @@ const Sales = () => {
                         </tr>
                     ))}
                     {!loading && filtered.length === 0 && (
-                        <tr><td colSpan={9} className="text-center py-20 text-slate-300 italic font-medium">No sales invoices found matching filters.</td></tr>
+                        <tr><td colSpan={8} className="text-center py-20 text-slate-300 italic font-medium">No sales invoices found matching filters.</td></tr>
                     )}
                     </tbody>
                 </table>

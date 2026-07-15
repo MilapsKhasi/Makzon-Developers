@@ -27,7 +27,11 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const { data, error } = await supabase.auth.getSession();
       if (error) {
-        console.error("Context refresh session error:", error);
+        if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+          console.warn("Context refresh session offline warning:", error.message);
+        } else {
+          console.error("Context refresh session error:", error);
+        }
         if (!error.message?.includes('Failed to fetch') && !error.message?.includes('NetworkError')) {
           localStorage.clear();
           try {
@@ -74,8 +78,12 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       } else {
         setActiveCompany(null);
       }
-    } catch (err) {
-      console.error("Context refresh error:", err);
+    } catch (err: any) {
+      if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {
+        console.warn("Context refresh offline unexpected warning:", err?.message || err);
+      } else {
+        console.error("Context refresh error:", err);
+      }
     } finally {
       setLoading(false);
     }

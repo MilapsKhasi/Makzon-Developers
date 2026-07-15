@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import Logo from './Logo';
@@ -27,13 +27,21 @@ const Layout = () => {
       try {
         const { data, error } = await supabase.auth.getUser();
         if (error) {
-          console.error("Layout fetchUser error:", error);
+          if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+            console.warn("Layout fetchUser offline connection warning:", error.message);
+          } else {
+            console.error("Layout fetchUser error:", error);
+          }
           setUser(null);
         } else {
           setUser(data?.user || null);
         }
-      } catch (err) {
-        console.error("Layout fetchUser unexpected error:", err);
+      } catch (err: any) {
+        if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {
+          console.warn("Layout fetchUser offline connection unexpected warning:", err?.message || err);
+        } else {
+          console.error("Layout fetchUser unexpected error:", err);
+        }
         setUser(null);
       }
     };
@@ -200,6 +208,7 @@ const Layout = () => {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: BadgeIndianRupee, label: 'Sales Invoices', path: '/sales' },
     { icon: ShoppingCart, label: 'Purchase Bills', path: '/bills' },
+    { icon: Wallet, label: 'Payments & Receipts', path: '/payments' },
     { icon: UserSquare2, label: 'Customers', path: '/customers' },
     { icon: Users, label: 'Vendors', path: '/vendors' },
     { icon: Package, label: 'Stock Master', path: '/stock' },

@@ -14,6 +14,7 @@ import Settings from './pages/Settings';
 import Purchases from './pages/Purchases';
 import AdditionalCharges from './pages/AdditionalCharges';
 import Cashbook from './pages/Cashbook';
+import Payments from './pages/Payments';
 import Auth from './pages/Auth';
 import Companies from './pages/Companies';
 import UserActivity from './pages/UserActivity';
@@ -51,9 +52,11 @@ const AppContent = () => {
           }
         }
       } catch (e: any) {
-        console.error("Schema check error:", e);
-        if (e.message?.includes('Failed to fetch')) {
+        if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError') || e.name === 'TypeError') {
+          console.warn("Schema check offline / connection warning:", e.message || e);
           setDbError("CONNECTION_ERROR");
+        } else {
+          console.error("Schema check error:", e);
         }
       }
     };
@@ -63,10 +66,11 @@ const AppContent = () => {
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error("Auth init session error:", error);
           if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+            console.warn("Auth init session offline warning:", error.message);
             setDbError("CONNECTION_ERROR");
           } else {
+            console.error("Auth init session error:", error);
             // For any other authentication errors (like missing or invalid refresh token),
             // we perform a clean reset of localStorage and local auth state.
             localStorage.clear();
@@ -89,9 +93,11 @@ const AppContent = () => {
           recordActivity(currentSession.user.id, currentSession.user.email || '');
         }
       } catch (e: any) {
-        console.error("Auth init unexpected error:", e);
-        if (e.message?.includes('Failed to fetch') || e.name === 'TypeError') {
+        if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError') || e.name === 'TypeError') {
+          console.warn("Auth init session offline unexpected warning:", e.message || e);
           setDbError("CONNECTION_ERROR");
+        } else {
+          console.error("Auth init unexpected error:", e);
         }
       } finally {
         setAuthLoading(false);
@@ -233,7 +239,7 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
     </div>
   );
 
-  if (session && (dbError === "SCHEMA_MISSING" || dbError === "CONNECTION_ERROR")) {
+  if (dbError === "CONNECTION_ERROR" || (session && dbError === "SCHEMA_MISSING")) {
     const isConnectionError = dbError === "CONNECTION_ERROR";
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -284,6 +290,7 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
           <Route path="masters" element={<Masters />} />
           <Route path="purchases" element={<Purchases />} />
           <Route path="bills" element={<Bills />} />
+          <Route path="payments" element={<Payments />} />
           <Route path="sales" element={<Sales />} />
           <Route path="vendors" element={<Vendors />} />
           <Route path="customers" element={<Customers />} />

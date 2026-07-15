@@ -246,15 +246,29 @@ export const syncTransactionToCashbook = async (transaction: any) => {
   try {
     const { data: existing } = await supabase.from('cashbooks').select('*').eq('company_id', company_id).eq('date', date).eq('is_deleted', false).maybeSingle();
     const isSale = type === 'Sale';
-    const entryLabel = `${isSale ? 'Sales' : 'Purchase'} - Bill ${bill_number} - ${vendor_name}`;
-    const amount = Number(grand_total) || 0;
+    
+    // Check if it's a payment voucher
+    const isPaymentVoucher = bill.items_raw?.is_payment_voucher === true;
+    let amount = Number(grand_total) || 0;
+    
+    if (isPaymentVoucher) {
+      const pDetails = bill.items_raw?.payment_details;
+      const payments = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
+      amount = payments.reduce((acc: number, p: any) => acc + (Number(p.payment_amount) || 0), 0);
+    }
+    
+    const entryLabel = isPaymentVoucher
+      ? `${isSale ? 'Receipt' : 'Payment'} - Voucher ${bill_number} - Account: ${bill.items_raw?.payment_details?.[0]?.payment_method || 'Cash'} - ${vendor_name}`
+      : `${isSale ? 'Sales' : 'Purchase'} - Bill ${bill_number} - ${vendor_name}`;
+      
     let incomeRows = []; let expenseRows = []; let cashbookId = null;
     if (existing) {
       cashbookId = existing.id;
       const raw = existing.raw_data || {};
       incomeRows = Array.isArray(raw.incomeRows) ? raw.incomeRows : [];
       expenseRows = Array.isArray(raw.expenseRows) ? raw.expenseRows : [];
-      const alreadyIn = [...incomeRows, ...expenseRows].some(r => r.particulars?.includes(`Bill ${bill_number}`));
+      
+      const alreadyIn = [...incomeRows, ...expenseRows].some(r => r.particulars?.includes(isPaymentVoucher ? `Voucher ${bill_number}` : `Bill ${bill_number}`));
       if (alreadyIn) return;
     }
     const newRow = { id: Math.random().toString(36).substr(2, 9), particulars: entryLabel, amount: amount.toString() };
@@ -270,4 +284,38 @@ export const syncTransactionToCashbook = async (transaction: any) => {
     if (cashbookId) await supabase.from('cashbooks').update(payload).eq('id', cashbookId);
     else await supabase.from('cashbooks').insert([payload]);
   } catch (err) { console.error("Cashbook Sync Error:", err); }
+};
+
+export const unsyncTransactionFromCashbook = async (transaction: any) => {
+  const bill = normalizeBill(transaction);
+  if (!bill) return;
+  const { company_id, date, bill_number } = bill;
+  try {
+    const { data: existing } = await supabase.from('cashbooks').select('*').eq('company_id', company_id).eq('date', date).eq('is_deleted', false).maybeSingle();
+    if (!existing) return;
+
+    const isPaymentVoucher = bill.items_raw?.is_payment_voucher === true;
+    const termToMatch = isPaymentVoucher ? `Voucher ${bill_number}` : `Bill ${bill_number}`;
+
+    const raw = existing.raw_data || {};
+    let incomeRows = Array.isArray(raw.incomeRows) ? raw.incomeRows : [];
+    let expenseRows = Array.isArray(raw.expenseRows) ? raw.expenseRows : [];
+
+    incomeRows = incomeRows.filter((r: any) => !r.particulars?.includes(termToMatch));
+    expenseRows = expenseRows.filter((r: any) => !r.particulars?.includes(termToMatch));
+
+    if (incomeRows.length === 0 && expenseRows.length === 0) {
+      await supabase.from('cashbooks').update({ is_deleted: true }).eq('id', existing.id);
+    } else {
+      const payload = {
+        income_total: incomeRows.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0),
+        expense_total: expenseRows.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0),
+        balance: incomeRows.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0) - expenseRows.reduce((acc: number, r: any) => acc + (Number(r.amount) || 0), 0),
+        raw_data: { incomeRows, expenseRows, date }
+      };
+      await supabase.from('cashbooks').update(payload).eq('id', existing.id);
+    }
+  } catch (err) {
+    console.error("Cashbook Unsync Error:", err);
+  }
 };

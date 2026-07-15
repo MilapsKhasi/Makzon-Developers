@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader2, Edit, Trash2 } from 'lucide-react';
-import { formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
+import { formatDate, getActiveCompanyId, normalizeBill, unsyncTransactionFromCashbook } from '../utils/helpers';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -59,7 +59,7 @@ const Bills = () => {
           const norm = normalizeBill(b);
           return norm ? { ...norm, type: 'Purchase' } : null;
         })
-        .filter(Boolean);
+        .filter(b => b && !b.items_raw?.is_payment_voucher);
         
       setBills(normalizedData);
     } catch (err: any) {
@@ -163,6 +163,7 @@ const Bills = () => {
     if (!deleteDialog.bill) return;
     const { error } = await supabase.from('purchase_bills').update({ is_deleted: true }).eq('id', deleteDialog.bill.id);
     if (!error) {
+      await unsyncTransactionFromCashbook(deleteDialog.bill);
       loadData();
       window.dispatchEvent(new Event('appSettingsChanged'));
     }
@@ -240,13 +241,12 @@ const Bills = () => {
                         <th className="text-right capitalize">Without Gst</th>
                         <th className="text-right capitalize">Gst</th>
                         <th className="text-right capitalize">With Gst</th>
-                        <th className="text-center capitalize">Status</th>
                         <th className="text-center capitalize">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
                     {loading ? (
-                        <tr><td colSpan={9} className="text-center py-20 text-slate-400 dark:text-slate-500 font-medium capitalize tracking-widest text-[10px]">Loading register...</td></tr>
+                        <tr><td colSpan={8} className="text-center py-20 text-slate-400 dark:text-slate-500 font-medium capitalize tracking-widest text-[10px]">Loading register...</td></tr>
                     ) : filtered.map((b, i) => (
                         <tr 
                             key={b.id} 
@@ -261,11 +261,6 @@ const Bills = () => {
                         <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(b.total_gst) || 0).toFixed(2)}</td>
                         <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{(Number(b.grand_total) || 0).toFixed(2)}</td>
                         <td className="text-center">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-sm capitalize ${b.status === 'Paid' ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>
-                            {b.status}
-                            </span>
-                        </td>
-                        <td className="text-center">
                             <div className="flex justify-center space-x-2">
                                 <button onClick={(e) => { e.stopPropagation(); setEditingBill(b); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all"><Edit className="w-4 h-4" /></button>
                                 <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, bill: b }); }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-rose-900/20 rounded transition-all"><Trash2 className="w-4 h-4" /></button>
@@ -274,7 +269,7 @@ const Bills = () => {
                         </tr>
                     ))}
                     {!loading && filtered.length === 0 && (
-                        <tr><td colSpan={9} className="text-center py-20 text-slate-300 italic font-medium">No purchase bills found matching filters.</td></tr>
+                        <tr><td colSpan={8} className="text-center py-20 text-slate-300 italic font-medium">No purchase bills found matching filters.</td></tr>
                     )}
                     </tbody>
                 </table>

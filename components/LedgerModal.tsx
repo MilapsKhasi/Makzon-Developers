@@ -143,28 +143,31 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
     transactions.forEach(t => {
       const amount = Number(t.grand_total) || 0;
       const isSale = t.type === 'Sale';
+      const isPaymentVoucher = t.items_raw?.is_payment_voucher === true;
       
       // Bill/Invoice Row
-      if (isSale) {
-        // Customer: Sales Bill is Debit (Increases Receivable)
-        runningBalance += amount;
-        rows.push({
-          date: t.date,
-          particulars: `Sales Bill No: ${t.bill_number}`,
-          debit: amount,
-          credit: 0,
-          balance: runningBalance
-        });
-      } else {
-        // Vendor: Purchase Bill is Credit (Increases Payable)
-        runningBalance += amount;
-        rows.push({
-          date: t.date,
-          particulars: `Purchase Bill No: ${t.bill_number}`,
-          debit: 0,
-          credit: amount,
-          balance: runningBalance
-        });
+      if (!isPaymentVoucher) {
+        if (isSale) {
+          // Customer: Sales Bill is Debit (Increases Receivable)
+          runningBalance += amount;
+          rows.push({
+            date: t.date,
+            particulars: `Sales Bill No: ${t.bill_number}`,
+            debit: amount,
+            credit: 0,
+            balance: runningBalance
+          });
+        } else {
+          // Vendor: Purchase Bill is Credit (Increases Payable)
+          runningBalance += amount;
+          rows.push({
+            date: t.date,
+            particulars: `Purchase Bill No: ${t.bill_number}`,
+            debit: 0,
+            credit: amount,
+            balance: runningBalance
+          });
+        }
       }
 
       // Payment Row (if Paid)
@@ -186,7 +189,9 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
             runningBalance -= pAmount;
             rows.push({
               date: pDate,
-              particulars: `Payment Received (Bill ${t.bill_number}) - ${pMethod}`,
+              particulars: isPaymentVoucher
+                ? `Receipt Voucher (${t.bill_number}) - Account: ${pMethod}`
+                : `Payment Received (Bill ${t.bill_number}) - ${pMethod}`,
               debit: 0,
               credit: pAmount,
               balance: runningBalance
@@ -196,7 +201,9 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
             runningBalance -= pAmount;
             rows.push({
               date: pDate,
-              particulars: `Payment Made (Bill ${t.bill_number}) - ${pMethod}`,
+              particulars: isPaymentVoucher
+                ? `Payment Voucher (${t.bill_number}) - Account: ${pMethod}`
+                : `Payment Made (Bill ${t.bill_number}) - ${pMethod}`,
               debit: pAmount,
               credit: 0,
               balance: runningBalance

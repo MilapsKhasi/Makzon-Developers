@@ -32,7 +32,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     duties_and_taxes: [], 
     round_off: 0, 
     grand_total: 0, 
-    status: 'Pending',
+    status: 'Paid',
     description: '',
     payment_details: null
   });
@@ -362,26 +362,9 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
           </div>
         </div>
         <div className="border border-slate-200 dark:border-slate-800 rounded-md p-4 sm:p-8 bg-white dark:bg-slate-900 space-y-6 shadow-sm">
-            <div className={`grid grid-cols-1 ${appSettings.gstEnabled ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-6`}>
+            <div className={`grid grid-cols-1 ${appSettings.gstEnabled ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-6`}>
                 <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Date</label><input required value={toDisplayValue(formData.displayDate)} onChange={e => updateFormData({...formData, displayDate: e.target.value})} onBlur={() => { const iso = parseDateFromInput(formData.displayDate); if (iso) updateFormData({...formData, date: iso, displayDate: formatDate(iso)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px]" /></div>
                 <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Invoice No</label><input required value={toDisplayValue(formData.invoice_number)} onChange={e => updateFormData({...formData, invoice_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono uppercase" /></div>
-                <div className="space-y-1.5">
-                  <label className="text-[14px] font-medium dark:text-slate-300 capitalize">Status</label>
-                  <select 
-                    value={formData.status} 
-                    onChange={e => {
-                      const newStatus = e.target.value;
-                      updateFormData({...formData, status: newStatus});
-                      if (newStatus === 'Paid' && (!formData.payment_details || (Array.isArray(formData.payment_details) && formData.payment_details.length === 0))) {
-                        setShowPaymentModal(true);
-                      }
-                    }} 
-                    className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] appearance-none cursor-pointer"
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="Paid">Paid</option>
-                  </select>
-                </div>
                 {appSettings.gstEnabled && (
                   <div className="space-y-1.5">
                     <label className="text-[14px] font-medium dark:text-slate-300 capitalize">GST Mode</label>
