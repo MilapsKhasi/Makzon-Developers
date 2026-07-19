@@ -476,7 +476,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
                     <td className={`${cellPaddingClass} text-center font-mono text-slate-400`}>{idx + 1}</td>
                     <td className={`${cellPaddingClass} text-left font-bold text-slate-900 truncate max-w-[200px]`}>{item.itemName || item.name || 'Item'}</td>
                     <td className={`${cellPaddingClass} text-center font-mono text-slate-600`}>{item.hsnCode || item.hsn || '808'}</td>
-                    <td className={`${cellPaddingClass} text-right font-mono`}>{qty} {item.unit || 'KG'}</td>
+                    <td className={`${cellPaddingClass} text-right font-mono`}>{qty}</td>
                     <td className={`${cellPaddingClass} text-right font-mono`}>Rs. {rate.toFixed(2)}</td>
                     <td className={`${cellPaddingClass} text-right font-mono text-slate-600`}>Rs. {taxUnit} ({taxRate}%)</td>
                     <td className={`${cellPaddingClass} text-right font-mono font-bold text-slate-950`}>Rs. {amount.toFixed(2)}</td>
@@ -499,7 +499,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         {/* 4. Total Summary Line */}
         <div className={`grid grid-cols-7 border-t border-b border-slate-300 ${summaryPaddingClass} font-extrabold text-slate-900 bg-slate-50 items-center avoid-break`}>
           <div className="col-span-3 text-left uppercase text-[10px] tracking-wider text-slate-500">Total</div>
-          <div className="text-right font-mono pr-2">{totalQty} {displayLineItems[0]?.unit || 'KG'}</div>
+          <div className="text-right font-mono pr-2">{totalQty}</div>
           <div></div>
           <div className="text-right font-mono pr-2">Rs. {totalTaxUnitValue.toFixed(2)}</div>
           <div className="text-right font-mono text-slate-950">Rs. {grandTotalValue.toFixed(2)}</div>
