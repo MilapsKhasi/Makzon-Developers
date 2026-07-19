@@ -3,7 +3,7 @@ import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, Tog
 import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS } from '../utils/helpers';
 import { supabase, getAuthUser } from '../lib/supabase';
 import Modal from './Modal';
-import CustomerForm from './CustomerForm';
+import PartyForm from './PartyForm';
 import PaymentModal from './PaymentModal';
 import { recordActivity } from '../utils/activityTracker';
 import { InvoicePrintModal } from './InvoicePrintModal';
@@ -219,7 +219,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     if (!cid) return;
     const { data: partyData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false);
     const { data: stockData } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
-    setCustomers((partyData || []).filter(p => p.party_type === 'customer' || p.is_customer === true));
+    setCustomers(partyData || []);
     setStockItems(stockData || []);
     
     const { data: allDuties } = await supabase.from('duties_taxes').select('*').eq('company_id', cid).eq('is_deleted', false);
@@ -325,8 +325,8 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
 
   return (
     <div className="bg-white dark:bg-slate-900 w-full flex flex-col">
-      <Modal isOpen={customerModal.isOpen} onClose={() => setCustomerModal({ ...customerModal, isOpen: false })} title="Customer Master" maxWidth="max-w-4xl">
-        <CustomerForm initialData={customerModal.initialData} prefilledName={customerModal.prefilledName} onSubmit={(c) => { setCustomerModal({ ...customerModal, isOpen: false }); loadDependencies(); }} onCancel={() => setCustomerModal({ ...customerModal, isOpen: false })} />
+      <Modal isOpen={customerModal.isOpen} onClose={() => setCustomerModal({ ...customerModal, isOpen: false })} title="Party Master" maxWidth="max-w-4xl">
+        <PartyForm defaultType="customer" initialData={customerModal.initialData} prefilledName={customerModal.prefilledName} onSubmit={(c) => { setCustomerModal({ ...customerModal, isOpen: false }); loadDependencies(); }} onCancel={() => setCustomerModal({ ...customerModal, isOpen: false })} />
       </Modal>
 
       <PaymentModal 

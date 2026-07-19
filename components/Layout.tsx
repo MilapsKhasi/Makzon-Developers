@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact } from 'lucide-react';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import Logo from './Logo';
@@ -197,8 +197,7 @@ const Layout = () => {
     { icon: BadgeIndianRupee, label: 'Sales Invoices', path: '/sales' },
     { icon: ShoppingCart, label: 'Purchase Bills', path: '/bills' },
     { icon: Wallet, label: 'Payments & Receipts', path: '/payments' },
-    { icon: UserSquare2, label: 'Customers', path: '/customers' },
-    { icon: Users, label: 'Vendors', path: '/vendors' },
+    { icon: Contact, label: 'Parties', path: '/parties' },
     { icon: Package, label: 'Stock Master', path: '/stock' },
     { icon: BookOpen, label: 'Cashbook', path: '/cashbook' },
     { icon: Percent, label: 'Additional Charges', path: '/additional-charges' },

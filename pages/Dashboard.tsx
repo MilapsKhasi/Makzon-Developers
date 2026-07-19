@@ -46,28 +46,54 @@ const Dashboard = () => {
       const { count: customerCount } = await supabase.from('customers').select('*', { count: 'exact', head: true }).eq('company_id', cid).eq('is_deleted', false);
       const { count: itemCount } = await supabase.from('stock_items').select('*', { count: 'exact', head: true }).eq('company_id', cid).eq('is_deleted', false);
 
-      const normalizedPurchases = (bills || []).map(b => {
+      const allPaymentVouchers = [
+        ...(bills || []).map(b => normalizeBill(b)).filter(b => b?.items_raw?.is_payment_voucher === true),
+        ...(sales || []).map(s => normalizeBill(s)).filter(s => s?.items_raw?.is_payment_voucher === true)
+      ];
+
+      const actualPurchases = (bills || []).map(b => {
         const norm = normalizeBill(b);
         return norm ? { ...norm, type: 'Purchase' } : null;
-      }).filter(Boolean) as any[];
+      }).filter(b => b && !b.items_raw?.is_payment_voucher) as any[];
 
-      const normalizedSales = (sales || []).map(s => {
+      const actualSales = (sales || []).map(s => {
         const norm = normalizeBill(s);
         return norm ? { ...norm, type: 'Sale' } : null;
-      }).filter(Boolean) as any[];
+      }).filter(s => s && !s.items_raw?.is_payment_voucher) as any[];
+
+      const getInvoiceOutstanding = (invoice: any) => {
+        const isSale = invoice.type === 'Sale';
+        const linkedVouchers = allPaymentVouchers.filter(v => {
+          const isCorrectType = isSale ? (v.type === 'Sale' || v.customer_name) : (v.type === 'Purchase' || v.vendor_name);
+          return isCorrectType && v.items_raw?.linked_bills?.includes(invoice.id);
+        });
+        const totalPaid = linkedVouchers.reduce((sum, v) => {
+          const pDetails = v.items_raw?.payment_details;
+          const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
+          const amt = pArray.reduce((s: number, p: any) => s + (Number(p.payment_amount) || 0), 0);
+          return sum + amt;
+        }, 0);
+        return Math.max(0, Number(invoice.grand_total || 0) - totalPaid);
+      };
+
+      const payables = actualPurchases.reduce((acc, v) => acc + getInvoiceOutstanding(v), 0);
+      const receivables = actualSales.reduce((acc, v) => acc + getInvoiceOutstanding(v), 0);
 
       setStats({ 
-        totalSales: normalizedSales.reduce((acc, b) => acc + Number(b.grand_total || 0), 0), 
-        totalPurchases: normalizedPurchases.reduce((acc, b) => acc + Number(b.grand_total || 0), 0), 
-        payables: normalizedPurchases.filter(v => v.status === 'Pending').reduce((acc, v) => acc + Number(v.grand_total || 0), 0), 
-        receivables: normalizedSales.filter(v => v.status === 'Pending').reduce((acc, v) => acc + Number(v.grand_total || 0), 0), 
-        gstPaid: normalizedPurchases.reduce((acc, v) => acc + Number(v.total_gst || 0), 0),
+        totalSales: actualSales.reduce((acc, b) => acc + Number(b.grand_total || 0), 0), 
+        totalPurchases: actualPurchases.reduce((acc, b) => acc + Number(b.grand_total || 0), 0), 
+        payables, 
+        receivables, 
+        gstPaid: actualPurchases.reduce((acc, v) => acc + Number(v.total_gst || 0), 0),
         totalVendors: vendorCount || 0,
         totalCustomers: customerCount || 0,
         stockItems: itemCount || 0
       });
 
-      const combined = [...normalizedPurchases, ...normalizedSales];
+      const combined = [
+        ...actualPurchases.map(p => ({ ...p, status: getInvoiceOutstanding(p) === 0 && Number(p.grand_total || 0) > 0 ? 'Paid' : 'Pending' })),
+        ...actualSales.map(s => ({ ...s, status: getInvoiceOutstanding(s) === 0 && Number(s.grand_total || 0) > 0 ? 'Paid' : 'Pending' }))
+      ];
       setRecentVouchers(combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (err: any) {
       console.error("Dashboard error:", err);

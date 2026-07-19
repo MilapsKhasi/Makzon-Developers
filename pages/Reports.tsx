@@ -33,15 +33,46 @@ const Reports = () => {
       supabase.from('sales_invoices').select('*').eq('company_id', cid).eq('is_deleted', false)
     ]);
     
+    const allPaymentVouchers = [
+      ...(purchaseData || []).map(b => normalizeBill(b)).filter(b => b?.items_raw?.is_payment_voucher === true),
+      ...(saleData || []).map(s => normalizeBill(s)).filter(s => s?.items_raw?.is_payment_voucher === true)
+    ];
+
+    const actualPurchases = (purchaseData || []).map(b => {
+      const norm = normalizeBill(b);
+      return norm ? { ...norm, type: 'Purchase' } : null;
+    }).filter(b => b && !b.items_raw?.is_payment_voucher);
+
+    const actualSales = (saleData || []).map(s => {
+      const norm = normalizeBill(s);
+      return norm ? { ...norm, type: 'Sale' } : null;
+    }).filter(s => s && !s.items_raw?.is_payment_voucher);
+
     const combined = [
-      ...(purchaseData || []).map(b => {
-        const norm = normalizeBill(b);
-        return norm ? { ...norm, type: 'Purchase' } : null;
-      }).filter(Boolean),
-      ...(saleData || []).map(s => {
-        const norm = normalizeBill(s);
-        return norm ? { ...norm, type: 'Sale' } : null;
-      }).filter(Boolean)
+      ...actualPurchases.map(p => {
+        const linkedVouchers = allPaymentVouchers.filter(v => v.items_raw?.linked_bills?.includes(p.id));
+        const totalPaid = linkedVouchers.reduce((sum, v) => {
+          const pDetails = v.items_raw?.payment_details;
+          const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
+          const amt = pArray.reduce((s: number, p: any) => s + (Number(p.payment_amount) || 0), 0);
+          return sum + amt;
+        }, 0);
+        const outstanding = Math.max(0, Number(p.grand_total || 0) - totalPaid);
+        const status = (outstanding === 0 && Number(p.grand_total || 0) > 0) ? 'Paid' : 'Pending';
+        return { ...p, status };
+      }),
+      ...actualSales.map(s => {
+        const linkedVouchers = allPaymentVouchers.filter(v => v.items_raw?.linked_bills?.includes(s.id));
+        const totalPaid = linkedVouchers.reduce((sum, v) => {
+          const pDetails = v.items_raw?.payment_details;
+          const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
+          const amt = pArray.reduce((s: number, p: any) => s + (Number(p.payment_amount) || 0), 0);
+          return sum + amt;
+        }, 0);
+        const outstanding = Math.max(0, Number(s.grand_total || 0) - totalPaid);
+        const status = (outstanding === 0 && Number(s.grand_total || 0) > 0) ? 'Paid' : 'Pending';
+        return { ...s, status };
+      })
     ];
 
     const filterFn = (item: any) => {

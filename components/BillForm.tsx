@@ -4,7 +4,7 @@ import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, Tog
 import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS } from '../utils/helpers';
 import { supabase, getAuthUser } from '../lib/supabase';
 import Modal from './Modal';
-import VendorForm from './VendorForm';
+import PartyForm from './PartyForm';
 import PaymentModal from './PaymentModal';
 import { recordActivity } from '../utils/activityTracker';
 
@@ -222,7 +222,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
   const loadDependencies = async () => {
     if (!cid) return;
-    const { data: vendorData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('party_type', 'vendor').eq('is_deleted', false);
+    const { data: vendorData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false).order('name');
     const { data: stockData } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
     setVendors(vendorData || []);
     setStockItems(stockData || []);
@@ -327,8 +327,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
   return (
     <div className="bg-white dark:bg-slate-900 w-full flex flex-col">
-      <Modal isOpen={vendorModal.isOpen} onClose={() => setVendorModal({ ...vendorModal, isOpen: false })} title="Vendor Master" maxWidth="max-w-4xl">
-        <VendorForm initialData={vendorModal.initialData} prefilledName={vendorModal.prefilledName} onSubmit={(v) => { setVendorModal({ ...vendorModal, isOpen: false }); loadDependencies(); }} onCancel={() => setVendorModal({ ...vendorModal, isOpen: false })} />
+      <Modal isOpen={vendorModal.isOpen} onClose={() => setVendorModal({ ...vendorModal, isOpen: false })} title="Party Master" maxWidth="max-w-4xl">
+        <PartyForm defaultType="vendor" initialData={vendorModal.initialData} prefilledName={vendorModal.prefilledName} onSubmit={(v) => { setVendorModal({ ...vendorModal, isOpen: false }); loadDependencies(); }} onCancel={() => setVendorModal({ ...vendorModal, isOpen: false })} />
       </Modal>
 
       <PaymentModal 

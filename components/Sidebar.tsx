@@ -6,9 +6,8 @@ const Sidebar = () => {
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard, shortcut: 'D' },
     { name: 'Sales Invoices', path: '/sales', icon: ShoppingBag, shortcut: 'I' },
-    { name: 'Customers', path: '/customers', icon: Contact, shortcut: 'C' },
+    { name: 'Parties', path: '/parties', icon: Contact, shortcut: 'P' },
     { name: 'Purchase Bills', path: '/bills', icon: ReceiptText, shortcut: 'B' },
-    { name: 'Vendors', path: '/vendors', icon: Users, shortcut: 'V' },
     { name: 'Stock Master', path: '/stock', icon: Package, shortcut: 'S' },
     { name: 'Cashbook', path: '/cashbook', icon: Wallet, shortcut: 'K' },
     { name: 'Additional Charges', path: '/additional-charges', icon: Calculator, shortcut: 'T' },

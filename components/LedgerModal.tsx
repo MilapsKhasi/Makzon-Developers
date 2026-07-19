@@ -127,18 +127,20 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
   const { ledgerRows, finalBalance } = useMemo(() => {
     if (!party) return { ledgerRows: [], finalBalance: 0 };
     const rows: any[] = [];
-    let runningBalance = Number(party.balance) || 0;
+    
+    const isDebtor = party.party_type === 'customer' || party.is_customer === true || type === 'customer';
+    const openingBalanceVal = Number(party.balance) || 0;
+    let runningBalance = isDebtor ? openingBalanceVal : -openingBalanceVal;
 
     // Opening Balance Row
-    if (runningBalance !== 0) {
-      rows.push({
-        date: '',
-        particulars: 'Opening Balance',
-        debit: type === 'customer' ? (runningBalance > 0 ? runningBalance : 0) : (runningBalance < 0 ? Math.abs(runningBalance) : 0),
-        credit: type === 'vendor' ? (runningBalance > 0 ? runningBalance : 0) : (runningBalance < 0 ? Math.abs(runningBalance) : 0),
-        balance: runningBalance
-      });
-    }
+    rows.push({
+      date: '',
+      transaction: 'Opening Balance',
+      reference: '',
+      debit: openingBalanceVal !== 0 ? (isDebtor ? openingBalanceVal : 0) : 0,
+      credit: openingBalanceVal !== 0 ? (isDebtor ? 0 : openingBalanceVal) : 0,
+      balance: runningBalance
+    });
 
     transactions.forEach(t => {
       const amount = Number(t.grand_total) || 0;
@@ -148,21 +150,23 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
       // Bill/Invoice Row
       if (!isPaymentVoucher) {
         if (isSale) {
-          // Customer: Sales Bill is Debit (Increases Receivable)
+          // Sales: Debits the party (Sales Invoice)
           runningBalance += amount;
           rows.push({
             date: t.date,
-            particulars: `Sales Bill No: ${t.bill_number}`,
+            transaction: 'Sales Invoice',
+            reference: t.bill_number || '',
             debit: amount,
             credit: 0,
             balance: runningBalance
           });
         } else {
-          // Vendor: Purchase Bill is Credit (Increases Payable)
-          runningBalance += amount;
+          // Purchase: Credits the party (Purchase Bill)
+          runningBalance -= amount;
           rows.push({
             date: t.date,
-            particulars: `Purchase Bill No: ${t.bill_number}`,
+            transaction: 'Purchase Bill',
+            reference: t.bill_number || '',
             debit: 0,
             credit: amount,
             balance: runningBalance
@@ -170,8 +174,8 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         }
       }
 
-      // Payment Row (if Paid)
-      if (t.status === 'Paid') {
+      // Payment/Receipt Row (only for actual Payment Vouchers)
+      if (isPaymentVoucher) {
         const pDetailsRaw = t.items_raw?.payment_details;
         const payments = Array.isArray(pDetailsRaw) ? pDetailsRaw : (pDetailsRaw ? [pDetailsRaw] : [{
           payment_amount: amount,
@@ -182,28 +186,25 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         payments.forEach((p: any) => {
           const pAmount = Number(p.payment_amount) || 0;
           const pDate = p.payment_date || t.date;
-          const pMethod = p.payment_method || 'Cash';
 
           if (isSale) {
-            // Customer: Payment Received is Credit (Decreases Receivable)
+            // Receipt: Credits the party (Receipt)
             runningBalance -= pAmount;
             rows.push({
               date: pDate,
-              particulars: isPaymentVoucher
-                ? `Receipt Voucher (${t.bill_number}) - Account: ${pMethod}`
-                : `Payment Received (Bill ${t.bill_number}) - ${pMethod}`,
+              transaction: 'Receipt',
+              reference: t.bill_number || '',
               debit: 0,
               credit: pAmount,
               balance: runningBalance
             });
           } else {
-            // Vendor: Payment Made is Debit (Decreases Payable)
-            runningBalance -= pAmount;
+            // Payment: Debits the party (Payment)
+            runningBalance += pAmount;
             rows.push({
               date: pDate,
-              particulars: isPaymentVoucher
-                ? `Payment Voucher (${t.bill_number}) - Account: ${pMethod}`
-                : `Payment Made (Bill ${t.bill_number}) - ${pMethod}`,
+              transaction: 'Payment',
+              reference: t.bill_number || '',
               debit: pAmount,
               credit: 0,
               balance: runningBalance
@@ -260,31 +261,6 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
     return formatMmmYyDate(maxDate.toISOString().split('T')[0]);
   }, [transactions]);
 
-  const getPrintParticulars = (row: any) => {
-    if (!row.particulars) return '';
-    
-    if (row.particulars.startsWith('Sales Bill No:')) {
-      const num = row.particulars.replace('Sales Bill No:', '').trim();
-      return `Sales A/c ${num}`;
-    }
-    if (row.particulars.startsWith('Purchase Bill No:')) {
-      const num = row.particulars.replace('Purchase Bill No:', '').trim();
-      return `Purchase A/c ${num}`;
-    }
-    if (row.particulars.startsWith('Payment Received')) {
-      const match = row.particulars.match(/Bill\s+([^\s\)]+)/);
-      const billNo = match ? match[1] : '';
-      return billNo ? `Payment of Sales A/c ${billNo}` : 'Payment Received';
-    }
-    if (row.particulars.startsWith('Payment Made')) {
-      const match = row.particulars.match(/Bill\s+([^\s\)]+)/);
-      const billNo = match ? match[1] : '';
-      return billNo ? `Payment of Purchase A/c ${billNo}` : 'Payment Made';
-    }
-    
-    return row.particulars;
-  };
-
   // Generate exactly 25 rows for the printed ledger
   const printRows = useMemo(() => {
     const list = [...ledgerRows];
@@ -292,7 +268,8 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
       list.push({
         isPlaceholder: true,
         date: '',
-        particulars: '',
+        transaction: '',
+        reference: '',
         debit: 0,
         credit: 0,
         balance: 0
@@ -350,10 +327,10 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
             </div>
             <div className="p-4 sm:p-6 flex flex-col items-center justify-center bg-slate-50/30 dark:bg-slate-800/20">
               <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 sm:mb-2">Net Balance</p>
-              <p className={`text-xl sm:text-2xl font-mono font-bold ${finalBalance > 0 ? (type === 'customer' ? 'text-red-500' : 'text-emerald-500') : (finalBalance < 0 ? (type === 'customer' ? 'text-emerald-500' : 'text-red-500') : 'text-slate-400')}`}>
+              <p className={`text-xl sm:text-2xl font-mono font-bold ${finalBalance > 0 ? 'text-blue-600 dark:text-blue-400' : (finalBalance < 0 ? 'text-amber-600 dark:text-amber-500' : 'text-slate-400')}`}>
                 {formatCurrency(Math.abs(finalBalance))}
-                <span className="text-[10px] sm:text-xs ml-1 sm:ml-2 uppercase opacity-50">
-                  {finalBalance === 0 ? '' : (type === 'customer' ? (finalBalance > 0 ? 'Dr' : 'Cr') : (finalBalance > 0 ? 'Cr' : 'Dr'))}
+                <span className="text-[10px] sm:text-xs ml-1 sm:ml-2 uppercase opacity-50 font-bold">
+                  {finalBalance === 0 ? 'Nil' : (finalBalance > 0 ? 'Dr' : 'Cr')}
                 </span>
               </p>
             </div>
@@ -376,9 +353,10 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       <th className="p-4 text-left w-32">Date</th>
-                      <th className="p-4 text-left">Particulars</th>
-                      <th className="p-4 text-right w-40">Debit (Dr)</th>
-                      <th className="p-4 text-right w-40">Credit (Cr)</th>
+                      <th className="p-4 text-left">Transaction</th>
+                      <th className="p-4 text-left w-36">Reference</th>
+                      <th className="p-4 text-right w-40">Debit</th>
+                      <th className="p-4 text-right w-40">Credit</th>
                       <th className="p-4 text-right w-44 bg-slate-100/50 dark:bg-slate-800/50">Balance</th>
                     </tr>
                   </thead>
@@ -388,16 +366,21 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
                         <td className="p-4 text-slate-500 dark:text-slate-400 font-medium">{row.date ? formatDate(row.date) : '-'}</td>
                         <td className="p-4">
                           <div className="flex items-center">
-                            {row.debit > 0 ? <ArrowUpRight className="w-3.5 h-3.5 mr-2 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity" /> : <ArrowDownLeft className="w-3.5 h-3.5 mr-2 text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity" />}
-                            <span className="font-medium text-slate-700 dark:text-slate-200">{row.particulars}</span>
+                            {row.debit > 0 ? (
+                              <ArrowUpRight className="w-3.5 h-3.5 mr-2 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                            ) : (
+                              <ArrowDownLeft className="w-3.5 h-3.5 mr-2 text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                            )}
+                            <span className="font-semibold text-slate-850 dark:text-slate-200">{row.transaction}</span>
                           </div>
                         </td>
+                        <td className="p-4 text-left font-mono font-bold text-slate-600 dark:text-slate-400">{row.reference || '-'}</td>
                         <td className="p-4 text-right font-mono font-bold text-red-500/80">{row.debit > 0 ? formatCurrency(row.debit, false) : '-'}</td>
                         <td className="p-4 text-right font-mono font-bold text-emerald-500/80">{row.credit > 0 ? formatCurrency(row.credit, false) : '-'}</td>
                         <td className="p-4 text-right font-mono font-bold text-slate-900 dark:text-white bg-slate-50/30 dark:bg-slate-800/30">
                           {formatCurrency(Math.abs(row.balance), false)}
-                          <span className="text-[10px] ml-1 uppercase opacity-40">
-                            {row.balance === 0 ? '' : (type === 'customer' ? (row.balance > 0 ? 'Dr' : 'Cr') : (row.balance > 0 ? 'Cr' : 'Dr'))}
+                          <span className={`text-[10px] ml-1.5 uppercase font-bold ${row.balance > 0 ? 'text-blue-600 dark:text-blue-400' : row.balance < 0 ? 'text-amber-600 dark:text-amber-500' : 'text-slate-400'}`}>
+                            {row.balance === 0 ? 'Nil' : (row.balance > 0 ? 'Dr' : 'Cr')}
                           </span>
                         </td>
                       </tr>
@@ -490,11 +473,13 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
             <table className="w-full text-[10px] border-collapse text-black">
               <thead>
                 <tr className="border-b-2 border-black text-left font-bold italic text-black">
-                  <th className="p-2 border-r-2 border-black text-center w-12">SR NO</th>
-                  <th className="p-2 border-r-2 border-black text-center w-24">DATE</th>
-                  <th className="p-2 border-r-2 border-black px-3">PARTICULARS</th>
-                  <th className="p-2 border-r-2 border-black text-right w-32 px-3">DEBIT</th>
-                  <th className="p-2 text-right w-32 px-3">CREDIT</th>
+                  <th className="p-2 border-r-2 border-black text-center w-10">SR</th>
+                  <th className="p-2 border-r-2 border-black text-center w-20">DATE</th>
+                  <th className="p-2 border-r-2 border-black px-2">TRANSACTION</th>
+                  <th className="p-2 border-r-2 border-black px-2 w-24">REFERENCE</th>
+                  <th className="p-2 border-r-2 border-black text-right w-24 px-2">DEBIT</th>
+                  <th className="p-2 border-r-2 border-black text-right w-24 px-2">CREDIT</th>
+                  <th className="p-2 text-right w-28 px-2">BALANCE</th>
                 </tr>
               </thead>
               <tbody>
@@ -508,46 +493,76 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
                       <td className="p-1 border-r-2 border-black text-center font-medium">
                         {isPlaceholder ? '' : (row.date ? formatLedgerDate(row.date) : '')}
                       </td>
-                      <td className="p-1 border-r-2 border-black px-3 italic font-medium">
-                        {isPlaceholder ? '' : getPrintParticulars(row)}
+                      <td className="p-1 border-r-2 border-black px-2 font-semibold">
+                        {isPlaceholder ? '' : row.transaction}
                       </td>
-                      <td className="p-1 border-r-2 border-black text-right font-bold px-3">
+                      <td className="p-1 border-r-2 border-black px-2 font-mono font-bold">
+                        {isPlaceholder ? '' : (row.reference || '-')}
+                      </td>
+                      <td className="p-1 border-r-2 border-black text-right font-bold px-2">
                         {isPlaceholder || !row.debit ? '' : Number(row.debit).toFixed(2)}
                       </td>
-                      <td className="p-1 text-right font-bold px-3">
+                      <td className="p-1 border-r-2 border-black text-right font-bold px-2">
                         {isPlaceholder || !row.credit ? '' : Number(row.credit).toFixed(2)}
+                      </td>
+                      <td className="p-1 text-right font-bold px-2 font-mono">
+                        {isPlaceholder ? '' : (
+                          <>
+                            {Number(Math.abs(row.balance)).toFixed(2)}
+                            <span className="text-[8px] ml-1 font-sans font-bold">
+                              {row.balance === 0 ? 'Nil' : (row.balance > 0 ? 'Dr' : 'Cr')}
+                            </span>
+                          </>
+                        )}
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-black font-bold uppercase tracking-wide text-[10px]">
+                  <td colSpan={4} className="p-2 text-right border-r-2 border-black">
+                    TOTAL
+                  </td>
+                  <td className="p-2 text-right border-r-2 border-black font-extrabold px-2 font-mono">
+                    {debitSum.toFixed(2)}
+                  </td>
+                  <td className="p-2 text-right border-r-2 border-black font-extrabold px-2 font-mono">
+                    {creditSum.toFixed(2)}
+                  </td>
+                  <td className="p-2 text-right font-extrabold px-2 font-mono">
+                    {/* Blank or matching style */}
+                  </td>
+                </tr>
+                <tr className="border-t border-black font-bold uppercase tracking-wide text-[10px]">
+                  <td colSpan={4} className="p-2 text-right border-r-2 border-black">
+                    NET CLOSING BALANCE
+                  </td>
+                  <td className="p-2 text-right border-r-2 border-black font-extrabold px-2 font-mono">
+                    {!isDebitHigher && netBalance > 0 ? (
+                      <>
+                        {netBalance.toFixed(2)}
+                        <span className="text-[8px] ml-1 font-sans font-bold">Dr</span>
+                      </>
+                    ) : ''}
+                  </td>
+                  <td className="p-2 text-right border-r-2 border-black font-extrabold px-2 font-mono">
+                    {isDebitHigher && netBalance > 0 ? (
+                      <>
+                        {netBalance.toFixed(2)}
+                        <span className="text-[8px] ml-1 font-sans font-bold">Cr</span>
+                      </>
+                    ) : ''}
+                  </td>
+                  <td className="p-2 text-right font-extrabold px-2 font-mono bg-gray-50">
+                    {netBalance.toFixed(2)}
+                    <span className="text-[8px] ml-1 font-sans font-bold">
+                      {debitSum === creditSum ? 'Nil' : (isDebitHigher ? 'Dr' : 'Cr')}
+                    </span>
+                  </td>
+                </tr>
+              </tfoot>
             </table>
-          </div>
-
-          {/* Table Totals & Closing balances row block */}
-          <div className="border-t-2 border-black text-[10px]">
-            <div className="grid grid-cols-12 font-bold uppercase tracking-wide border-b border-black">
-              <div className="col-span-8 p-2 text-right border-r-2 border-black">
-                TOTAL OF DEBIT CREDIT
-              </div>
-              <div className="col-span-2 p-2 text-right border-r-2 border-black font-extrabold px-3">
-                {debitSum.toFixed(2)}
-              </div>
-              <div className="col-span-2 p-2 text-right font-extrabold px-3">
-                {creditSum.toFixed(2)}
-              </div>
-            </div>
-            <div className="grid grid-cols-12 font-bold uppercase tracking-wide">
-              <div className="col-span-8 p-2 text-right border-r-2 border-black">
-                NET CLOSING BALANCE
-              </div>
-              <div className="col-span-2 p-2 text-right border-r-2 border-black font-extrabold px-3">
-                {!isDebitHigher && netBalance > 0 ? netBalance.toFixed(2) : ''}
-              </div>
-              <div className="col-span-2 p-2 text-right font-extrabold px-3">
-                {isDebitHigher && netBalance > 0 ? netBalance.toFixed(2) : ''}
-              </div>
-            </div>
           </div>
         </div>
       </div>

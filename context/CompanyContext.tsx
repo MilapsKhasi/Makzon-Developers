@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { migrateCustomersToParties } from '../utils/partiesMigration';
 
 interface Company {
   id: string;
@@ -115,6 +116,12 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     refresh();
   }, []);
+
+  useEffect(() => {
+    if (activeCompany?.id) {
+      migrateCustomersToParties(activeCompany.id);
+    }
+  }, [activeCompany?.id]);
 
   return (
     <CompanyContext.Provider value={{ activeCompany, loading, setCompany, refresh }}>

@@ -35,14 +35,24 @@ const Purchases = () => {
 
       if (error) throw error;
 
-      const purchaseOnly = (data || [])
-        .map(b => {
-          const norm = normalizeBill(b);
-          return norm ? { ...norm, type: 'Purchase' } : null;
-        })
-        .filter(Boolean);
+      const normalized = (data || []).map(b => normalizeBill(b)).filter(Boolean);
+      const paymentVouchers = normalized.filter(b => b?.items_raw?.is_payment_voucher === true);
+      const actualBills = normalized.filter(b => b && !b.items_raw?.is_payment_voucher);
 
-      setBills(purchaseOnly);
+      const computedBills = actualBills.map(bill => {
+        const linkedVouchers = paymentVouchers.filter(v => v.items_raw?.linked_bills?.includes(bill.id));
+        const totalPaidOnBill = linkedVouchers.reduce((sum, v) => {
+          const pDetails = v.items_raw?.payment_details;
+          const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
+          const amt = pArray.reduce((sumVal: number, p: any) => sumVal + (Number(p.payment_amount) || 0), 0);
+          return sum + amt;
+        }, 0);
+        const outstanding = Math.max(0, Number(bill.grand_total || 0) - totalPaidOnBill);
+        const status = (outstanding === 0 && Number(bill.grand_total || 0) > 0) ? 'Paid' : 'Pending';
+        return { ...bill, outstanding, status, type: 'Purchase' };
+      });
+
+      setBills(computedBills);
     } catch (err: any) {
       console.error("Error loading purchases:", err.message || err);
     } finally {

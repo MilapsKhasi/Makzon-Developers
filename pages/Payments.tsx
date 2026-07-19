@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, Loader2, Trash2, Plus, Wallet, CreditCard, ArrowDownCircle, ArrowUpCircle, Calendar, FileText } from 'lucide-react';
+import { Search, Loader2, Trash2, Plus, Wallet, CreditCard, ArrowDownCircle, ArrowUpCircle, Calendar, FileText, Edit } from 'lucide-react';
 import { formatDate, getActiveCompanyId, normalizeBill, safeSupabaseSave, syncTransactionToCashbook, formatCurrency, unsyncTransactionFromCashbook } from '../utils/helpers';
 import Modal from '../components/Modal';
 import DateFilter, { DateFilterHandle } from '../components/DateFilter';
@@ -36,6 +36,7 @@ const Payments = () => {
   const [description, setDescription] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [isSaveAndNew, setIsSaveAndNew] = useState(false);
+  const [editingVoucher, setEditingVoucher] = useState<Voucher | null>(null);
 
   // Dropdown options
   const [customers, setCustomers] = useState<any[]>([]);
@@ -79,7 +80,14 @@ const Payments = () => {
         });
 
         setPartyBills(bills);
-        setSelectedBillIds([]);
+        
+        // If we are editing, we want to restore the selected bills if they match current party and type
+        if (editingVoucher && editingVoucher.party_name === partyName && editingVoucher.type === voucherType) {
+          const linked = editingVoucher.raw?.items?.linked_bills || [];
+          setSelectedBillIds(linked);
+        } else {
+          setSelectedBillIds([]);
+        }
       } catch (err) {
         console.error("Error fetching party bills:", err);
       } finally {
@@ -88,7 +96,7 @@ const Payments = () => {
     };
 
     fetchPartyBills();
-  }, [partyName, voucherType]);
+  }, [partyName, voucherType, editingVoucher]);
 
   const handleBillToggle = (billId: string) => {
     setSelectedBillIds(prev => {
@@ -107,9 +115,9 @@ const Payments = () => {
 
   const alreadyPaidBillIds = useMemo(() => {
     return vouchers
-      .filter(v => v.type === voucherType)
+      .filter(v => v.type === voucherType && (!editingVoucher || v.id !== editingVoucher.id))
       .flatMap(v => v.raw?.items?.linked_bills || []);
-  }, [vouchers, voucherType]);
+  }, [vouchers, voucherType, editingVoucher]);
 
   const totalOutstanding = useMemo(() => {
     return partyBills
@@ -149,6 +157,7 @@ const Payments = () => {
           return {
             id: item.id,
             date: item.date,
+            created_at: item.created_at,
             voucher_no: item.invoice_number,
             type: 'Receipt' as const,
             party_name: item.customer_name,
@@ -182,6 +191,7 @@ const Payments = () => {
           return {
             id: item.id,
             date: item.date,
+            created_at: item.created_at,
             voucher_no: item.bill_number,
             type: 'Payment' as const,
             party_name: item.vendor_name,
@@ -192,8 +202,24 @@ const Payments = () => {
           };
         });
 
-      // Combine and sort by date descending
-      const combined = [...receipts, ...payments].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      // Combine and sort by date ascending so new entries are appended at the bottom
+      const combined = [...receipts, ...payments].sort((a, b) => {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        if (dateA !== dateB) {
+          return dateA - dateB;
+        }
+        
+        // If dates are identical, sort by created_at ascending
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (timeA !== timeB) {
+          return timeA - timeB;
+        }
+
+        // Fallback to voucher_no string/number comparison
+        return (a.voucher_no || '').localeCompare(b.voucher_no || '');
+      });
       setVouchers(combined);
 
       // 3. Load Customers & Vendors
@@ -217,6 +243,7 @@ const Payments = () => {
   }, [dateRange]);
 
   const resetForm = () => {
+    setEditingVoucher(null);
     setVoucherType('Receipt');
     setDate(new Date().toISOString().split('T')[0]);
     setAccount('Cash');
@@ -225,6 +252,24 @@ const Payments = () => {
     setDescription('');
     setPartyBills([]);
     setSelectedBillIds([]);
+  };
+
+  const handleEditVoucher = (voucher: Voucher) => {
+    setEditingVoucher(voucher);
+    setVoucherType(voucher.type);
+    setDate(voucher.date);
+    setAccount(voucher.account);
+    setPartyName(voucher.party_name);
+    setAmount(voucher.amount.toString());
+    
+    // Clean up Ref text from description to avoid duplicates
+    const baseDesc = (voucher.description || '').replace(/\s*\(Ref:\s*[^)]+\)$/, '');
+    setDescription(baseDesc);
+
+    const linked = voucher.raw?.items?.linked_bills || [];
+    setSelectedBillIds(linked);
+
+    setIsModalOpen(true);
   };
 
   const handleSaveVoucher = async (e: React.FormEvent) => {
@@ -240,12 +285,38 @@ const Payments = () => {
       const isReceipt = voucherType === 'Receipt';
       const table = isReceipt ? 'sales_invoices' : 'purchase_bills';
 
-      // Auto-generate voucher number (Tally style, e.g. REC-2607-0001)
-      const count = vouchers.filter(v => v.type === voucherType).length + 1;
-      const formattedSeq = count.toString().padStart(4, '0');
-      const dateParts = date.split('-');
-      const yymm = `${dateParts[0].substring(2)}${dateParts[1]}`;
-      const generatedNo = isReceipt ? `REC-${yymm}-${formattedSeq}` : `PAY-${yymm}-${formattedSeq}`;
+      let generatedNo = '';
+      if (editingVoucher && editingVoucher.type === voucherType) {
+        // If editing and same type, preserve existing voucher no
+        generatedNo = editingVoucher.voucher_no;
+      } else {
+        // Auto-generate voucher number (simple sequential, e.g. REC-001 / PAY-001)
+        const { data: existingVVs } = await supabase
+          .from(table)
+          .select(isReceipt ? 'invoice_number' : 'bill_number')
+          .eq('company_id', cid)
+          .eq('is_deleted', false);
+
+        const prefix = isReceipt ? 'REC-' : 'PAY-';
+        let maxSeq = 0;
+        if (existingVVs) {
+          existingVVs.forEach(v => {
+            const no = isReceipt ? (v as any).invoice_number : (v as any).bill_number;
+            if (no && no.startsWith(prefix)) {
+              const numPart = no.substring(prefix.length);
+              if (/^\d+$/.test(numPart)) {
+                const parsed = parseInt(numPart, 10);
+                if (!isNaN(parsed) && parsed > maxSeq) {
+                  maxSeq = parsed;
+                }
+              }
+            }
+          });
+        }
+
+        const nextSeq = maxSeq + 1;
+        generatedNo = `${prefix}${nextSeq.toString().padStart(3, '0')}`;
+      }
 
       const paymentDetails = [{
         payment_amount: parsedAmount,
@@ -284,8 +355,38 @@ const Payments = () => {
         payload.bill_number = generatedNo;
       }
 
-      const res = await safeSupabaseSave(table, payload);
+      // 1. Unsync old version from cashbook
+      if (editingVoucher) {
+        await unsyncTransactionFromCashbook(editingVoucher.raw);
+      }
 
+      let res: any = null;
+      if (editingVoucher && editingVoucher.type === voucherType) {
+        // 2a. Update existing in place
+        const { data, error } = await supabase
+          .from(table)
+          .update(payload)
+          .eq('id', editingVoucher.id)
+          .select();
+
+        if (error) throw error;
+        res = { data };
+      } else {
+        // 2b. If type changed, delete old one and create new one
+        if (editingVoucher) {
+          const oldTable = editingVoucher.type === 'Receipt' ? 'sales_invoices' : 'purchase_bills';
+          const { error: delError } = await supabase
+            .from(oldTable)
+            .update({ is_deleted: true })
+            .eq('id', editingVoucher.id);
+          
+          if (delError) throw delError;
+        }
+
+        res = await safeSupabaseSave(table, payload);
+      }
+
+      // 3. Sync updated version to cashbook
       if (res && res.data && res.data[0]) {
         await syncTransactionToCashbook(res.data[0]);
       }
@@ -425,13 +526,22 @@ const Payments = () => {
                       {voucher.description}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <button
-                        onClick={() => handleDeleteVoucher(voucher)}
-                        className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
-                        title="Delete Voucher"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center justify-center space-x-1">
+                        <button
+                          onClick={() => handleEditVoucher(voucher)}
+                          className="p-1 text-slate-400 hover:text-primary rounded transition-colors"
+                          title="Edit Voucher"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVoucher(voucher)}
+                          className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
+                          title="Delete Voucher"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -444,7 +554,7 @@ const Payments = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Payment & Receipt Voucher Entry"
+        title={editingVoucher ? "Edit Payment & Receipt Voucher" : "Payment & Receipt Voucher Entry"}
         maxWidth="max-w-xl"
       >
         <form onSubmit={handleSaveVoucher} className="p-6 space-y-4">
@@ -638,21 +748,23 @@ const Payments = () => {
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              onClick={() => setIsSaveAndNew(true)}
-              disabled={saving}
-              className="px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 text-xs flex items-center shadow-sm disabled:opacity-50"
-            >
-              {saving && isSaveAndNew && <Loader2 className="w-3 h-3 animate-spin mr-1.5" />} Save & New
-            </button>
+            {!editingVoucher && (
+              <button
+                type="submit"
+                onClick={() => setIsSaveAndNew(true)}
+                disabled={saving}
+                className="px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 text-xs flex items-center shadow-sm disabled:opacity-50"
+              >
+                {saving && isSaveAndNew && <Loader2 className="w-3 h-3 animate-spin mr-1.5" />} Save & New
+              </button>
+            )}
             <button
               type="submit"
               onClick={() => setIsSaveAndNew(false)}
               disabled={saving}
               className="px-5 py-2 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark text-xs flex items-center shadow-sm disabled:opacity-50"
             >
-              {saving && !isSaveAndNew && <Loader2 className="w-3 h-3 animate-spin mr-1.5" />} Save Entry
+              {saving && !isSaveAndNew && <Loader2 className="w-3 h-3 animate-spin mr-1.5" />} {editingVoucher ? 'Save Changes' : 'Save Entry'}
             </button>
           </div>
         </form>
