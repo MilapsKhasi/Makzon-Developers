@@ -72,7 +72,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f3ff] flex items-center justify-center p-6 font-sans">
+    <div className="min-h-screen bg-[#F7F8FC] flex items-center justify-center p-6 font-sans">
       <div className={`w-full ${showSqlHelp ? 'max-w-2xl' : 'max-w-sm'} bg-primary rounded-[10px] p-2 transition-all duration-300 border border-slate-200/20 shadow-none`}>
         <div className="text-center py-8">
           <h2 className="text-2xl font-semibold text-white">
