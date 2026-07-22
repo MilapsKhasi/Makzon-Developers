@@ -201,6 +201,56 @@ export const toggleSelectedLedgerId = (ledgerId: string) => {
   return next;
 };
 
+export const fetchStockItemsWithBalance = async (company_id: string) => {
+  if (!company_id) return [];
+  try {
+    const [{ data: stockItems }, { data: purchaseData }, { data: saleData }] = await Promise.all([
+      supabase.from('stock_items').select('*').eq('company_id', company_id).eq('is_deleted', false).order('name', { ascending: true }),
+      supabase.from('purchase_bills').select('*').eq('company_id', company_id).eq('is_deleted', false),
+      supabase.from('sales_invoices').select('*').eq('company_id', company_id).eq('is_deleted', false)
+    ]);
+
+    if (!stockItems || stockItems.length === 0) return [];
+
+    const normalizedVouchers = [
+      ...(purchaseData || []).map((b: any) => {
+        const norm = normalizeBill(b);
+        return norm ? { ...norm, type: 'Purchase' } : null;
+      }).filter(Boolean),
+      ...(saleData || []).map((s: any) => {
+        const norm = normalizeBill(s);
+        return norm ? { ...norm, type: 'Sale' } : null;
+      }).filter(Boolean)
+    ];
+
+    return stockItems.map((item: any) => {
+      let inward = 0;
+      let outward = 0;
+      const itemNameLower = item.name?.trim().toLowerCase();
+
+      normalizedVouchers.forEach((v: any) => {
+        v.items?.forEach((it: any) => {
+          if (it.itemName?.trim().toLowerCase() === itemNameLower) {
+            const q = Number(it.qty || 0);
+            if (v.type === 'Purchase') inward += q;
+            else outward += q;
+          }
+        });
+      });
+
+      const netStock = (Number(item.in_stock) || 0) + inward - outward;
+      return {
+        ...item,
+        in_stock: netStock
+      };
+    });
+  } catch (err) {
+    console.error('Error fetching stock items with balance:', err);
+    const { data: stockItems } = await supabase.from('stock_items').select('*').eq('company_id', company_id).eq('is_deleted', false).order('name', { ascending: true });
+    return stockItems || [];
+  }
+};
+
 export const ensureStockItems = async (items: any[], company_id: string) => {
   if (!items || !Array.isArray(items)) return;
   for (const item of items) {

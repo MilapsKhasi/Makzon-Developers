@@ -326,6 +326,52 @@ const Settings = () => {
           </div>
         </div>
 
+        {/* Connection Mode Section */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">
+            <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Connection Mode</h3>
+          </div>
+          <div className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center text-left">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">
+                  {localStorage.getItem('use_offline_mode') === 'true' ? 'Offline Local Storage' : 'Cloud Database (Supabase)'}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {localStorage.getItem('use_offline_mode') === 'true' 
+                    ? 'You are running the app entirely offline. Data is securely persisted in your browser.' 
+                    : 'Your workspace is synchronized in real-time with the secure Cloud database.'}
+                </p>
+              </div>
+              <div className="flex justify-end">
+                {localStorage.getItem('use_offline_mode') === 'true' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('use_offline_mode');
+                      window.location.reload();
+                    }}
+                    className="px-4 py-2.5 bg-primary hover:bg-primary-dark text-white text-xs font-bold rounded shadow-sm transition-colors uppercase tracking-wider"
+                  >
+                    Switch to Cloud Mode
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.setItem('use_offline_mode', 'true');
+                      window.location.reload();
+                    }}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded shadow-sm border border-slate-200 dark:border-slate-700 transition-colors uppercase tracking-wider"
+                  >
+                    Switch to Offline Mode
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* GST Configuration Section */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">

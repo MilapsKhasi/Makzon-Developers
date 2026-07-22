@@ -207,7 +207,7 @@ const Layout = () => {
   ];
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden font-sans transition-colors duration-300 relative">
+    <div className="flex h-screen bg-[#F7F8FC] dark:bg-slate-950 overflow-hidden font-sans transition-colors duration-300 relative">
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div 
@@ -330,6 +330,12 @@ const Layout = () => {
                 </div>
               )}
             </div>
+            {localStorage.getItem('use_offline_mode') === 'true' && (
+              <span className="flex items-center space-x-1 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 font-bold rounded text-[10px] uppercase tracking-wider select-none">
+                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse mr-1"></span>
+                Offline Mode
+              </span>
+            )}
           </div>
           {isInactive && (
             <div className="flex items-center space-x-2 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-full border border-red-100 dark:border-red-800 animate-pulse transition-all">
@@ -340,7 +346,7 @@ const Layout = () => {
             </div>
           )}
         </header>
-        <main className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-50 dark:bg-slate-950">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 bg-[#F7F8FC] dark:bg-slate-950">
           <Outlet />
         </main>
       </div>

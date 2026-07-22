@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, ToggleLeft, ToggleRight, Printer } from 'lucide-react';
-import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS } from '../utils/helpers';
+import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS, fetchStockItemsWithBalance } from '../utils/helpers';
 import { supabase, getAuthUser } from '../lib/supabase';
 import Modal from './Modal';
 import PartyForm from './PartyForm';
+import StockForm from './StockForm';
+import ItemSelectDropdown from './ItemSelectDropdown';
 import PaymentModal from './PaymentModal';
 import { recordActivity } from '../utils/activityTracker';
 import { InvoicePrintModal } from './InvoicePrintModal';
@@ -86,6 +88,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   const [customers, setCustomers] = useState<any[]>([]);
   const [stockItems, setStockItems] = useState<any[]>([]);
   const [customerModal, setCustomerModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
+  const [itemModal, setItemModal] = useState<{ isOpen: boolean; rowIdx: number | null }>({ isOpen: false, rowIdx: null });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const shouldPrintRef = useRef(false);
@@ -218,18 +221,18 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   const loadDependencies = async () => {
     if (!cid) return;
     const { data: partyData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false);
-    const { data: stockData } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
+    const stockData = await fetchStockItemsWithBalance(cid);
     setCustomers(partyData || []);
     setStockItems(stockData || []);
     
     const { data: allDuties } = await supabase.from('duties_taxes').select('*').eq('company_id', cid).eq('is_deleted', false);
     const selectedIds = getSelectedLedgerIds();
     // Filter out CGST, SGST, IGST from active/manual duties so users CANNOT manually select them
-    const activeReadOnlyDuties = READONLY_LEDGERS.filter(d => selectedIds.includes(d.id));
+    const activeReadOnlyDuties = READONLY_LEDGERS.filter((d: any) => selectedIds.includes(d.id));
     const activeDuties = [
       ...(allDuties || [])
-        .filter(d => !['CGST', 'SGST', 'IGST'].includes(d.name))
-        .filter(d => d.is_default || selectedIds.includes(d.id)),
+        .filter((d: any) => !['CGST', 'SGST', 'IGST'].includes(d.name))
+        .filter((d: any) => d.is_default || selectedIds.includes(d.id)),
       ...activeReadOnlyDuties
     ];
 
@@ -268,14 +271,71 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
 
   useEffect(() => { loadDependencies(); }, [initialData, cid]);
 
+  const selectStockItemForSalesRow = (idx: number, selected: any) => {
+    const newItems = [...formData.items];
+    let salesRate = '0';
+    if (selected && selected.selling_price !== undefined && selected.selling_price !== null && selected.selling_price !== '') {
+      const numericSalePrice = Number(selected.selling_price);
+      if (!isNaN(numericSalePrice) && numericSalePrice > 0) {
+        salesRate = selected.selling_price.toString();
+      }
+    }
+
+    newItems[idx] = {
+      ...newItems[idx],
+      itemName: selected.name || '',
+      hsnCode: selected.hsn || '',
+      rate: salesRate,
+      tax_rate: selected.tax_rate || 0
+    };
+    setFormData(recalculate({ ...formData, items: newItems }));
+  };
+
+  const handleSaveNewStockItem = async (itemData: any) => {
+    try {
+      const user = await getAuthUser();
+      if (user) recordActivity(user.id, user.email || '');
+
+      const storageData = { ...itemData, company_id: cid, is_deleted: false };
+      let res = await supabase.from('stock_items').insert([storageData]).select();
+      if (res.error && (res.error.message?.includes('selling_price') || res.error.code === 'PGRST204' || res.error.code === '42703')) {
+        const { selling_price, ...cleanData } = storageData;
+        res = await supabase.from('stock_items').insert([cleanData]).select();
+      }
+
+      let insertedItem = (res.data && res.data[0]) ? res.data[0] : null;
+      if (!insertedItem) {
+        const { data: fetchRes } = await supabase.from('stock_items')
+          .select('*')
+          .eq('company_id', cid)
+          .eq('name', itemData.name)
+          .eq('is_deleted', false)
+          .maybeSingle();
+        insertedItem = fetchRes || itemData;
+      }
+
+      const stockData = await fetchStockItemsWithBalance(cid);
+      setStockItems(stockData || []);
+
+      if (itemModal.rowIdx !== null && itemModal.rowIdx >= 0) {
+        selectStockItemForSalesRow(itemModal.rowIdx, insertedItem);
+      }
+
+      setItemModal({ isOpen: false, rowIdx: null });
+    } catch (err: any) {
+      alert("Error creating stock item: " + err.message);
+    }
+  };
+
   const updateItemRow = (idx: number, field: string, val: any) => {
     const newItems = [...formData.items];
     newItems[idx] = { ...newItems[idx], [field]: val };
     if (field === 'itemName') {
-        const selected = stockItems.find(s => s.name.toLowerCase().trim() === val.toLowerCase().trim());
-        if (selected) {
-            newItems[idx] = { ...newItems[idx], hsnCode: selected.hsn || '', rate: selected.rate?.toString() || '', tax_rate: selected.tax_rate || 0 };
-        }
+      const selected = stockItems.find(s => s.name.toLowerCase().trim() === val.toLowerCase().trim());
+      if (selected) {
+        selectStockItemForSalesRow(idx, selected);
+        return;
+      }
     }
     setFormData(recalculate({ ...formData, items: newItems }));
   };
@@ -327,6 +387,10 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     <div className="bg-white dark:bg-slate-900 w-full flex flex-col">
       <Modal isOpen={customerModal.isOpen} onClose={() => setCustomerModal({ ...customerModal, isOpen: false })} title="Party Master" maxWidth="max-w-4xl">
         <PartyForm defaultType="customer" initialData={customerModal.initialData} prefilledName={customerModal.prefilledName} onSubmit={(c) => { setCustomerModal({ ...customerModal, isOpen: false }); loadDependencies(); }} onCancel={() => setCustomerModal({ ...customerModal, isOpen: false })} />
+      </Modal>
+
+      <Modal isOpen={itemModal.isOpen} onClose={() => setItemModal({ isOpen: false, rowIdx: null })} title="Create New Item" maxWidth="max-w-3xl">
+        <StockForm onSubmit={handleSaveNewStockItem} onCancel={() => setItemModal({ isOpen: false, rowIdx: null })} />
       </Modal>
 
       <PaymentModal 
@@ -425,7 +489,15 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
 
                             return (
                                 <tr key={it.id}>
-                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input list="itemslist" value={toDisplayValue(it.itemName)} onChange={e => updateItemRow(idx, 'itemName', e.target.value)} className="w-full h-10 px-3 outline-none bg-transparent dark:text-white" /></td>
+                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800 min-w-[220px]">
+                                        <ItemSelectDropdown
+                                            value={it.itemName}
+                                            stockItems={stockItems}
+                                            onSelect={(selectedItem) => selectStockItemForSalesRow(idx, selectedItem)}
+                                            onAddNewItem={() => setItemModal({ isOpen: true, rowIdx: idx })}
+                                            placeholder="Select Item"
+                                        />
+                                    </td>
                                     <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={toDisplayValue(it.hsnCode)} onChange={e => updateItemRow(idx, 'hsnCode', e.target.value)} className="w-full h-10 px-3 outline-none bg-transparent font-mono text-slate-400 dark:text-slate-500" /></td>
                                     <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={toDisplayValue(it.rate)} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-10 px-2 text-right outline-none font-mono font-bold dark:text-white bg-transparent" /></td>
                                     <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={toDisplayValue(it.qty)} onChange={e => updateItemRow(idx, 'qty', e.target.value)} className="w-full h-10 px-2 text-center outline-none font-mono font-bold dark:text-white bg-transparent" /></td>
@@ -457,7 +529,6 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                         })}
                     </tbody>
                 </table>
-                <datalist id="itemslist">{stockItems.map(s => <option key={s.id} value={s.name} />)}</datalist>
                 <button type="button" onClick={() => updateFormData(recalculate({...formData, items: [...formData.items, { id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', rate: '', discount: 0, discount_type: 'Percentage', tax_rate: 0, taxableAmount: 0, itemTotal: 0 }]}))} className="w-full py-3 bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-800 border-t border-slate-200 dark:border-slate-700">+ Add New Row</button>
             </div>
             <div className="flex flex-col lg:flex-row justify-between items-start pt-8 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 gap-8">
@@ -465,11 +536,21 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                 <div className="flex flex-col items-end space-y-4 w-full lg:w-1/2">
                     <div className="flex items-center justify-between w-full max-w-sm text-[14px]">
                         <span className="text-slate-500 font-bold uppercase tracking-tight pr-4">Taxable (Without GST)</span>
-                        <input type="text" value={formatWhileTyping(formData.total_without_gst.toString())} onFocus={(e) => { e.target.value = formData.total_without_gst.toString(); e.target.select(); }} onBlur={(e) => { e.target.value = formatWhileTyping(formData.total_without_gst.toString()) }} onChange={e => updateFormData(recalculate({...formData}, 'total_without_gst', undefined, e.target.value))} className="px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono font-bold text-right w-40 sm:w-48" />
+                        <input 
+                          type="text" 
+                          value={formatWhileTyping(formData.total_without_gst.toString())} 
+                          readOnly 
+                          className="px-4 py-2 border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed rounded outline-none text-[14px] font-mono font-bold text-right w-40 sm:w-48" 
+                        />
                     </div>
                     <div className="flex items-center justify-between w-full max-w-sm text-[14px]">
                         <span className="text-slate-500 font-bold uppercase tracking-tight pr-4">GST Amount</span>
-                        <input type="text" value={formatWhileTyping(formData.total_gst.toString())} onFocus={(e) => { e.target.value = formData.total_gst.toString(); e.target.select(); }} onBlur={(e) => { e.target.value = formatWhileTyping(formData.total_gst.toString()) }} onChange={e => updateFormData(recalculate({...formData}, 'total_gst', undefined, e.target.value))} className="px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono font-bold text-right w-40 sm:w-48" />
+                        <input 
+                          type="text" 
+                          value={formatWhileTyping(formData.total_gst.toString())} 
+                          readOnly 
+                          className="px-4 py-2 border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed rounded outline-none text-[14px] font-mono font-bold text-right w-40 sm:w-48" 
+                        />
                     </div>
                     {formData.duties_and_taxes.map((d: any) => (
                         <div key={d.id} className="flex items-center justify-between w-full max-w-sm text-[14px]">

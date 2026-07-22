@@ -105,7 +105,7 @@ const AppContent = () => {
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, newSession: any) => {
       setSession(newSession);
       if (event === 'SIGNED_IN' && newSession) {
         checkSchema(newSession);
@@ -267,9 +267,20 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
             </div>
           )}
           
-          <button onClick={() => window.location.reload()} className="px-8 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark capitalize">
-            {isConnectionError ? "Retry Connection" : "Refresh After Running Sql"}
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button onClick={() => window.location.reload()} className="px-8 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-dark capitalize">
+              {isConnectionError ? "Retry Connection" : "Refresh After Running Sql"}
+            </button>
+            <button 
+              onClick={() => {
+                localStorage.setItem('use_offline_mode', 'true');
+                window.location.reload();
+              }} 
+              className="px-8 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg border border-slate-200 capitalize"
+            >
+              Continue in Offline/Local Mode
+            </button>
+          </div>
         </div>
       </div>
     );

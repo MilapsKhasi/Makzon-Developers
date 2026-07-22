@@ -133,7 +133,7 @@ const Companies = () => {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-white overflow-hidden font-sans text-slate-900">
+    <div className="flex flex-col h-screen bg-[#F7F8FC] overflow-hidden font-sans text-slate-900">
       <header className="h-auto min-h-[4rem] border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 py-4 sm:py-0 shrink-0 bg-white gap-4">
         <div className="flex items-center justify-between w-full sm:w-auto">
           <div className="flex items-center space-x-2">
@@ -165,7 +165,7 @@ const Companies = () => {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-10 bg-white">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-10 bg-[#F7F8FC]">
         <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-6 gap-4">
               <div>

@@ -142,6 +142,20 @@ const Auth = () => {
                 {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : 'GET STARTED'} 
               </button>
 
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem('use_offline_mode', 'true');
+                  localStorage.setItem('local_session_user', JSON.stringify({ id: 'local-user-1', email: 'offline@zenterprime.com', created_at: new Date().toISOString() }));
+                  localStorage.setItem('activeCompanyId', 'local-company-1');
+                  localStorage.setItem('activeCompanyName', 'Local Demo Company');
+                  window.location.href = '/';
+                }}
+                className="w-full py-3.5 rounded-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all flex items-center justify-center text-xs tracking-[0.1em] border border-slate-200"
+              >
+                USE OFFLINE LOCAL MODE
+              </button>
+
               <div className="flex flex-col space-y-3">
                 <button
                   type="button"
