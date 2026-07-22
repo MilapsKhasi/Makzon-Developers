@@ -220,9 +220,25 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
 
   const loadDependencies = async () => {
     if (!cid) return;
-    const { data: partyData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false);
+    const { data: partyData } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false).order('name');
+    const { data: legacyCustomers } = await supabase.from('customers').select('*').eq('company_id', cid).eq('is_deleted', false).order('name');
+
+    const partyMap = new Map();
+    (legacyCustomers || []).forEach((c: any) => {
+      partyMap.set(c.id, { ...c, party_type: c.party_type || 'customer', is_customer: true });
+    });
+    (partyData || []).forEach((p: any) => {
+      partyMap.set(p.id, p);
+    });
+
+    const allParties = Array.from(partyMap.values());
+    const salesParties = allParties.filter((p: any) => {
+      const pType = (p.party_type || '').toLowerCase();
+      return pType === 'customer' || pType === 'both' || (p.is_customer === true && pType !== 'vendor');
+    });
+
     const stockData = await fetchStockItemsWithBalance(cid);
-    setCustomers(partyData || []);
+    setCustomers(salesParties);
     setStockItems(stockData || []);
     
     const { data: allDuties } = await supabase.from('duties_taxes').select('*').eq('company_id', cid).eq('is_deleted', false);

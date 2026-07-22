@@ -42,8 +42,15 @@ const Dashboard = () => {
       
       const [{ data: bills }, { data: sales }] = await Promise.all([billQuery, saleQuery]);
       
-      const { count: vendorCount } = await supabase.from('vendors').select('*', { count: 'exact', head: true }).eq('company_id', cid).eq('party_type', 'vendor').eq('is_deleted', false);
-      const { count: customerCount } = await supabase.from('customers').select('*', { count: 'exact', head: true }).eq('company_id', cid).eq('is_deleted', false);
+      const { data: allParties } = await supabase.from('vendors').select('party_type, is_customer').eq('company_id', cid).eq('is_deleted', false);
+      const customerCount = (allParties || []).filter((p: any) => {
+        const pt = (p.party_type || '').toLowerCase();
+        return pt === 'customer' || pt === 'both' || (p.is_customer === true && pt !== 'vendor');
+      }).length;
+      const vendorCount = (allParties || []).filter((p: any) => {
+        const pt = (p.party_type || '').toLowerCase();
+        return pt === 'vendor' || pt === 'both' || (p.is_customer === false && pt !== 'customer');
+      }).length;
       const { count: itemCount } = await supabase.from('stock_items').select('*', { count: 'exact', head: true }).eq('company_id', cid).eq('is_deleted', false);
 
       const allPaymentVouchers = [

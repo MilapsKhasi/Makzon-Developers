@@ -273,19 +273,56 @@ export const ensureStockItems = async (items: any[], company_id: string) => {
 
 export const ensureParty = async (name: string, type: 'customer' | 'vendor', company_id: string) => {
   if (!name || !name.trim()) return;
-  const table = type === 'customer' ? 'customers' : 'vendors';
-  const { data: existing } = await supabase.from(table).select('*').eq('company_id', company_id).eq('name', name.trim()).eq('is_deleted', false).maybeSingle();
-  if (!existing) {
-    const payload = {
-      name: name.trim(),
-      party_type: type,
-      is_customer: type === 'customer',
-      company_id,
-      is_deleted: false,
-      balance: 0
-    };
-    await safeSupabaseSave(table, payload);
+  const nameTrim = name.trim();
+
+  // 1. Search unified 'vendors' table
+  const { data: existingVendor } = await supabase
+    .from('vendors')
+    .select('*')
+    .eq('company_id', company_id)
+    .eq('is_deleted', false)
+    .ilike('name', nameTrim)
+    .maybeSingle();
+
+  if (existingVendor) {
+    const pType = (existingVendor.party_type || '').toLowerCase();
+    if (type === 'customer' && pType === 'vendor') {
+      await supabase.from('vendors').update({ party_type: 'both', is_customer: true }).eq('id', existingVendor.id);
+    } else if (type === 'vendor' && pType === 'customer') {
+      await supabase.from('vendors').update({ party_type: 'both' }).eq('id', existingVendor.id);
+    }
+    return;
   }
+
+  // 2. Search legacy 'customers' table if any
+  const { data: existingCustomer } = await supabase
+    .from('customers')
+    .select('*')
+    .eq('company_id', company_id)
+    .eq('is_deleted', false)
+    .ilike('name', nameTrim)
+    .maybeSingle();
+
+  if (existingCustomer) {
+    const newType = type === 'vendor' ? 'both' : (existingCustomer.party_type || 'customer');
+    await safeSupabaseSave('vendors', {
+      ...existingCustomer,
+      party_type: newType,
+      is_customer: true
+    });
+    return;
+  }
+
+  // 3. Not found, save as new party in 'vendors'
+  const payload = {
+    name: nameTrim,
+    party_type: type,
+    is_customer: type === 'customer',
+    company_id,
+    is_deleted: false,
+    balance: 0
+  };
+  await safeSupabaseSave('vendors', payload);
 };
 
 export const syncTransactionToCashbook = async (transaction: any) => {

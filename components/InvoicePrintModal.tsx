@@ -54,9 +54,9 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
       }
       const partyName = invoice.customer_name || invoice.vendor_name;
       if (partyName && cid) {
-        let { data: cust } = await supabase.from('customers').select('*').eq('company_id', cid).eq('name', partyName).maybeSingle();
+        let { data: cust } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('name', partyName).eq('is_deleted', false).maybeSingle();
         if (!cust) {
-          const res = await supabase.from('vendors').select('*').eq('company_id', cid).eq('name', partyName).maybeSingle();
+          const res = await supabase.from('customers').select('*').eq('company_id', cid).eq('name', partyName).eq('is_deleted', false).maybeSingle();
           cust = res.data;
         }
         if (cust) setCustomer(cust);

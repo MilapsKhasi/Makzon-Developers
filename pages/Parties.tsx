@@ -45,8 +45,23 @@ const Parties = () => {
         .eq('company_id', cid)
         .eq('is_deleted', false)
         .order('name');
-      
-      setParties(partyData || []);
+
+      const { data: custData } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('company_id', cid)
+        .eq('is_deleted', false)
+        .order('name');
+
+      const partyMap = new Map();
+      (custData || []).forEach((c: any) => {
+        partyMap.set(c.id, { ...c, party_type: c.party_type || 'customer', is_customer: true });
+      });
+      (partyData || []).forEach((v: any) => {
+        partyMap.set(v.id, v);
+      });
+
+      setParties(Array.from(partyMap.values()));
 
       // 2. Load Sales Invoices
       const { data: salesData } = await supabase
@@ -119,8 +134,9 @@ const Parties = () => {
       const matchesSearch = p.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             p.gstin?.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const isDebtor = p.party_type === 'customer' || p.is_customer === true;
-      const isCreditor = p.party_type === 'vendor' || p.is_customer === false;
+      const pType = (p.party_type || '').toLowerCase();
+      const isDebtor = pType === 'customer' || pType === 'both' || (p.is_customer === true && pType !== 'vendor');
+      const isCreditor = pType === 'vendor' || pType === 'both' || (p.is_customer === false && pType !== 'customer');
 
       if (filterType === 'debtor') {
         return matchesSearch && isDebtor;
@@ -434,9 +450,11 @@ const Parties = () => {
                       </h3>
                       <div className="space-y-2.5 text-xs">
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Default Group:</span>
+                          <span className="text-slate-400">Party Type:</span>
                           <span className="font-bold text-slate-800 dark:text-slate-200">
-                            {selectedParty.party_type === 'customer' || selectedParty.is_customer === true ? 'Sundry Debtors' : 'Sundry Creditors'}
+                            {selectedParty.party_type === 'both' 
+                              ? 'Both (Sundry Debtors & Creditors)' 
+                              : (selectedParty.party_type === 'customer' || selectedParty.is_customer === true ? 'Customer (Sundry Debtors)' : 'Vendor (Sundry Creditors)')}
                           </span>
                         </div>
                         <div className="flex justify-between">

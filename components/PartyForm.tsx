@@ -7,7 +7,7 @@ import { recordActivity } from '../utils/activityTracker';
 interface PartyFormProps {
   initialData?: any | null;
   prefilledName?: string;
-  defaultType?: 'customer' | 'vendor'; // Initial preference if pre-filled
+  defaultType?: 'customer' | 'vendor' | 'both'; // Initial preference if pre-filled
   onSubmit: (party: any, isSaveAndNew?: boolean) => void;
   onCancel: () => void;
 }
@@ -27,19 +27,22 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
     ifsc_code: '', 
     address: '', 
     balance: 0,
-    party_type: defaultType, // 'customer' or 'vendor'
-    is_customer: defaultType === 'customer'
+    party_type: defaultType, // 'customer', 'vendor', or 'both'
+    is_customer: defaultType === 'customer' || defaultType === 'both'
   });
 
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialData) {
+      let pType = (initialData.party_type || '').toLowerCase();
+      if (!pType || (pType !== 'customer' && pType !== 'vendor' && pType !== 'both')) {
+        pType = initialData.is_customer ? 'customer' : 'vendor';
+      }
       setFormData({ 
         ...initialData,
-        // Treat old customer/vendor records properly
-        party_type: initialData.party_type || (initialData.is_customer ? 'customer' : 'vendor'),
-        is_customer: initialData.is_customer !== false
+        party_type: pType,
+        is_customer: pType === 'customer' || pType === 'both'
       });
     } else if (prefilledName) {
       setFormData((prev: any) => ({ ...prev, name: prefilledName }));
@@ -51,11 +54,11 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
     setFormData((prev: any) => ({ ...prev, [field]: value })); 
   };
 
-  const handleGroupChange = (group: 'customer' | 'vendor') => {
+  const handleTypeChange = (type: 'customer' | 'vendor' | 'both') => {
     setFormData((prev: any) => ({ 
       ...prev, 
-      party_type: group,
-      is_customer: group === 'customer'
+      party_type: type,
+      is_customer: type === 'customer' || type === 'both'
     }));
   };
 
@@ -70,6 +73,8 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
       const cid = getActiveCompanyId();
       const payload = { 
         ...formData, 
+        party_type: formData.party_type || 'customer',
+        is_customer: formData.party_type === 'customer' || formData.party_type === 'both',
         balance: toStorageValue(formData.balance),
         company_id: cid, 
         is_deleted: false,
@@ -93,7 +98,7 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
           address: '', 
           balance: 0,
           party_type: defaultType,
-          is_customer: defaultType === 'customer'
+          is_customer: defaultType === 'customer' || defaultType === 'both'
         });
         setTimeout(() => firstInputRef.current?.focus(), 100);
       }
@@ -134,14 +139,15 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
                       />
                   </div>
                   <div className="space-y-1.5">
-                      <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Default Group (Categorization)</label>
+                      <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Party Type</label>
                       <select 
-                        value={formData.party_type === 'customer' || formData.is_customer === true ? 'customer' : 'vendor'}
-                        onChange={e => handleGroupChange(e.target.value as 'customer' | 'vendor')}
-                        className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                        value={formData.party_type || 'customer'}
+                        onChange={e => handleTypeChange(e.target.value as 'customer' | 'vendor' | 'both')}
+                        className="w-full h-10 px-3 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
                       >
-                        <option value="customer">Sundry Debtors</option>
-                        <option value="vendor">Sundry Creditors</option>
+                        <option value="customer">Customer</option>
+                        <option value="vendor">Vendor</option>
+                        <option value="both">Both (Customer & Vendor)</option>
                       </select>
                   </div>
               </div>

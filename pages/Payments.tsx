@@ -222,12 +222,34 @@ const Payments = () => {
       });
       setVouchers(combined);
 
-      // 3. Load Customers & Vendors
-      const { data: custs } = await supabase.from('customers').select('*').eq('company_id', cid).eq('is_deleted', false).order('name');
+      // 3. Load Customers & Vendors with strict party filtering
       const { data: vends } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false).order('name');
+      const { data: custs } = await supabase.from('customers').select('*').eq('company_id', cid).eq('is_deleted', false).order('name');
 
-      setCustomers(custs || []);
-      setVendors(vends || []);
+      const partyMap = new Map();
+      (custs || []).forEach((c: any) => {
+        partyMap.set(c.id, { ...c, party_type: c.party_type || 'customer', is_customer: true });
+      });
+      (vends || []).forEach((v: any) => {
+        partyMap.set(v.id, v);
+      });
+
+      const allParties = Array.from(partyMap.values());
+
+      // Receipt (Payment Received) -> Customer or Both
+      const receiptParties = allParties.filter((p: any) => {
+        const pType = (p.party_type || '').toLowerCase();
+        return pType === 'customer' || pType === 'both' || (p.is_customer === true && pType !== 'vendor');
+      });
+
+      // Payment (Payment Given) -> Vendor or Both
+      const paymentParties = allParties.filter((p: any) => {
+        const pType = (p.party_type || '').toLowerCase();
+        return pType === 'vendor' || pType === 'both' || (p.is_customer === false && pType !== 'customer');
+      });
+
+      setCustomers(receiptParties);
+      setVendors(paymentParties);
     } catch (err: any) {
       console.error("Error loading payment vouchers:", err.message || err);
     } finally {
