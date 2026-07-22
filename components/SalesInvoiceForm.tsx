@@ -227,11 +227,19 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     
     const { data: allDuties } = await supabase.from('duties_taxes').select('*').eq('company_id', cid).eq('is_deleted', false);
     const selectedIds = getSelectedLedgerIds();
+
+    const isApplicableToSales = (d: any) => {
+      if (!d.applicable_to) return true;
+      const app = d.applicable_to.toLowerCase().trim();
+      return app === 'sales invoices' || app === 'both' || app === 'sales' || app === 'sales invoice';
+    };
+
     // Filter out CGST, SGST, IGST from active/manual duties so users CANNOT manually select them
     const activeReadOnlyDuties = READONLY_LEDGERS.filter((d: any) => selectedIds.includes(d.id));
     const activeDuties = [
       ...(allDuties || [])
         .filter((d: any) => !['CGST', 'SGST', 'IGST'].includes(d.name))
+        .filter((d: any) => isApplicableToSales(d))
         .filter((d: any) => d.is_default || selectedIds.includes(d.id)),
       ...activeReadOnlyDuties
     ];

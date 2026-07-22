@@ -237,8 +237,14 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       const upper = name.toUpperCase();
       return upper.includes('CGST') || upper.includes('SGST') || upper.includes('IGST') || upper.includes('GST');
     };
+    const isApplicableToPurchase = (d: any) => {
+      if (!d.applicable_to) return true;
+      const app = d.applicable_to.toLowerCase().trim();
+      return app === 'purchase bills' || app === 'both' || app === 'purchase' || app === 'purchase bill';
+    };
     const activeDuties = (allDuties || [])
       .filter((d: any) => !isGstLedger(d.name))
+      .filter((d: any) => isApplicableToPurchase(d))
       .filter((d: any) => d.is_default || selectedIds.includes(d.id));
 
     if (!initialData) {

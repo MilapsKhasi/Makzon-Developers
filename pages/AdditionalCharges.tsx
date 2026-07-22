@@ -31,6 +31,7 @@ const AdditionalCharges = () => {
     rate: 0, 
     fixed_amount: 0, 
     apply_on: 'Subtotal',
+    applicable_to: 'Both',
     is_default: false
   });
 
@@ -83,11 +84,21 @@ const AdditionalCharges = () => {
       const payload = { 
         ...formData, 
         name: formData.name.trim(), 
+        applicable_to: formData.applicable_to || 'Both',
         company_id: cid, 
         is_deleted: false 
       };
       
-      await safeSupabaseSave('duties_taxes', payload, editingTax?.id);
+      try {
+        await safeSupabaseSave('duties_taxes', payload, editingTax?.id);
+      } catch (err: any) {
+        if (err?.message?.includes('applicable_to') || err?.code === 'PGRST204' || err?.code === '42703') {
+          const { applicable_to, ...cleanPayload } = payload;
+          await safeSupabaseSave('duties_taxes', cleanPayload, editingTax?.id);
+        } else {
+          throw err;
+        }
+      }
 
       if (!isSaveAndNew) {
         setIsModalOpen(false);
@@ -159,6 +170,18 @@ const AdditionalCharges = () => {
                             </div>
 
                             <div className="space-y-1.5">
+                                <label className="text-[14px] font-medium text-slate-900 capitalize">Applicable To</label>
+                                <div className="relative">
+                                    <select value={formData.applicable_to || 'Both'} onChange={e => setFormData({...formData, applicable_to: e.target.value})} className="w-full h-10 px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white appearance-none">
+                                        <option value="Both">Both (Sales & Purchase)</option>
+                                        <option value="Sales Invoices">Sales Invoices</option>
+                                        <option value="Purchase Bills">Purchase Bills</option>
+                                    </select>
+                                    <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
                                 <label className="text-[14px] font-medium text-slate-900 capitalize">Default Value</label>
                                 <input type="number" step="0.01" value={formData.calc_method === 'Percentage' ? formData.rate : formData.fixed_amount} onChange={e => setFormData({...formData, [formData.calc_method === 'Percentage' ? 'rate' : 'fixed_amount']: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white font-mono" placeholder="0.00" />
                             </div>
@@ -218,6 +241,7 @@ const AdditionalCharges = () => {
                 <th className="w-20 text-center font-medium capitalize">Select</th>
                 <th className="font-medium capitalize">Name</th>
                 <th className="font-medium capitalize">Type</th>
+                <th className="font-medium capitalize">Applicable To</th>
                 <th className="font-medium capitalize">Calculation</th>
                 <th className="font-medium capitalize">Value</th>
                 <th className="text-right font-medium capitalize">Actions</th>
@@ -225,7 +249,7 @@ const AdditionalCharges = () => {
             </thead>
             <tbody>
                 {loading ? (
-                <tr><td colSpan={6} className="text-center py-20 text-slate-400">Loading charges...</td></tr>
+                <tr><td colSpan={7} className="text-center py-20 text-slate-400">Loading charges...</td></tr>
                 ) : taxes.map((tax) => {
                 const isSelected = selectedIds.includes(tax.id) || tax.is_default;
                 return (
@@ -243,11 +267,16 @@ const AdditionalCharges = () => {
                     <td className="text-[11px] font-medium capitalize">
                       {tax.type === 'Deduction' ? 'Deduction (-)' : 'Charge (+)'}
                     </td>
+                    <td className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                        {tax.applicable_to || 'Both'}
+                      </span>
+                    </td>
                     <td className="text-[11px] text-slate-400 capitalize">{tax.calc_method}</td>
                     <td className="font-mono text-[13px]">{tax.calc_method === 'Percentage' ? `${tax.rate}%` : tax.fixed_amount.toFixed(2)}</td>
                     <td className="text-right">
                         <div className="flex justify-end space-x-2">
-                          <button onClick={() => { setEditingTax(tax); setFormData(tax); setIsModalOpen(true); }} className="text-slate-400 hover:text-slate-900 transition-none"><Edit className="w-4 h-4" /></button>
+                          <button onClick={() => { setEditingTax(tax); setFormData({ ...tax, applicable_to: tax.applicable_to || 'Both' }); setIsModalOpen(true); }} className="text-slate-400 hover:text-slate-900 transition-none"><Edit className="w-4 h-4" /></button>
                           <button onClick={() => setDeleteDialog({ isOpen: true, tax })} className="text-slate-400 hover:text-red-500 transition-none"><Trash2 className="w-4 h-4" /></button>
                         </div>
                     </td>
