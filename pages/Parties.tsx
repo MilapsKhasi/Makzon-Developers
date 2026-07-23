@@ -152,6 +152,73 @@ const Parties = () => {
     return parties.find(p => String(p.id) === String(selectedPartyId));
   }, [parties, selectedPartyId]);
 
+  // Pre-calculate real outstanding balances for all parties
+  const partyBalancesMap = useMemo(() => {
+    const map = new Map<string, { netBalance: number; isDr: boolean }>();
+
+    const normalizedSales = salesInvoices.map(s => normalizeBill(s));
+    const normalizedPurchases = purchaseBills.map(b => normalizeBill(b));
+
+    const salesByParty = new Map<string, number>();
+    const receiptsByParty = new Map<string, number>();
+    const purchasesByParty = new Map<string, number>();
+    const paymentsByParty = new Map<string, number>();
+
+    normalizedSales.forEach(s => {
+      if (!s) return;
+      const name = s.customer_name?.toLowerCase().trim();
+      if (!name) return;
+      if (s.items_raw?.is_payment_voucher) {
+        const pDetails = s.items_raw?.payment_details;
+        const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
+        const amount = pArray.reduce((sum: number, p: any) => sum + (Number(p.payment_amount) || 0), 0);
+        const finalAmt = amount || Number(s.grand_total) || 0;
+        receiptsByParty.set(name, (receiptsByParty.get(name) || 0) + finalAmt);
+      } else {
+        salesByParty.set(name, (salesByParty.get(name) || 0) + Number(s.grand_total || 0));
+      }
+    });
+
+    normalizedPurchases.forEach(b => {
+      if (!b) return;
+      const name = b.vendor_name?.toLowerCase().trim();
+      if (!name) return;
+      if (b.items_raw?.is_payment_voucher) {
+        const pDetails = b.items_raw?.payment_details;
+        const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
+        const amount = pArray.reduce((sum: number, p: any) => sum + (Number(p.payment_amount) || 0), 0);
+        const finalAmt = amount || Number(b.grand_total) || 0;
+        paymentsByParty.set(name, (paymentsByParty.get(name) || 0) + finalAmt);
+      } else {
+        purchasesByParty.set(name, (purchasesByParty.get(name) || 0) + Number(b.grand_total || 0));
+      }
+    });
+
+    parties.forEach(party => {
+      const nameLower = party.name?.toLowerCase().trim() || '';
+      const pType = (party.party_type || '').toLowerCase();
+      const isDebtor = pType === 'customer' || pType === 'both' || (party.is_customer === true && pType !== 'vendor');
+      
+      const openingBalanceVal = Number(party.balance) || 0;
+      const openingDbCr = isDebtor ? openingBalanceVal : -openingBalanceVal;
+
+      const sales = salesByParty.get(nameLower) || 0;
+      const receipts = receiptsByParty.get(nameLower) || 0;
+      const purchases = purchasesByParty.get(nameLower) || 0;
+      const payments = paymentsByParty.get(nameLower) || 0;
+
+      const netDb = openingDbCr + sales + payments - purchases - receipts;
+      const isDr = netDb > 0 || (netDb === 0 && isDebtor);
+
+      map.set(String(party.id), {
+        netBalance: netDb,
+        isDr
+      });
+    });
+
+    return map;
+  }, [parties, salesInvoices, purchaseBills]);
+
   // Dynamic ledger and transaction computation for the selected party
   const partyStats = useMemo(() => {
     if (!selectedParty) return { transactions: [], totalSales: 0, totalReceipts: 0, totalPurchases: 0, totalPayments: 0, netBalance: 0 };
@@ -175,14 +242,14 @@ const Parties = () => {
       const pDetails = r.items_raw?.payment_details;
       const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
       const amount = pArray.reduce((sum: number, p: any) => sum + (Number(p.payment_amount) || 0), 0);
-      return acc + amount;
+      return acc + (amount || Number(r.grand_total) || 0);
     }, 0);
 
     const totalPayments = partyPayments.reduce((acc, p) => {
       const pDetails = p.items_raw?.payment_details;
       const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
       const amount = pArray.reduce((sum: number, p: any) => sum + (Number(p.payment_amount) || 0), 0);
-      return acc + amount;
+      return acc + (amount || Number(p.grand_total) || 0);
     }, 0);
 
     // netBalance representation:
@@ -215,7 +282,7 @@ const Parties = () => {
   }, [selectedParty, salesInvoices, purchaseBills]);
 
   return (
-    <div className="space-y-6 h-full flex flex-col animate-in fade-in duration-300">
+    <div className="space-y-6 h-full flex flex-col min-h-0 animate-in fade-in duration-300">
       
       {/* Save/Edit Party Modal */}
       <Modal 
@@ -254,7 +321,7 @@ const Parties = () => {
       <div className="flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4">
         <div>
           <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Parties Ledger Accounts</h1>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Unified register of Sundry Debtors and Sundry Creditors</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Unified register of Customers and Vendors</p>
         </div>
         <button 
           onClick={() => { setEditingParty(null); setIsFormOpen(true); }} 
@@ -277,7 +344,7 @@ const Parties = () => {
           
           {/* LEFT PANELS: SEARCH & LIST */}
           {!isFullScreen && (
-            <div className={`w-full lg:w-80 flex flex-col space-y-4 shrink-0 ${selectedPartyId ? 'hidden lg:flex' : 'flex'}`}>
+            <div className={`w-full lg:w-80 flex flex-col space-y-4 flex-1 lg:flex-none min-h-0 lg:shrink-0 ${selectedPartyId ? 'hidden lg:flex' : 'flex'}`}>
               
               {/* Search Bar */}
               <div className="relative">
@@ -303,27 +370,32 @@ const Parties = () => {
                   onClick={() => setFilterType('debtor')}
                   className={`flex-1 py-1.5 text-[11px] font-medium rounded transition-none capitalize ${filterType === 'debtor' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
                 >
-                  Debtors
+                  Customers
                 </button>
                 <button
                   onClick={() => setFilterType('creditor')}
                   className={`flex-1 py-1.5 text-[11px] font-medium rounded transition-none capitalize ${filterType === 'creditor' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
                 >
-                  Creditors
+                  Vendors
                 </button>
               </div>
 
               {/* Party Scrollable Cards */}
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-1 custom-scrollbar touch-pan-y">
                 {filteredParties.map((party) => {
                   const isSelected = String(selectedPartyId) === String(party.id);
-                  const isDebtor = party.party_type === 'customer' || party.is_customer === true;
+                  const pType = (party.party_type || '').toLowerCase();
+                  const isDebtor = pType === 'customer' || pType === 'both' || (party.is_customer === true && pType !== 'vendor');
                   
+                  const balInfo = partyBalancesMap.get(String(party.id)) || { netBalance: 0, isDr: isDebtor };
+                  const absBal = Math.abs(balInfo.netBalance);
+                  const drCrTag = balInfo.isDr ? 'Dr' : 'Cr';
+
                   return (
                     <div 
                       key={party.id} 
                       onClick={() => setSelectedPartyId(String(party.id))} 
-                      className={`p-4 border rounded-md cursor-pointer transition-none group ${isSelected ? 'bg-primary border-slate-900 dark:border-slate-700 text-white' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                      className={`p-4 border rounded-[5px] cursor-pointer transition-none group ${isSelected ? 'bg-primary border-transparent text-white' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
                     >
                       <div className="flex justify-between items-start mb-1 gap-2">
                         <h3 className="text-xs font-bold capitalize truncate">{party.name}</h3>
@@ -335,7 +407,7 @@ const Parties = () => {
                       <div className="flex justify-between items-center text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-2">
                         <span className={isSelected ? 'text-white/80' : ''}>{party.gstin || 'No GSTIN'}</span>
                         <span className={`font-mono font-bold ${isSelected ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}>
-                          ₹{(Number(party.balance) || 0).toFixed(0)} {isDebtor ? 'Dr' : 'Cr'}
+                          ₹{absBal.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {drCrTag}
                         </span>
                       </div>
                     </div>
@@ -378,7 +450,7 @@ const Parties = () => {
                     </button>
                     <button 
                       onClick={() => setIsLedgerOpen(true)} 
-                      title="View Tally Statement"
+                      title="View Statement"
                       className="p-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 rounded-md transition-none"
                     >
                       <FileText className="w-4 h-4" />
@@ -424,19 +496,19 @@ const Parties = () => {
                   </div>
 
                   {/* Net outstanding and category section */}
-                  <div className="bg-slate-900 text-white rounded-lg p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 rounded-lg p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div>
                       <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Net Outstanding Ledger Balance</span>
-                      <h3 className="text-2xl sm:text-3xl font-mono font-extrabold mt-1">
+                      <h3 className="text-2xl sm:text-3xl font-mono font-extrabold mt-1 text-slate-900 dark:text-white">
                         ₹{Math.abs(partyStats.netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        <span className="text-sm font-sans font-normal text-slate-300 ml-2">
+                        <span className="text-sm font-sans font-normal text-slate-500 dark:text-slate-400 ml-2">
                           {partyStats.netBalance === 0 ? 'Nil' : (partyStats.netBalance > 0 ? 'Dr (Receivable)' : 'Cr (Payable)')}
                         </span>
                       </h3>
                     </div>
                     <button 
                       onClick={() => setIsLedgerOpen(true)} 
-                      className="bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs px-6 py-3 rounded shadow-sm transition-none capitalize tracking-tight"
+                      className="bg-primary hover:bg-primary-dark text-white font-bold text-xs px-6 py-3 rounded shadow-sm transition-none capitalize tracking-tight"
                     >
                       Open Party Statement
                     </button>

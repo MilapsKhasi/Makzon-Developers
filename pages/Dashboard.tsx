@@ -4,6 +4,9 @@ import { getActiveCompanyId, formatDate, normalizeBill, formatCurrency } from '.
 import DateFilter from '../components/DateFilter';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
+import SalesInvoiceForm from '../components/SalesInvoiceForm';
+import PaymentVoucherModal from '../components/PaymentVoucherModal';
+import NewVoucherDropdown from '../components/NewVoucherDropdown';
 import { supabase } from '../lib/supabase';
 
 const Dashboard = () => {
@@ -20,6 +23,9 @@ const Dashboard = () => {
   const [recentVouchers, setRecentVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+  const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentVoucherType, setPaymentVoucherType] = useState<'Receipt' | 'Payment'>('Receipt');
   const [dateRange, setDateRange] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -134,15 +140,46 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <Modal isOpen={isPurchaseModalOpen} onClose={() => setIsPurchaseModalOpen(false)} title="New Purchase Entry">
-        <BillForm onSubmit={() => { setIsPurchaseModalOpen(false); loadData(); }} onCancel={() => setIsPurchaseModalOpen(false)} />
+      {/* Sales Invoice Modal */}
+      <Modal isOpen={isSalesModalOpen} onClose={() => setIsSalesModalOpen(false)} title="New Sales Invoice" maxWidth="max-w-4xl">
+        <SalesInvoiceForm 
+          onSubmit={(inv, shouldPrint, isSaveAndNew) => { 
+            if (!isSaveAndNew) setIsSalesModalOpen(false); 
+            loadData(); 
+          }} 
+          onCancel={() => setIsSalesModalOpen(false)} 
+        />
       </Modal>
+
+      {/* Purchase Bill Modal */}
+      <Modal isOpen={isPurchaseModalOpen} onClose={() => setIsPurchaseModalOpen(false)} title="New Purchase Bill" maxWidth="max-w-4xl">
+        <BillForm 
+          onSubmit={(bill, isSaveAndNew) => { 
+            if (!isSaveAndNew) setIsPurchaseModalOpen(false); 
+            loadData(); 
+          }} 
+          onCancel={() => setIsPurchaseModalOpen(false)} 
+        />
+      </Modal>
+
+      {/* Payment / Receipt Voucher Modal */}
+      <PaymentVoucherModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        initialType={paymentVoucherType}
+        onSuccess={loadData}
+      />
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Executive Summary</h1>
         <div className="flex flex-wrap items-center gap-2">
           <DateFilter onFilterChange={setDateRange} />
-          <button onClick={() => setIsPurchaseModalOpen(true)} className="px-4 py-2 bg-primary text-white font-medium text-xs rounded capitalize hover:bg-primary-dark">New Purchase</button>
+          <NewVoucherDropdown
+            onSelectSalesInvoice={() => setIsSalesModalOpen(true)}
+            onSelectPurchaseBill={() => setIsPurchaseModalOpen(true)}
+            onSelectReceivePayment={() => { setPaymentVoucherType('Receipt'); setIsPaymentModalOpen(true); }}
+            onSelectMakePayment={() => { setPaymentVoucherType('Payment'); setIsPaymentModalOpen(true); }}
+          />
         </div>
       </div>
 

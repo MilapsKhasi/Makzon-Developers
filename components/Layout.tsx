@@ -8,6 +8,7 @@ import Logo from './Logo';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import UpdateNotification from './UpdateNotification';
+import CreateNewModal from './CreateNewModal';
 import { getUserActivity } from '../utils/activityTracker';
 
 const Layout = () => {
@@ -15,6 +16,7 @@ const Layout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
+  const [isCreateNewModalOpen, setIsCreateNewModalOpen] = useState(false);
   const { activeCompany, setCompany } = useCompany();
   const navigate = useNavigate();
   const location = useLocation();
@@ -337,15 +339,29 @@ const Layout = () => {
               </span>
             )}
           </div>
-          {isInactive && (
-            <div className="flex items-center space-x-2 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-full border border-red-100 dark:border-red-800 animate-pulse transition-all">
-              <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-              <span className="text-[10px] sm:text-xs font-medium text-red-600 dark:text-red-400">
-                Your account is inactive. Please perform an action to keep it active.
-              </span>
-            </div>
-          )}
+          <div className="flex items-center space-x-3">
+            {isInactive && (
+              <div className="hidden md:flex items-center space-x-2 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-full border border-red-100 dark:border-red-800 animate-pulse transition-all">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                <span className="text-[10px] sm:text-xs font-medium text-red-600 dark:text-red-400">
+                  Your account is inactive. Please perform an action to keep it active.
+                </span>
+              </div>
+            )}
+            <button
+              onClick={() => setIsCreateNewModalOpen(true)}
+              className="px-3.5 py-1.5 bg-primary text-white font-medium text-xs rounded capitalize hover:bg-primary-dark flex items-center gap-1.5 shadow-sm transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create New</span>
+            </button>
+          </div>
         </header>
+
+        <CreateNewModal
+          isOpen={isCreateNewModalOpen}
+          onClose={() => setIsCreateNewModalOpen(false)}
+        />
         <main className="flex-1 overflow-y-auto p-3 sm:p-6 bg-[#F7F8FC] dark:bg-slate-950">
           <Outlet />
         </main>

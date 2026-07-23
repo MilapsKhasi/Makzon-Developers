@@ -166,12 +166,12 @@ const Stock = () => {
       ) : (
         <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden min-h-0">
             {!isFullScreen && (
-            <div className={`w-full lg:w-80 flex flex-col space-y-4 shrink-0 ${selectedId ? 'hidden lg:flex' : 'flex'}`}>
+            <div className={`w-full lg:w-80 flex flex-col space-y-4 flex-1 lg:flex-none min-h-0 lg:shrink-0 ${selectedId ? 'hidden lg:flex' : 'flex'}`}>
                 <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
                 <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filter items..." className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 shadow-sm text-slate-900 dark:text-slate-100" />
                 </div>
-                <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-1 custom-scrollbar touch-pan-y">
                 {filteredItems.map((item) => {
                     let inward = 0; let outward = 0;
                     vouchers.forEach(v => { v.items?.forEach((it: any) => {
@@ -184,7 +184,7 @@ const Stock = () => {
                     const isSelected = String(selectedId) === String(item.id);
 
                     return (
-                    <div key={item.id} onClick={() => setSelectedId(String(item.id))} className={`p-4 border rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-primary border-slate-900 dark:border-slate-700 text-white' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
+                    <div key={item.id} onClick={() => setSelectedId(String(item.id))} className={`p-4 border rounded-[5px] cursor-pointer transition-all ${isSelected ? 'bg-primary border-transparent text-white' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
                         <h3 className={`font-medium capitalize text-[11px] truncate mb-1 ${isSelected ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{item.name}</h3>
                         <div className="flex justify-between items-end">
                             <span className={`text-[10px] font-medium capitalize tracking-tighter ${isSelected ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`}>Hsn: {item.hsn || 'N/A'}</span>
