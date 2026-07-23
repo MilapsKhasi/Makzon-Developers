@@ -432,68 +432,68 @@ class ResilientQueryBuilder {
   }
 
   eq(...args: any[]) {
-    if (this.realQb?.eq) this.realQb = this.realQb.eq(...args);
-    this.mockQb.eq(...args);
+    if (this.realQb?.eq) this.realQb = (this.realQb.eq as any)(...args);
+    (this.mockQb.eq as any)(...args);
     return this;
   }
 
   neq(...args: any[]) {
-    if (this.realQb?.neq) this.realQb = this.realQb.neq(...args);
-    this.mockQb.neq(...args);
+    if (this.realQb?.neq) this.realQb = (this.realQb.neq as any)(...args);
+    (this.mockQb.neq as any)(...args);
     return this;
   }
 
   not(...args: any[]) {
-    if (this.realQb?.not) this.realQb = this.realQb.not(...args);
-    this.mockQb.not(...args);
+    if (this.realQb?.not) this.realQb = (this.realQb.not as any)(...args);
+    (this.mockQb.not as any)(...args);
     return this;
   }
 
   gte(...args: any[]) {
-    if (this.realQb?.gte) this.realQb = this.realQb.gte(...args);
-    this.mockQb.gte(...args);
+    if (this.realQb?.gte) this.realQb = (this.realQb.gte as any)(...args);
+    (this.mockQb.gte as any)(...args);
     return this;
   }
 
   lte(...args: any[]) {
-    if (this.realQb?.lte) this.realQb = this.realQb.lte(...args);
-    this.mockQb.lte(...args);
+    if (this.realQb?.lte) this.realQb = (this.realQb.lte as any)(...args);
+    (this.mockQb.lte as any)(...args);
     return this;
   }
 
   order(...args: any[]) {
-    if (this.realQb?.order) this.realQb = this.realQb.order(...args);
-    this.mockQb.order(...args);
+    if (this.realQb?.order) this.realQb = (this.realQb.order as any)(...args);
+    (this.mockQb.order as any)(...args);
     return this;
   }
 
   limit(...args: any[]) {
-    if (this.realQb?.limit) this.realQb = this.realQb.limit(...args);
-    this.mockQb.limit(...args);
+    if (this.realQb?.limit) this.realQb = (this.realQb.limit as any)(...args);
+    (this.mockQb.limit as any)(...args);
     return this;
   }
 
   insert(...args: any[]) {
-    if (this.realQb?.insert) this.realQb = this.realQb.insert(...args);
-    this.mockQb.insert(...args);
+    if (this.realQb?.insert) this.realQb = (this.realQb.insert as any)(...args);
+    (this.mockQb.insert as any)(...args);
     return this;
   }
 
   update(...args: any[]) {
-    if (this.realQb?.update) this.realQb = this.realQb.update(...args);
-    this.mockQb.update(...args);
+    if (this.realQb?.update) this.realQb = (this.realQb.update as any)(...args);
+    (this.mockQb.update as any)(...args);
     return this;
   }
 
   upsert(...args: any[]) {
-    if (this.realQb?.upsert) this.realQb = this.realQb.upsert(...args);
-    this.mockQb.upsert(...args);
+    if (this.realQb?.upsert) this.realQb = (this.realQb.upsert as any)(...args);
+    (this.mockQb.upsert as any)(...args);
     return this;
   }
 
   delete(...args: any[]) {
-    if (this.realQb?.delete) this.realQb = this.realQb.delete(...args);
-    this.mockQb.delete(...args);
+    if (this.realQb?.delete) this.realQb = (this.realQb.delete as any)(...args);
+    (this.mockQb.delete as any)(...args);
     return this;
   }
 

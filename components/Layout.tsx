@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search } from 'lucide-react';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import Logo from './Logo';
@@ -9,6 +9,7 @@ import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
 import UpdateNotification from './UpdateNotification';
 import CreateNewModal from './CreateNewModal';
+import GlobalSearchModal from './GlobalSearchModal';
 import { getUserActivity } from '../utils/activityTracker';
 
 const Layout = () => {
@@ -17,12 +18,24 @@ const Layout = () => {
   const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [isCreateNewModalOpen, setIsCreateNewModalOpen] = useState(false);
+  const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
   const { activeCompany, setCompany } = useCompany();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [user, setUser] = useState<any>(null);
   const [isInactive, setIsInactive] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsGlobalSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -194,18 +207,60 @@ const Layout = () => {
     }
   };
 
-  const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: BadgeIndianRupee, label: 'Sales Invoices', path: '/sales' },
-    { icon: ShoppingCart, label: 'Purchase Bills', path: '/bills' },
-    { icon: Wallet, label: 'Payments & Receipts', path: '/payments' },
-    { icon: Contact, label: 'Parties', path: '/parties' },
-    { icon: Package, label: 'Stock Master', path: '/stock' },
-    { icon: BookOpen, label: 'Cashbook', path: '/cashbook' },
-    { icon: Percent, label: 'Additional Charges', path: '/additional-charges' },
-    { icon: BarChart3, label: 'Reports', path: '/reports' },
-    { icon: MonitorPlay, label: 'User Activity', path: '/user-activity' },
-    { icon: SettingsIcon, label: 'Settings', path: '/settings' },
+  const [premiumNotice, setPremiumNotice] = useState<{ isOpen: boolean; title: string; edition: string }>({
+    isOpen: false,
+    title: '',
+    edition: ''
+  });
+
+  const menuGroups = [
+    {
+      groupName: '',
+      items: [
+        { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+      ]
+    },
+    {
+      groupName: 'Sales',
+      items: [
+        { icon: FileText, label: 'Sales Invoices', path: '/sales' },
+        { icon: ArrowDownCircle, label: 'Receive Payment', path: '/receive-payment' },
+      ]
+    },
+    {
+      groupName: 'Purchases',
+      items: [
+        { icon: ShoppingCart, label: 'Purchase Bill', path: '/bills' },
+        { icon: ArrowUpCircle, label: 'Make Payment', path: '/make-payment' },
+      ]
+    },
+    {
+      groupName: 'Stock',
+      items: [
+        { icon: Package, label: 'Stock Items', path: '/stock' },
+      ]
+    },
+    {
+      groupName: 'Parties',
+      items: [
+        { icon: Contact, label: 'Parties', path: '/parties' },
+      ]
+    },
+    {
+      groupName: 'Others',
+      items: [
+        { icon: BookOpen, label: 'Cashbook', path: '/cashbook' },
+        { icon: Percent, label: 'Additional Charges', path: '/additional-charges' },
+        { icon: BarChart3, label: 'Reports', path: '/reports' },
+        { icon: MonitorPlay, label: 'User Activity', path: '/user-activity' },
+      ]
+    },
+    {
+      groupName: '',
+      items: [
+        { icon: SettingsIcon, label: 'Settings', path: '/settings' },
+      ]
+    }
   ];
 
   return (
@@ -254,19 +309,67 @@ const Layout = () => {
           )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5 custom-scrollbar">
-          {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center px-3 py-2.5 rounded transition-colors ${location.pathname === item.path
-                ? 'bg-primary text-white font-bold'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                }`}
-            >
-              <item.icon className={`w-4 h-4 shrink-0 ${location.pathname === item.path ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
-              {(isSidebarOpen || isMobileMenuOpen) && <span className="ml-3 text-[13px] whitespace-nowrap capitalize">{item.label}</span>}
-            </Link>
+        <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-2 custom-scrollbar">
+          {menuGroups.map((group, gIdx) => (
+            <div key={gIdx} className="space-y-0.5">
+              {(isSidebarOpen || isMobileMenuOpen) && group.groupName && (
+                <div className="pt-2 pb-1 px-3 flex items-center space-x-2">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                    {group.groupName}
+                  </span>
+                  <span className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800" />
+                </div>
+              )}
+              {(!isSidebarOpen && !isMobileMenuOpen) && group.groupName && gIdx > 0 && (
+                <div className="my-1 border-t border-slate-100 dark:border-slate-800/60" />
+              )}
+              {group.items.map((item, iIdx) => {
+                const IconComponent = item.icon;
+                if (item.isPremium) {
+                  return (
+                    <button
+                      key={iIdx}
+                      type="button"
+                      onClick={() => {
+                        setPremiumNotice({
+                          isOpen: true,
+                          title: item.label,
+                          edition: item.edition || 'Standard & Advanced Edition'
+                        });
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded transition-colors text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 group cursor-pointer"
+                    >
+                      <div className="flex items-center min-w-0">
+                        <IconComponent className="w-4 h-4 shrink-0 text-amber-500 dark:text-amber-400" />
+                        {(isSidebarOpen || isMobileMenuOpen) && (
+                          <span className="ml-3 text-[13px] whitespace-nowrap truncate font-medium">{item.label}</span>
+                        )}
+                      </div>
+                      {(isSidebarOpen || isMobileMenuOpen) && (
+                        <span className="text-[11px] ml-1 shrink-0" title={`${item.label} (${item.edition})`}>👑</span>
+                      )}
+                    </button>
+                  );
+                }
+
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path || iIdx}
+                    to={item.path || '/'}
+                    className={`flex items-center px-3 py-2 rounded transition-colors ${isActive
+                      ? 'bg-primary text-white font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                      }`}
+                  >
+                    <IconComponent className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
+                    {(isSidebarOpen || isMobileMenuOpen) && (
+                      <span className="ml-3 text-[13px] whitespace-nowrap capitalize">{item.label}</span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
           ))}
         </nav>
       </aside>
@@ -349,6 +452,17 @@ const Layout = () => {
               </div>
             )}
             <button
+              onClick={() => setIsGlobalSearchOpen(true)}
+              className="flex items-center space-x-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg text-xs transition-all border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs"
+              title="Global Search (Ctrl + K)"
+            >
+              <Search className="w-3.5 h-3.5 text-slate-400" />
+              <span className="hidden sm:inline font-medium text-slate-600 dark:text-slate-300">Global Search...</span>
+              <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded font-mono shadow-2xs">
+                Ctrl K
+              </kbd>
+            </button>
+            <button
               onClick={() => setIsCreateNewModalOpen(true)}
               className="px-3.5 py-1.5 bg-primary text-white font-medium text-xs rounded capitalize hover:bg-primary-dark flex items-center gap-1.5 shadow-sm transition-all"
             >
@@ -358,6 +472,10 @@ const Layout = () => {
           </div>
         </header>
 
+        <GlobalSearchModal
+          isOpen={isGlobalSearchOpen}
+          onClose={() => setIsGlobalSearchOpen(false)}
+        />
         <CreateNewModal
           isOpen={isCreateNewModalOpen}
           onClose={() => setIsCreateNewModalOpen(false)}
@@ -400,6 +518,43 @@ const Layout = () => {
         title="Delete Workspace" 
         message={`This will permanently remove "${deleteConfirm.ws?.name}" and all its data. Are you sure?`} 
       />
+
+      {/* Premium Feature Modal */}
+      {premiumNotice.isOpen && (
+        <Modal isOpen={true} onClose={() => setPremiumNotice({ isOpen: false, title: '', edition: '' })} title="Premium Feature" maxWidth="max-w-md">
+          <div className="p-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+              <Crown className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                {premiumNotice.title} 👑
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                This feature is available in <span className="font-bold text-amber-600 dark:text-amber-400">{premiumNotice.edition}</span>.
+              </p>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-lg border border-slate-100 dark:border-slate-800 text-left text-xs text-slate-600 dark:text-slate-300 space-y-1.5">
+              <div className="flex items-center space-x-2 font-semibold text-slate-900 dark:text-white">
+                <Lock className="w-3.5 h-3.5 text-amber-500" />
+                <span>Upgrade Workspace Edition</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Unlock multi-warehouse godown management, stock grouping, delivery challans, and purchase orders seamlessly.
+              </p>
+            </div>
+            <div className="flex justify-end space-x-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setPremiumNotice({ isOpen: false, title: '', edition: '' })}
+                className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-medium hover:bg-primary-dark transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
       
       <UpdateNotification />
     </div>

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Search, History, Trash2, Edit, Package, Maximize2, Minimize2, Plus, TrendingUp, TrendingDown, Layers, ArrowDownLeft, ArrowUpRight, ArrowLeft } from 'lucide-react';
 import { getActiveCompanyId, formatDate, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
@@ -9,6 +10,7 @@ import EmptyState from '../components/EmptyState';
 import { supabase } from '../lib/supabase';
 
 const Stock = () => {
+  const location = useLocation();
   const [items, setItems] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +19,34 @@ const Stock = () => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (location.state?.highlightedId || location.state?.selectedId || location.state?.searchKey || location.state?.selectedItem) {
+      const sId = location.state.highlightedId || location.state.selectedId || location.state.selectedItem?.id;
+      if (sId) {
+        setSelectedId(String(sId));
+        setHighlightedId(String(sId));
+      }
+      if (location.state.selectedItem?.name) {
+        setSearchQuery(location.state.selectedItem.name);
+      } else if (location.state.searchKey) {
+        setSearchQuery(location.state.searchKey);
+      }
+    }
+  }, [location.state]);
+
+  // Ensure selected item is active once loaded
+  useEffect(() => {
+    if (!loading && items.length > 0 && (location.state?.highlightedId || location.state?.selectedId || location.state?.selectedItem?.id)) {
+      const targetId = String(location.state.highlightedId || location.state.selectedId || location.state.selectedItem?.id);
+      const found = items.find(i => String(i.id) === targetId);
+      if (found) {
+        setSelectedId(String(found.id));
+        setHighlightedId(String(found.id));
+      }
+    }
+  }, [loading, items, location.state]);
   
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; item: any | null }>({
     isOpen: false,
@@ -182,14 +212,33 @@ const Stock = () => {
                     });});
                     const currentBalance = (Number(item.in_stock) || 0) + inward - outward;
                     const isSelected = String(selectedId) === String(item.id);
+                    const isHighlighted = String(item.id) === String(highlightedId);
 
                     return (
-                    <div key={item.id} onClick={() => setSelectedId(String(item.id))} className={`p-4 border rounded-[5px] cursor-pointer transition-all ${isSelected ? 'bg-primary border-transparent text-white' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}>
-                        <h3 className={`font-medium capitalize text-[11px] truncate mb-1 ${isSelected ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{item.name}</h3>
+                    <div 
+                      key={item.id} 
+                      ref={(el) => {
+                        if (el && (isHighlighted || isSelected)) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                      }}
+                      onClick={() => {
+                        setSelectedId(String(item.id));
+                        setHighlightedId(String(item.id));
+                      }} 
+                      className={`p-4 border rounded-[5px] cursor-pointer transition-all ${
+                        isHighlighted
+                          ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-500 ring-2 ring-amber-400 text-slate-900 dark:text-white font-semibold shadow-md'
+                          : isSelected 
+                            ? 'bg-primary border-transparent text-white' 
+                            : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                      }`}
+                    >
+                        <h3 className={`font-medium capitalize text-[11px] truncate mb-1 ${isSelected && !isHighlighted ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{item.name}</h3>
                         <div className="flex justify-between items-end">
-                            <span className={`text-[10px] font-medium capitalize tracking-tighter ${isSelected ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`}>Hsn: {item.hsn || 'N/A'}</span>
-                            <span className={`font-mono text-lg font-bold leading-none ${isSelected ? 'text-white' : 'text-link dark:text-blue-400'}`}>
-                                {currentBalance.toFixed(0)} <span className={`text-[10px] opacity-60 font-sans ${isSelected ? 'text-white' : ''}`}>{item.unit || 'PCS'}</span>
+                            <span className={`text-[10px] font-medium capitalize tracking-tighter ${isSelected && !isHighlighted ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`}>Hsn: {item.hsn || 'N/A'}</span>
+                            <span className={`font-mono text-lg font-bold leading-none ${isSelected && !isHighlighted ? 'text-white' : 'text-link dark:text-blue-400'}`}>
+                                {currentBalance.toFixed(0)} <span className={`text-[10px] opacity-60 font-sans ${isSelected && !isHighlighted ? 'text-white' : ''}`}>{item.unit || 'PCS'}</span>
                             </span>
                         </div>
                     </div>

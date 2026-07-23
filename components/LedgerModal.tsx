@@ -104,11 +104,11 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         .eq('is_deleted', false);
 
       const allVouchers = [
-        ...(voucherData || []).map(v => ({ ...normalizeBill(v), source: 'purchase_bills' })),
-        ...(salesData || []).map(v => ({ ...normalizeBill(v), source: 'sales_invoices' }))
+        ...(voucherData || []).map((v: any) => ({ ...normalizeBill(v), source: 'purchase_bills' })),
+        ...(salesData || []).map((v: any) => ({ ...normalizeBill(v), source: 'sales_invoices' }))
       ];
 
-      const partyTransactions = allVouchers.filter(v => 
+      const partyTransactions = allVouchers.filter((v: any) => 
         v.vendor_name?.toLowerCase().trim() === party.name?.toLowerCase().trim()
       );
 

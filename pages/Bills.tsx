@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Search, Loader2, Edit, Trash2 } from 'lucide-react';
 import { formatDate, getActiveCompanyId, normalizeBill, unsyncTransactionFromCashbook } from '../utils/helpers';
 import Modal from '../components/Modal';
@@ -11,13 +12,45 @@ import EmptyState from '../components/EmptyState';
 import { supabase } from '../lib/supabase';
 
 const Bills = () => {
+  const location = useLocation();
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
+
+  useEffect(() => {
+    if (location.state?.highlightedId || location.state?.searchKey || location.state?.selectedItem) {
+      const targetId = location.state.highlightedId || location.state.selectedItem?.id;
+      const targetNo = location.state.selectedItem?.bill_number;
+      if (targetNo) {
+        setSearchQuery(targetNo);
+      } else if (location.state.searchKey) {
+        setSearchQuery(location.state.searchKey);
+      }
+      if (targetId) {
+        setHighlightedId(targetId);
+      }
+    }
+  }, [location.state]);
+
+  // Automatically open the target bill modal when loaded
+  useEffect(() => {
+    if (!loading && bills.length > 0 && (location.state?.highlightedId || location.state?.selectedItem?.id)) {
+      const targetId = location.state.highlightedId || location.state.selectedItem?.id;
+      const found = bills.find(b => b.id === targetId);
+      if (found) {
+        setEditingBill(found);
+        setIsModalOpen(true);
+      } else if (location.state.selectedItem) {
+        setEditingBill(normalizeBill(location.state.selectedItem));
+        setIsModalOpen(true);
+      }
+    }
+  }, [loading, bills, location.state]);
   
   const [headerFocusIdx, setHeaderFocusIdx] = useState<number | null>(0); 
   const [selectedRowIdx, setSelectedRowIdx] = useState<number | null>(null);
@@ -247,27 +280,41 @@ const Bills = () => {
                     <tbody>
                     {loading ? (
                         <tr><td colSpan={8} className="text-center py-20 text-slate-400 dark:text-slate-500 font-medium capitalize tracking-widest text-[10px]">Loading register...</td></tr>
-                    ) : filtered.map((b, i) => (
-                        <tr 
-                            key={b.id} 
-                            className={`transition-colors cursor-pointer ${selectedRowIdx === i ? 'bg-slate-50 dark:bg-slate-800 border-l-4 border-primary' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50'}`}
-                            onClick={() => setSelectedRowIdx(i)}
-                        >
-                        <td className="text-slate-500 dark:text-slate-400">{i + 1}</td>
-                        <td className="text-slate-500 dark:text-slate-400">{formatDate(b.date)}</td>
-                        <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{b.bill_number}</td>
-                        <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{b.vendor_name}</td>
-                        <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(b.total_without_gst) || 0).toFixed(2)}</td>
-                        <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(b.total_gst) || 0).toFixed(2)}</td>
-                        <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{(Number(b.grand_total) || 0).toFixed(2)}</td>
-                        <td className="text-center">
-                            <div className="flex justify-center space-x-2">
-                                <button onClick={(e) => { e.stopPropagation(); setEditingBill(b); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all"><Edit className="w-4 h-4" /></button>
-                                <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, bill: b }); }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-rose-900/20 rounded transition-all"><Trash2 className="w-4 h-4" /></button>
-                            </div>
-                        </td>
-                        </tr>
-                    ))}
+                    ) : filtered.map((b, i) => {
+                        const isHighlighted = b.id === highlightedId;
+                        return (
+                          <tr 
+                              key={b.id} 
+                              ref={(el) => {
+                                if (el && isHighlighted) {
+                                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }
+                              }}
+                              className={`transition-all cursor-pointer ${
+                                isHighlighted
+                                  ? 'bg-amber-100/90 dark:bg-amber-950/60 border-l-4 border-amber-500 ring-2 ring-amber-400/60 shadow-md font-semibold'
+                                  : selectedRowIdx === i 
+                                    ? 'bg-slate-50 dark:bg-slate-800 border-l-4 border-primary' 
+                                    : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
+                              }`}
+                              onClick={() => { setSelectedRowIdx(i); setHighlightedId(b.id); }}
+                          >
+                          <td className="text-slate-500 dark:text-slate-400">{i + 1}</td>
+                          <td className="text-slate-500 dark:text-slate-400">{formatDate(b.date)}</td>
+                          <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{b.bill_number}</td>
+                          <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{b.vendor_name}</td>
+                          <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(b.total_without_gst) || 0).toFixed(2)}</td>
+                          <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(b.total_gst) || 0).toFixed(2)}</td>
+                          <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{(Number(b.grand_total) || 0).toFixed(2)}</td>
+                          <td className="text-center">
+                              <div className="flex justify-center space-x-2">
+                                  <button onClick={(e) => { e.stopPropagation(); setEditingBill(b); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all"><Edit className="w-4 h-4" /></button>
+                                  <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, bill: b }); }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-rose-900/20 rounded transition-all"><Trash2 className="w-4 h-4" /></button>
+                              </div>
+                          </td>
+                          </tr>
+                        );
+                      })}
                     {!loading && filtered.length === 0 && (
                         <tr><td colSpan={8} className="text-center py-20 text-slate-300 italic font-medium">No purchase bills found matching filters.</td></tr>
                     )}

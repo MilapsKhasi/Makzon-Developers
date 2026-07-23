@@ -57,25 +57,31 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
       const cid = getActiveCompanyId();
       if (!cid) return;
 
-      const { data } = await supabase
-        .from('vendors')
-        .select('*')
-        .eq('company_id', cid)
-        .eq('is_deleted', false);
+      const { data: vends } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false).order('name');
+      const { data: custs } = await supabase.from('customers').select('*').eq('company_id', cid).eq('is_deleted', false).order('name');
 
-      if (data) {
-        const custs = data.filter((p: any) => {
-          const pt = (p.party_type || '').toLowerCase();
-          return pt === 'customer' || pt === 'both' || (p.is_customer === true && pt !== 'vendor');
-        });
-        const vends = data.filter((p: any) => {
-          const pt = (p.party_type || '').toLowerCase();
-          return pt === 'vendor' || pt === 'both' || (p.is_customer === false && pt !== 'customer');
-        });
+      const partyMap = new Map();
+      (custs || []).forEach((c: any) => {
+        partyMap.set(c.id, { ...c, party_type: c.party_type || 'customer', is_customer: true });
+      });
+      (vends || []).forEach((v: any) => {
+        partyMap.set(v.id, v);
+      });
 
-        setCustomers(custs);
-        setVendors(vends);
-      }
+      const allParties = Array.from(partyMap.values());
+
+      const receiptParties = allParties.filter((p: any) => {
+        const pt = (p.party_type || '').toLowerCase();
+        return pt === 'customer' || pt === 'both' || (p.is_customer === true && pt !== 'vendor');
+      });
+
+      const paymentParties = allParties.filter((p: any) => {
+        const pt = (p.party_type || '').toLowerCase();
+        return pt === 'vendor' || pt === 'both' || (p.is_customer === false && pt !== 'customer');
+      });
+
+      setCustomers(receiptParties);
+      setVendors(paymentParties);
     };
 
     loadParties();
@@ -104,7 +110,7 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
 
         if (error) throw error;
 
-        const bills = (data || []).filter(item => {
+        const bills = (data || []).filter((item: any) => {
           const isVoucher = item.items && (item.items as any).is_payment_voucher === true;
           const nameMatch = voucherType === 'Receipt'
             ? item.customer_name === partyName
@@ -131,8 +137,8 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
         : [...prev, billId];
 
       const total = partyBills
-        .filter(b => next.includes(b.id))
-        .reduce((sum, b) => sum + (Number(b.grand_total) || 0), 0);
+        .filter((b: any) => next.includes(b.id))
+        .reduce((sum: number, b: any) => sum + (Number(b.grand_total) || 0), 0);
 
       setAmount(total > 0 ? total.toFixed(2) : '');
       return next;
@@ -140,7 +146,7 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
   };
 
   const totalOutstanding = useMemo(() => {
-    return partyBills.reduce((sum, b) => sum + (Number(b.grand_total) || 0), 0);
+    return partyBills.reduce((sum: number, b: any) => sum + (Number(b.grand_total) || 0), 0);
   }, [partyBills]);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -176,7 +182,7 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
       const prefix = isReceipt ? 'REC-' : 'PAY-';
       let maxSeq = 0;
       if (existingVVs) {
-        existingVVs.forEach(v => {
+        existingVVs.forEach((v: any) => {
           const no = isReceipt ? (v as any).invoice_number : (v as any).bill_number;
           if (no && no.startsWith(prefix)) {
             const numPart = no.substring(prefix.length);

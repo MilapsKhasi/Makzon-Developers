@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import { 
@@ -13,6 +14,7 @@ import LedgerModal from '../components/LedgerModal';
 import EmptyState from '../components/EmptyState';
 
 const Parties = () => {
+  const location = useLocation();
   const cid = getActiveCompanyId();
   const [loading, setLoading] = useState(true);
   const [parties, setParties] = useState<any[]>([]);
@@ -20,6 +22,34 @@ const Parties = () => {
   const [purchaseBills, setPurchaseBills] = useState<any[]>([]);
   const [selectedPartyId, setSelectedPartyId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (location.state?.highlightedId || location.state?.selectedId || location.state?.searchKey || location.state?.selectedItem) {
+      const pId = location.state.highlightedId || location.state.selectedId || location.state.selectedItem?.id;
+      if (pId) {
+        setSelectedPartyId(String(pId));
+        setHighlightedId(String(pId));
+      }
+      if (location.state.selectedItem?.name) {
+        setSearchQuery(location.state.selectedItem.name);
+      } else if (location.state.searchKey) {
+        setSearchQuery(location.state.searchKey);
+      }
+    }
+  }, [location.state]);
+
+  // Ensure selected party is active once loaded
+  useEffect(() => {
+    if (!loading && parties.length > 0 && (location.state?.highlightedId || location.state?.selectedId || location.state?.selectedItem?.id)) {
+      const targetId = String(location.state.highlightedId || location.state.selectedId || location.state.selectedItem?.id);
+      const found = parties.find(p => String(p.id) === targetId);
+      if (found) {
+        setSelectedPartyId(String(found.id));
+        setHighlightedId(String(found.id));
+      }
+    }
+  }, [loading, parties, location.state]);
   
   // Filters: 'all' | 'debtor' | 'creditor'
   const [filterType, setFilterType] = useState<'all' | 'debtor' | 'creditor'>('all');
@@ -384,6 +414,7 @@ const Parties = () => {
               <div className="flex-1 overflow-y-auto min-h-0 space-y-2 pr-1 custom-scrollbar touch-pan-y">
                 {filteredParties.map((party) => {
                   const isSelected = String(selectedPartyId) === String(party.id);
+                  const isHighlighted = String(party.id) === String(highlightedId);
                   const pType = (party.party_type || '').toLowerCase();
                   const isDebtor = pType === 'customer' || pType === 'both' || (party.is_customer === true && pType !== 'vendor');
                   
@@ -394,19 +425,35 @@ const Parties = () => {
                   return (
                     <div 
                       key={party.id} 
-                      onClick={() => setSelectedPartyId(String(party.id))} 
-                      className={`p-4 border rounded-[5px] cursor-pointer transition-none group ${isSelected ? 'bg-primary border-transparent text-white' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                      ref={(el) => {
+                        if (el && (isHighlighted || isSelected)) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                      }}
+                      onClick={() => {
+                        setSelectedPartyId(String(party.id));
+                        setHighlightedId(String(party.id));
+                      }} 
+                      className={`p-4 border rounded-[5px] cursor-pointer transition-all group ${
+                        isHighlighted
+                          ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-500 ring-2 ring-amber-400 text-slate-900 dark:text-white font-semibold shadow-md'
+                          : isSelected 
+                            ? 'bg-primary border-transparent text-white' 
+                            : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                      }`}
                     >
                       <div className="flex justify-between items-start mb-1 gap-2">
                         <h3 className="text-xs font-bold capitalize truncate">{party.name}</h3>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-medium leading-none tracking-tight shrink-0 ${isSelected ? 'bg-white/20 text-white' : (isDebtor ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30')}`}>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-medium leading-none tracking-tight shrink-0 ${
+                          isSelected && !isHighlighted ? 'bg-white/20 text-white' : (isDebtor ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30')
+                        }`}>
                           {isDebtor ? 'DR' : 'CR'}
                         </span>
                       </div>
                       
                       <div className="flex justify-between items-center text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-2">
-                        <span className={isSelected ? 'text-white/80' : ''}>{party.gstin || 'No GSTIN'}</span>
-                        <span className={`font-mono font-bold ${isSelected ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}>
+                        <span className={isSelected && !isHighlighted ? 'text-white/80' : ''}>{party.gstin || 'No GSTIN'}</span>
+                        <span className={`font-mono font-bold ${isSelected && !isHighlighted ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}>
                           ₹{absBal.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {drCrTag}
                         </span>
                       </div>

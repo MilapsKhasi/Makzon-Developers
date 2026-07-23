@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Search, Loader2, Trash2, Plus, Wallet, CreditCard, ArrowDownCircle, ArrowUpCircle, Calendar, FileText, Edit } from 'lucide-react';
 import { formatDate, getActiveCompanyId, normalizeBill, safeSupabaseSave, syncTransactionToCashbook, formatCurrency, unsyncTransactionFromCashbook } from '../utils/helpers';
 import Modal from '../components/Modal';
@@ -10,6 +11,7 @@ import { supabase } from '../lib/supabase';
 interface Voucher {
   id: string;
   date: string;
+  created_at?: string;
   voucher_no: string;
   type: 'Receipt' | 'Payment';
   party_name: string;
@@ -19,16 +21,61 @@ interface Voucher {
   raw: any;
 }
 
-const Payments = () => {
+interface PaymentsProps {
+  typeFilter?: 'Receipt' | 'Payment';
+}
+
+const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
+  const location = useLocation();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; voucher: Voucher | null }>({ isOpen: false, voucher: null });
   const [searchQuery, setSearchQuery] = useState('');
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
 
+  useEffect(() => {
+    if (location.state?.highlightedId || location.state?.searchKey || location.state?.selectedItem) {
+      const targetId = location.state.highlightedId || location.state.selectedItem?.id;
+      const voucherNo = location.state.selectedItem?.invoice_number || location.state.selectedItem?.bill_number || location.state.selectedItem?.voucher_no;
+      if (voucherNo) {
+        setSearchQuery(voucherNo);
+      } else if (location.state.searchKey) {
+        setSearchQuery(location.state.searchKey);
+      }
+      if (targetId) {
+        setHighlightedId(targetId);
+      }
+    }
+  }, [location.state]);
+
+  // Automatically open target voucher when loaded
+  useEffect(() => {
+    if (!loading && vouchers.length > 0 && (location.state?.highlightedId || location.state?.selectedItem?.id)) {
+      const targetId = location.state.highlightedId || location.state.selectedItem?.id;
+      const found = vouchers.find(v => v.id === targetId);
+      if (found) {
+        handleEditVoucher(found);
+      } else if (location.state.selectedItem) {
+        const raw = location.state.selectedItem;
+        handleEditVoucher({
+          id: raw.id,
+          date: raw.date || new Date().toISOString().split('T')[0],
+          voucher_no: raw.invoice_number || raw.bill_number || raw.voucher_no || 'VCH',
+          type: raw.type || (raw.invoice_number ? 'Receipt' : 'Payment'),
+          party_name: raw.customer_name || raw.vendor_name || raw.party_name || '',
+          amount: Number(raw.grand_total || raw.amount || 0),
+          account: raw.account || 'Cash',
+          description: raw.description || '',
+          raw
+        });
+      }
+    }
+  }, [loading, vouchers, location.state]);
+
   // Form states
-  const [voucherType, setVoucherType] = useState<'Receipt' | 'Payment'>('Receipt');
+  const [voucherType, setVoucherType] = useState<'Receipt' | 'Payment'>(typeFilter || 'Receipt');
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [account, setAccount] = useState<string>('Cash');
   const [partyName, setPartyName] = useState<string>('');
@@ -47,6 +94,13 @@ const Payments = () => {
   const [loadingBills, setLoadingBills] = useState(false);
 
   const dateFilterRef = useRef<DateFilterHandle>(null);
+
+  // Sync voucherType with typeFilter when route changes
+  useEffect(() => {
+    if (typeFilter) {
+      setVoucherType(typeFilter);
+    }
+  }, [typeFilter]);
 
   useEffect(() => {
     const fetchPartyBills = async () => {
@@ -71,7 +125,7 @@ const Payments = () => {
         if (error) throw error;
 
         // Filter out standalone payment/receipt vouchers and match the selected party name
-        const bills = (data || []).filter(item => {
+        const bills = (data || []).filter((item: any) => {
           const isVoucher = item.items && (item.items as any).is_payment_voucher === true;
           const nameMatch = voucherType === 'Receipt' 
             ? item.customer_name === partyName 
@@ -81,7 +135,7 @@ const Payments = () => {
 
         setPartyBills(bills);
         
-        // If we are editing, we want to restore the selected bills if they match current party and type
+        // If we are editing, restore selected bills if they match current party and type
         if (editingVoucher && editingVoucher.party_name === partyName && editingVoucher.type === voucherType) {
           const linked = editingVoucher.raw?.items?.linked_bills || [];
           setSelectedBillIds(linked);
@@ -105,8 +159,8 @@ const Payments = () => {
         : [...prev, billId];
       
       const total = partyBills
-        .filter(b => next.includes(b.id))
-        .reduce((sum, b) => sum + (Number(b.grand_total) || 0), 0);
+        .filter((b: any) => next.includes(b.id))
+        .reduce((sum: number, b: any) => sum + (Number(b.grand_total) || 0), 0);
       
       setAmount(total > 0 ? total.toFixed(2) : '');
       return next;
@@ -115,14 +169,14 @@ const Payments = () => {
 
   const alreadyPaidBillIds = useMemo(() => {
     return vouchers
-      .filter(v => v.type === voucherType && (!editingVoucher || v.id !== editingVoucher.id))
-      .flatMap(v => v.raw?.items?.linked_bills || []);
+      .filter((v: Voucher) => v.type === voucherType && (!editingVoucher || v.id !== editingVoucher.id))
+      .flatMap((v: Voucher) => v.raw?.items?.linked_bills || []);
   }, [vouchers, voucherType, editingVoucher]);
 
   const totalOutstanding = useMemo(() => {
     return partyBills
-      .filter(b => !alreadyPaidBillIds.includes(b.id))
-      .reduce((sum, b) => sum + (Number(b.grand_total) || 0), 0);
+      .filter((b: any) => !alreadyPaidBillIds.includes(b.id))
+      .reduce((sum: number, b: any) => sum + (Number(b.grand_total) || 0), 0);
   }, [partyBills, alreadyPaidBillIds]);
 
   const loadData = async () => {
@@ -134,90 +188,91 @@ const Payments = () => {
     }
 
     try {
+      let receipts: Voucher[] = [];
+      let payments: Voucher[] = [];
+
       // 1. Fetch Receipts (from sales_invoices where is_payment_voucher = true)
-      let receiptsQuery = supabase
-        .from('sales_invoices')
-        .select('*')
-        .eq('company_id', cid)
-        .eq('is_deleted', false);
+      if (!typeFilter || typeFilter === 'Receipt') {
+        let receiptsQuery = supabase
+          .from('sales_invoices')
+          .select('*')
+          .eq('company_id', cid)
+          .eq('is_deleted', false);
 
-      if (dateRange.startDate && dateRange.endDate) {
-        receiptsQuery = receiptsQuery.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
+        if (dateRange.startDate && dateRange.endDate) {
+          receiptsQuery = receiptsQuery.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
+        }
+
+        const { data: receiptsData } = await receiptsQuery;
+
+        receipts = (receiptsData || [])
+          .filter((item: any) => item.items && (item.items as any).is_payment_voucher === true)
+          .map((item: any) => {
+            const norm = normalizeBill(item);
+            const pDetails = norm?.items_raw?.payment_details;
+            const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
+            const firstPayment = pArray[0] || {};
+            return {
+              id: item.id,
+              date: item.date,
+              created_at: item.created_at,
+              voucher_no: item.invoice_number,
+              type: 'Receipt' as const,
+              party_name: item.customer_name,
+              account: firstPayment.payment_method || 'Cash',
+              amount: Number(firstPayment.payment_amount) || 0,
+              description: item.description || '',
+              raw: item
+            };
+          });
       }
-
-      const { data: receiptsData } = await receiptsQuery;
-
-      const receipts = (receiptsData || [])
-        .filter(item => item.items && (item.items as any).is_payment_voucher === true)
-        .map(item => {
-          const norm = normalizeBill(item);
-          const pDetails = norm?.items_raw?.payment_details;
-          const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
-          const firstPayment = pArray[0] || {};
-          return {
-            id: item.id,
-            date: item.date,
-            created_at: item.created_at,
-            voucher_no: item.invoice_number,
-            type: 'Receipt' as const,
-            party_name: item.customer_name,
-            account: firstPayment.payment_method || 'Cash',
-            amount: Number(firstPayment.payment_amount) || 0,
-            description: item.description || '',
-            raw: item
-          };
-        });
 
       // 2. Fetch Payments (from purchase_bills where is_payment_voucher = true)
-      let paymentsQuery = supabase
-        .from('purchase_bills')
-        .select('*')
-        .eq('company_id', cid)
-        .eq('is_deleted', false);
+      if (!typeFilter || typeFilter === 'Payment') {
+        let paymentsQuery = supabase
+          .from('purchase_bills')
+          .select('*')
+          .eq('company_id', cid)
+          .eq('is_deleted', false);
 
-      if (dateRange.startDate && dateRange.endDate) {
-        paymentsQuery = paymentsQuery.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
+        if (dateRange.startDate && dateRange.endDate) {
+          paymentsQuery = paymentsQuery.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
+        }
+
+        const { data: paymentsData } = await paymentsQuery;
+
+        payments = (paymentsData || [])
+          .filter((item: any) => item.items && (item.items as any).is_payment_voucher === true)
+          .map((item: any) => {
+            const norm = normalizeBill(item);
+            const pDetails = norm?.items_raw?.payment_details;
+            const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
+            const firstPayment = pArray[0] || {};
+            return {
+              id: item.id,
+              date: item.date,
+              created_at: item.created_at,
+              voucher_no: item.bill_number,
+              type: 'Payment' as const,
+              party_name: item.vendor_name,
+              account: firstPayment.payment_method || 'Cash',
+              amount: Number(firstPayment.payment_amount) || 0,
+              description: item.description || '',
+              raw: item
+            };
+          });
       }
-
-      const { data: paymentsData } = await paymentsQuery;
-
-      const payments = (paymentsData || [])
-        .filter(item => item.items && (item.items as any).is_payment_voucher === true)
-        .map(item => {
-          const norm = normalizeBill(item);
-          const pDetails = norm?.items_raw?.payment_details;
-          const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
-          const firstPayment = pArray[0] || {};
-          return {
-            id: item.id,
-            date: item.date,
-            created_at: item.created_at,
-            voucher_no: item.bill_number,
-            type: 'Payment' as const,
-            party_name: item.vendor_name,
-            account: firstPayment.payment_method || 'Cash',
-            amount: Number(firstPayment.payment_amount) || 0,
-            description: item.description || '',
-            raw: item
-          };
-        });
 
       // Combine and sort by date ascending so new entries are appended at the bottom
       const combined = [...receipts, ...payments].sort((a, b) => {
         const dateA = new Date(a.date).getTime();
         const dateB = new Date(b.date).getTime();
-        if (dateA !== dateB) {
-          return dateA - dateB;
-        }
+        if (dateA !== dateB) return dateA - dateB;
         
-        // If dates are identical, sort by created_at ascending
         const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
-        if (timeA !== timeB) {
-          return timeA - timeB;
-        }
+        if (timeA !== timeB) return timeA - timeB;
 
-        // Fallback to voucher_no string/number comparison
         return (a.voucher_no || '').localeCompare(b.voucher_no || '');
       });
       setVouchers(combined);
@@ -262,11 +317,11 @@ const Payments = () => {
     const handleRefresh = () => loadData();
     window.addEventListener('appSettingsChanged', handleRefresh);
     return () => window.removeEventListener('appSettingsChanged', handleRefresh);
-  }, [dateRange]);
+  }, [dateRange, typeFilter]);
 
   const resetForm = () => {
     setEditingVoucher(null);
-    setVoucherType('Receipt');
+    setVoucherType(typeFilter || 'Receipt');
     setDate(new Date().toISOString().split('T')[0]);
     setAccount('Cash');
     setPartyName('');
@@ -309,10 +364,10 @@ const Payments = () => {
 
       let generatedNo = '';
       if (editingVoucher && editingVoucher.type === voucherType) {
-        // If editing and same type, preserve existing voucher no
+        // Preserve existing voucher number
         generatedNo = editingVoucher.voucher_no;
       } else {
-        // Auto-generate voucher number (simple sequential, e.g. REC-001 / PAY-001)
+        // Auto-generate voucher number (e.g. REC-001 / PAY-001)
         const { data: existingVVs } = await supabase
           .from(table)
           .select(isReceipt ? 'invoice_number' : 'bill_number')
@@ -322,8 +377,8 @@ const Payments = () => {
         const prefix = isReceipt ? 'REC-' : 'PAY-';
         let maxSeq = 0;
         if (existingVVs) {
-          existingVVs.forEach(v => {
-            const no = isReceipt ? (v as any).invoice_number : (v as any).bill_number;
+          existingVVs.forEach((v: any) => {
+            const no = isReceipt ? v.invoice_number : v.bill_number;
             if (no && no.startsWith(prefix)) {
               const numPart = no.substring(prefix.length);
               if (/^\d+$/.test(numPart)) {
@@ -346,9 +401,9 @@ const Payments = () => {
         payment_method: account.trim()
       }];
 
-      const selectedBills = partyBills.filter(b => selectedBillIds.includes(b.id));
+      const selectedBills = partyBills.filter((b: any) => selectedBillIds.includes(b.id));
       const refText = selectedBills.length > 0 
-        ? ` (Ref: ${selectedBills.map(b => b.invoice_number || b.bill_number).join(', ')})`
+        ? ` (Ref: ${selectedBills.map((b: any) => b.invoice_number || b.bill_number).join(', ')})`
         : '';
       const finalDesc = (description.trim() || `${voucherType} Voucher`) + refText;
 
@@ -444,7 +499,6 @@ const Payments = () => {
         await unsyncTransactionFromCashbook(voucher.raw);
       }
 
-      // Dispatch event to force update of cashbooks/ledgers
       window.dispatchEvent(new Event('appSettingsChanged'));
       loadData();
     } catch (err: any) {
@@ -455,7 +509,7 @@ const Payments = () => {
     }
   };
 
-  const filteredVouchers = vouchers.filter(v => {
+  const filteredVouchers = vouchers.filter((v: Voucher) => {
     const search = searchQuery.toLowerCase();
     return (
       v.party_name?.toLowerCase().includes(search) ||
@@ -465,23 +519,60 @@ const Payments = () => {
     );
   });
 
+  const isReceiptMode = typeFilter === 'Receipt';
+  const isPaymentMode = typeFilter === 'Payment';
+
+  const pageTitle = isReceiptMode 
+    ? 'Receive Payment' 
+    : isPaymentMode 
+      ? 'Make Payment' 
+      : 'Payments & Receipts';
+
+  const pageSubtitle = isReceiptMode
+    ? 'Record and manage money received from customers'
+    : isPaymentMode
+      ? 'Record and manage money paid to vendors'
+      : 'Record and manage standalone double-entry ledger transactions';
+
+  const newButtonLabel = isReceiptMode
+    ? 'Receive Payment'
+    : isPaymentMode
+      ? 'Make Payment'
+      : 'New Voucher';
+
+  const partyColumnHeader = isReceiptMode
+    ? 'Customer Name'
+    : isPaymentMode
+      ? 'Vendor Name'
+      : 'Party Name';
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <Wallet className="w-5 h-5" />
-          </div>
+          {isReceiptMode ? (
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <ArrowDownCircle className="w-5 h-5" />
+            </div>
+          ) : isPaymentMode ? (
+            <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
+              <ArrowUpCircle className="w-5 h-5" />
+            </div>
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <Wallet className="w-5 h-5" />
+            </div>
+          )}
           <div>
-            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Payments & Receipts</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Record and manage standalone double-entry ledger transactions</p>
+            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">{pageTitle}</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500">{pageSubtitle}</p>
           </div>
         </div>
         <button
           onClick={() => { resetForm(); setIsModalOpen(true); }}
           className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm"
         >
-          <Plus className="w-4 h-4 mr-2" /> New Voucher
+          <Plus className="w-4 h-4 mr-2" /> {newButtonLabel}
         </button>
       </div>
 
@@ -506,8 +597,16 @@ const Payments = () => {
           </div>
         ) : filteredVouchers.length === 0 ? (
           <EmptyState
-            title="No Vouchers Found"
-            message={searchQuery ? "No payments or receipts match your filter criteria." : "Create standalone payments or receipts just like Tally Prime to settle outstanding balances."}
+            title={`No ${pageTitle} Vouchers Found`}
+            message={
+              searchQuery 
+                ? `No vouchers match your search criteria.` 
+                : isReceiptMode
+                  ? "Create standalone receipt vouchers from customers to settle outstanding invoices or advance payments."
+                  : isPaymentMode
+                    ? "Create standalone payment vouchers to vendors to settle outstanding bills or advance payments."
+                    : "Create standalone payments or receipts just like Tally Prime to settle outstanding balances."
+            }
           />
         ) : (
           <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-lg">
@@ -516,57 +615,75 @@ const Payments = () => {
                 <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                   <th className="py-3.5 px-4">Date</th>
                   <th className="py-3.5 px-4">Voucher No</th>
-                  <th className="py-3.5 px-4">Type</th>
+                  {!typeFilter && <th className="py-3.5 px-4">Type</th>}
                   <th className="py-3.5 px-4">Account (Bank/Cash)</th>
-                  <th className="py-3.5 px-4">Party Name</th>
+                  <th className="py-3.5 px-4">{partyColumnHeader}</th>
                   <th className="py-3.5 px-4 text-right">Amount</th>
                   <th className="py-3.5 px-4">Narration</th>
                   <th className="py-3.5 px-4 text-center w-20">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[12px] text-slate-700 dark:text-slate-300">
-                {filteredVouchers.map((voucher) => (
-                  <tr key={voucher.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="py-3 px-4 font-mono">{formatDate(voucher.date)}</td>
-                    <td className="py-3 px-4 font-semibold">{voucher.voucher_no}</td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${voucher.type === 'Receipt' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400'}`}>
-                        {voucher.type === 'Receipt' ? (
-                          <ArrowDownCircle className="w-3 h-3 mr-1 shrink-0" />
-                        ) : (
-                          <ArrowUpCircle className="w-3 h-3 mr-1 shrink-0" />
-                        )}
-                        {voucher.type}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 capitalize">{voucher.account}</td>
-                    <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">{voucher.party_name}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">
-                      {formatCurrency(voucher.amount)}
-                    </td>
-                    <td className="py-3 px-4 text-slate-400 max-w-xs truncate" title={voucher.description}>
-                      {voucher.description}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <div className="flex items-center justify-center space-x-1">
-                        <button
-                          onClick={() => handleEditVoucher(voucher)}
-                          className="p-1 text-slate-400 hover:text-primary rounded transition-colors"
-                          title="Edit Voucher"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteVoucher(voucher)}
-                          className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
-                          title="Delete Voucher"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filteredVouchers.map((voucher) => {
+                  const isHighlighted = voucher.id === highlightedId;
+                  return (
+                    <tr 
+                      key={voucher.id} 
+                      ref={(el) => {
+                        if (el && isHighlighted) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }}
+                      className={`transition-all cursor-pointer ${
+                        isHighlighted
+                          ? 'bg-amber-100/90 dark:bg-amber-950/60 border-l-4 border-amber-500 ring-2 ring-amber-400/60 shadow-md font-semibold'
+                          : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
+                      }`}
+                      onClick={() => setHighlightedId(voucher.id)}
+                    >
+                      <td className="py-3 px-4 font-mono">{formatDate(voucher.date)}</td>
+                      <td className="py-3 px-4 font-semibold font-mono">{voucher.voucher_no}</td>
+                      {!typeFilter && (
+                        <td className="py-3 px-4">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${voucher.type === 'Receipt' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400'}`}>
+                            {voucher.type === 'Receipt' ? (
+                              <ArrowDownCircle className="w-3 h-3 mr-1 shrink-0" />
+                            ) : (
+                              <ArrowUpCircle className="w-3 h-3 mr-1 shrink-0" />
+                            )}
+                            {voucher.type}
+                          </span>
+                        </td>
+                      )}
+                      <td className="py-3 px-4 capitalize">{voucher.account}</td>
+                      <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">{voucher.party_name}</td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">
+                        {formatCurrency(voucher.amount)}
+                      </td>
+                      <td className="py-3 px-4 text-slate-400 max-w-xs truncate" title={voucher.description}>
+                        {voucher.description}
+                      </td>
+                      <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center space-x-1">
+                          <button
+                            onClick={() => handleEditVoucher(voucher)}
+                            className="p-1 text-slate-400 hover:text-primary rounded transition-colors"
+                            title="Edit Voucher"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteVoucher(voucher)}
+                            className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
+                            title="Delete Voucher"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -576,29 +693,39 @@ const Payments = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingVoucher ? "Edit Payment & Receipt Voucher" : "Payment & Receipt Voucher Entry"}
+        title={
+          editingVoucher 
+            ? `Edit ${editingVoucher.type} Voucher` 
+            : isReceiptMode 
+              ? "Receive Payment Entry" 
+              : isPaymentMode 
+                ? "Make Payment Entry" 
+                : "Payment & Receipt Voucher Entry"
+        }
         maxWidth="max-w-xl"
       >
         <form onSubmit={handleSaveVoucher} className="p-6 space-y-4">
-          <div>
-            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">Voucher Type</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => { setVoucherType('Receipt'); setPartyName(''); }}
-                className={`py-2.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${voucherType === 'Receipt' ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500 text-emerald-700 dark:text-emerald-400' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'}`}
-              >
-                <ArrowDownCircle className="w-4 h-4 mr-2" /> Receipt (Receive Money)
-              </button>
-              <button
-                type="button"
-                onClick={() => { setVoucherType('Payment'); setPartyName(''); }}
-                className={`py-2.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${voucherType === 'Payment' ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-500 text-rose-700 dark:text-rose-400' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'}`}
-              >
-                <ArrowUpCircle className="w-4 h-4 mr-2" /> Payment (Pay Money)
-              </button>
+          {!typeFilter && (
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">Voucher Type</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setVoucherType('Receipt'); setPartyName(''); }}
+                  className={`py-2.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${voucherType === 'Receipt' ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500 text-emerald-700 dark:text-emerald-400' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'}`}
+                >
+                  <ArrowDownCircle className="w-4 h-4 mr-2" /> Receipt (Receive Money)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setVoucherType('Payment'); setPartyName(''); }}
+                  className={`py-2.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${voucherType === 'Payment' ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-500 text-rose-700 dark:text-rose-400' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'}`}
+                >
+                  <ArrowUpCircle className="w-4 h-4 mr-2" /> Payment (Pay Money)
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -653,9 +780,9 @@ const Payments = () => {
               >
                 <option value="">Select Party</option>
                 {voucherType === 'Receipt' ? (
-                  customers.map(c => <option key={c.id} value={c.name}>{c.name} {c.balance ? `(Bal: ${formatCurrency(c.balance)})` : ''}</option>)
+                  customers.map((c: any) => <option key={c.id} value={c.name}>{c.name} {c.balance ? `(Bal: ${formatCurrency(c.balance)})` : ''}</option>)
                 ) : (
-                  vendors.map(v => <option key={v.id} value={v.name}>{v.name} {v.balance ? `(Bal: ${formatCurrency(v.balance)})` : ''}</option>)
+                  vendors.map((v: any) => <option key={v.id} value={v.name}>{v.name} {v.balance ? `(Bal: ${formatCurrency(v.balance)})` : ''}</option>)
                 )}
               </select>
             </div>
@@ -698,11 +825,11 @@ const Payments = () => {
                 </div>
               ) : partyBills.length === 0 ? (
                 <div className="py-2 text-center text-xs text-slate-400 italic">
-                  No previous bills found for this party.
+                  No previous pending bills found for this party.
                 </div>
               ) : (
                 <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-100 dark:divide-slate-800">
-                  {partyBills.map((b) => {
+                  {partyBills.map((b: any) => {
                     const isAlreadyPaid = alreadyPaidBillIds.includes(b.id);
                     const isChecked = isAlreadyPaid || selectedBillIds.includes(b.id);
                     const billNo = b.invoice_number || b.bill_number;

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Search, Loader2, Edit, Trash2, Plus, Printer } from 'lucide-react';
 import { formatDate, getActiveCompanyId, normalizeBill, unsyncTransactionFromCashbook } from '../utils/helpers';
 import Modal from '../components/Modal';
@@ -11,13 +12,45 @@ import { supabase } from '../lib/supabase';
 import { InvoicePrintModal } from '../components/InvoicePrintModal';
 
 const Sales = () => {
+  const location = useLocation();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<any | null>(null);
   const [printModalInvoice, setPrintModalInvoice] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
+
+  useEffect(() => {
+    if (location.state?.highlightedId || location.state?.searchKey || location.state?.selectedItem) {
+      const targetId = location.state.highlightedId || location.state.selectedItem?.id;
+      const targetNo = location.state.selectedItem?.invoice_number || location.state.selectedItem?.bill_number;
+      if (targetNo) {
+        setSearchQuery(targetNo);
+      } else if (location.state.searchKey) {
+        setSearchQuery(location.state.searchKey);
+      }
+      if (targetId) {
+        setHighlightedId(targetId);
+      }
+    }
+  }, [location.state]);
+
+  // Automatically open the target invoice modal when loaded
+  useEffect(() => {
+    if (!loading && invoices.length > 0 && (location.state?.highlightedId || location.state?.selectedItem?.id)) {
+      const targetId = location.state.highlightedId || location.state.selectedItem?.id;
+      const found = invoices.find(inv => inv.id === targetId);
+      if (found) {
+        setEditingInvoice(found);
+        setIsModalOpen(true);
+      } else if (location.state.selectedItem) {
+        setEditingInvoice(normalizeBill(location.state.selectedItem));
+        setIsModalOpen(true);
+      }
+    }
+  }, [loading, invoices, location.state]);
   
   const [headerFocusIdx, setHeaderFocusIdx] = useState<number | null>(0); 
   const [selectedRowIdx, setSelectedRowIdx] = useState<number | null>(null);
@@ -253,28 +286,42 @@ const Sales = () => {
                     <tbody>
                     {loading ? (
                         <tr><td colSpan={8} className="text-center py-20 text-slate-400 dark:text-slate-500 font-medium tracking-widest text-[10px] capitalize">Loading register...</td></tr>
-                    ) : filtered.map((inv, i) => (
-                        <tr 
-                            key={inv.id} 
-                            className={`transition-colors cursor-pointer ${selectedRowIdx === i ? 'bg-slate-50 dark:bg-slate-800 border-l-4 border-link' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50'}`}
-                            onClick={() => setSelectedRowIdx(i)}
-                        >
-                        <td className="text-slate-500 dark:text-slate-400">{i + 1}</td>
-                        <td className="text-slate-500 dark:text-slate-400">{formatDate(inv.date)}</td>
-                        <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{inv.bill_number}</td>
-                        <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{inv.vendor_name}</td>
-                        <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(inv.total_without_gst) || 0).toFixed(2)}</td>
-                        <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(inv.total_gst) || 0).toFixed(2)}</td>
-                        <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{(Number(inv.grand_total) || 0).toFixed(2)}</td>
-                        <td className="text-center">
-                            <div className="flex justify-center space-x-2">
-                                <button onClick={(e) => { e.stopPropagation(); setPrintModalInvoice(inv); }} className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all" title="Print Invoice"><Printer className="w-4 h-4" /></button>
-                                <button onClick={(e) => { e.stopPropagation(); setEditingInvoice(inv); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all" title="Edit Invoice"><Edit className="w-4 h-4" /></button>
-                                <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, invoice: inv }); }} className="p-1.5 text-slate-400 hover:text-rose-50 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded transition-all" title="Delete Invoice"><Trash2 className="w-4 h-4" /></button>
-                            </div>
-                        </td>
-                        </tr>
-                    ))}
+                    ) : filtered.map((inv, i) => {
+                        const isHighlighted = inv.id === highlightedId;
+                        return (
+                          <tr 
+                              key={inv.id} 
+                              ref={(el) => {
+                                if (el && isHighlighted) {
+                                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }
+                              }}
+                              className={`transition-all cursor-pointer ${
+                                isHighlighted
+                                  ? 'bg-amber-100/90 dark:bg-amber-950/60 border-l-4 border-amber-500 ring-2 ring-amber-400/60 shadow-md font-semibold'
+                                  : selectedRowIdx === i 
+                                    ? 'bg-slate-50 dark:bg-slate-800 border-l-4 border-link' 
+                                    : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
+                              }`}
+                              onClick={() => { setSelectedRowIdx(i); setHighlightedId(inv.id); }}
+                          >
+                          <td className="text-slate-500 dark:text-slate-400">{i + 1}</td>
+                          <td className="text-slate-500 dark:text-slate-400">{formatDate(inv.date)}</td>
+                          <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{inv.bill_number}</td>
+                          <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{inv.vendor_name}</td>
+                          <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(inv.total_without_gst) || 0).toFixed(2)}</td>
+                          <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(inv.total_gst) || 0).toFixed(2)}</td>
+                          <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{(Number(inv.grand_total) || 0).toFixed(2)}</td>
+                          <td className="text-center">
+                              <div className="flex justify-center space-x-2">
+                                  <button onClick={(e) => { e.stopPropagation(); setPrintModalInvoice(inv); }} className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all" title="Print Invoice"><Printer className="w-4 h-4" /></button>
+                                  <button onClick={(e) => { e.stopPropagation(); setEditingInvoice(inv); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all" title="Edit Invoice"><Edit className="w-4 h-4" /></button>
+                                  <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, invoice: inv }); }} className="p-1.5 text-slate-400 hover:text-rose-50 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded transition-all" title="Delete Invoice"><Trash2 className="w-4 h-4" /></button>
+                              </div>
+                          </td>
+                          </tr>
+                        );
+                      })}
                     {!loading && filtered.length === 0 && (
                         <tr><td colSpan={8} className="text-center py-20 text-slate-300 italic font-medium">No sales invoices found matching filters.</td></tr>
                     )}
