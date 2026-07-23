@@ -83,7 +83,7 @@ const Sales = () => {
       
       if (error) throw error;
       
-      const normalizedData = (data || []).map(normalizeBill).filter(b => b && !b.items_raw?.is_payment_voucher);
+      const normalizedData = (data || []).map(normalizeBill).filter((b: any) => b && !b.items_raw?.is_payment_voucher);
       setInvoices(normalizedData);
     } catch (err: any) {
       console.error("Error loading sales:", err.message || err);

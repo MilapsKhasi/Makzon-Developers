@@ -88,11 +88,11 @@ const Bills = () => {
       if (error) throw error;
       
       const normalizedData = (data || [])
-        .map(b => {
+        .map((b: any) => {
           const norm = normalizeBill(b);
           return norm ? { ...norm, type: 'Purchase' } : null;
         })
-        .filter(b => b && !b.items_raw?.is_payment_voucher);
+        .filter((b: any) => b && !b.items_raw?.is_payment_voucher);
         
       setBills(normalizedData);
     } catch (err: any) {

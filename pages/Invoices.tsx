@@ -33,7 +33,7 @@ const Invoices = () => {
         .eq('is_deleted', false)
         .order('date', { ascending: false });
 
-    const mappedData = (data || []).map(item => {
+    const mappedData = (data || []).map((item: any) => {
         const norm = normalizeBill(item);
         return norm ? { ...norm, type: 'Sale' } : null;
     }).filter(Boolean) as any[];

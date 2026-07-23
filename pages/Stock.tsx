@@ -71,11 +71,11 @@ const Stock = () => {
       ]);
       
       const normalizedVouchers = [
-        ...(purchaseData || []).map(b => {
+        ...(purchaseData || []).map((b: any) => {
           const norm = normalizeBill(b);
           return norm ? { ...norm, type: 'Purchase' } : null;
         }).filter(Boolean),
-        ...(saleData || []).map(s => {
+        ...(saleData || []).map((s: any) => {
           const norm = normalizeBill(s);
           return norm ? { ...norm, type: 'Sale' } : null;
         }).filter(Boolean)

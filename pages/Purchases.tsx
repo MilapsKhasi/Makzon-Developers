@@ -35,13 +35,13 @@ const Purchases = () => {
 
       if (error) throw error;
 
-      const normalized = (data || []).map(b => normalizeBill(b)).filter(Boolean);
-      const paymentVouchers = normalized.filter(b => b?.items_raw?.is_payment_voucher === true);
-      const actualBills = normalized.filter(b => b && !b.items_raw?.is_payment_voucher);
+      const normalized = (data || []).map((b: any) => normalizeBill(b)).filter(Boolean);
+      const paymentVouchers = normalized.filter((b: any) => b?.items_raw?.is_payment_voucher === true);
+      const actualBills = normalized.filter((b: any) => b && !b.items_raw?.is_payment_voucher);
 
-      const computedBills = actualBills.map(bill => {
-        const linkedVouchers = paymentVouchers.filter(v => v.items_raw?.linked_bills?.includes(bill.id));
-        const totalPaidOnBill = linkedVouchers.reduce((sum, v) => {
+      const computedBills = actualBills.map((bill: any) => {
+        const linkedVouchers = paymentVouchers.filter((v: any) => v.items_raw?.linked_bills?.includes(bill.id));
+        const totalPaidOnBill = linkedVouchers.reduce((sum: number, v: any) => {
           const pDetails = v.items_raw?.payment_details;
           const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
           const amt = pArray.reduce((sumVal: number, p: any) => sumVal + (Number(p.payment_amount) || 0), 0);

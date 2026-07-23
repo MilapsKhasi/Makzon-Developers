@@ -34,24 +34,24 @@ const Reports = () => {
     ]);
     
     const allPaymentVouchers = [
-      ...(purchaseData || []).map(b => normalizeBill(b)).filter(b => b?.items_raw?.is_payment_voucher === true),
-      ...(saleData || []).map(s => normalizeBill(s)).filter(s => s?.items_raw?.is_payment_voucher === true)
+      ...(purchaseData || []).map((b: any) => normalizeBill(b)).filter((b: any) => b?.items_raw?.is_payment_voucher === true),
+      ...(saleData || []).map((s: any) => normalizeBill(s)).filter((s: any) => s?.items_raw?.is_payment_voucher === true)
     ];
 
-    const actualPurchases = (purchaseData || []).map(b => {
+    const actualPurchases = (purchaseData || []).map((b: any) => {
       const norm = normalizeBill(b);
       return norm ? { ...norm, type: 'Purchase' } : null;
-    }).filter(b => b && !b.items_raw?.is_payment_voucher);
+    }).filter((b: any) => b && !b.items_raw?.is_payment_voucher);
 
-    const actualSales = (saleData || []).map(s => {
+    const actualSales = (saleData || []).map((s: any) => {
       const norm = normalizeBill(s);
       return norm ? { ...norm, type: 'Sale' } : null;
-    }).filter(s => s && !s.items_raw?.is_payment_voucher);
+    }).filter((s: any) => s && !s.items_raw?.is_payment_voucher);
 
     const combined = [
-      ...actualPurchases.map(p => {
-        const linkedVouchers = allPaymentVouchers.filter(v => v.items_raw?.linked_bills?.includes(p.id));
-        const totalPaid = linkedVouchers.reduce((sum, v) => {
+      ...actualPurchases.map((p: any) => {
+        const linkedVouchers = allPaymentVouchers.filter((v: any) => v.items_raw?.linked_bills?.includes(p.id));
+        const totalPaid = linkedVouchers.reduce((sum: number, v: any) => {
           const pDetails = v.items_raw?.payment_details;
           const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
           const amt = pArray.reduce((s: number, p: any) => s + (Number(p.payment_amount) || 0), 0);
@@ -61,7 +61,7 @@ const Reports = () => {
         const status = (outstanding === 0 && Number(p.grand_total || 0) > 0) ? 'Paid' : 'Pending';
         return { ...p, status };
       }),
-      ...actualSales.map(s => {
+      ...actualSales.map((s: any) => {
         const linkedVouchers = allPaymentVouchers.filter(v => v.items_raw?.linked_bills?.includes(s.id));
         const totalPaid = linkedVouchers.reduce((sum, v) => {
           const pDetails = v.items_raw?.payment_details;

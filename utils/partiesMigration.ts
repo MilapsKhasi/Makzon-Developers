@@ -40,7 +40,7 @@ export const migrateCustomersToParties = async (companyId: string) => {
       const custNameLower = customer.name.toLowerCase().trim();
       const custGstinLower = customer.gstin ? customer.gstin.toLowerCase().trim() : '';
 
-      const match = vendorsList.find(v => {
+      const match = vendorsList.find((v: any) => {
         const vendNameLower = v.name.toLowerCase().trim();
         const vendGstinLower = v.gstin ? v.gstin.toLowerCase().trim() : '';
         

@@ -323,7 +323,7 @@ const Layout = () => {
               {(!isSidebarOpen && !isMobileMenuOpen) && group.groupName && gIdx > 0 && (
                 <div className="my-1 border-t border-slate-100 dark:border-slate-800/60" />
               )}
-              {group.items.map((item, iIdx) => {
+              {group.items.map((item: any, iIdx) => {
                 const IconComponent = item.icon;
                 if (item.isPremium) {
                   return (

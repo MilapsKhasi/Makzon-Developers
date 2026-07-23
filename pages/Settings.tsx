@@ -102,7 +102,7 @@ const Settings = () => {
         .order('created_at', { ascending: true });
       
       if (allCompanies) {
-        const index = allCompanies.findIndex(c => c.id === cid);
+        const index = allCompanies.findIndex((c: any) => c.id === cid);
         if (index !== -1) {
           setLicenseId(`${26401 + index}`);
         }

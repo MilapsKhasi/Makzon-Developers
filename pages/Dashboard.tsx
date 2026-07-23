@@ -60,19 +60,19 @@ const Dashboard = () => {
       const { count: itemCount } = await supabase.from('stock_items').select('*', { count: 'exact', head: true }).eq('company_id', cid).eq('is_deleted', false);
 
       const allPaymentVouchers = [
-        ...(bills || []).map(b => normalizeBill(b)).filter(b => b?.items_raw?.is_payment_voucher === true),
-        ...(sales || []).map(s => normalizeBill(s)).filter(s => s?.items_raw?.is_payment_voucher === true)
+        ...(bills || []).map((b: any) => normalizeBill(b)).filter((b: any) => b?.items_raw?.is_payment_voucher === true),
+        ...(sales || []).map((s: any) => normalizeBill(s)).filter((s: any) => s?.items_raw?.is_payment_voucher === true)
       ];
 
-      const actualPurchases = (bills || []).map(b => {
+      const actualPurchases = (bills || []).map((b: any) => {
         const norm = normalizeBill(b);
         return norm ? { ...norm, type: 'Purchase' } : null;
-      }).filter(b => b && !b.items_raw?.is_payment_voucher) as any[];
+      }).filter((b: any) => b && !b.items_raw?.is_payment_voucher) as any[];
 
-      const actualSales = (sales || []).map(s => {
+      const actualSales = (sales || []).map((s: any) => {
         const norm = normalizeBill(s);
         return norm ? { ...norm, type: 'Sale' } : null;
-      }).filter(s => s && !s.items_raw?.is_payment_voucher) as any[];
+      }).filter((s: any) => s && !s.items_raw?.is_payment_voucher) as any[];
 
       const getInvoiceOutstanding = (invoice: any) => {
         const isSale = invoice.type === 'Sale';

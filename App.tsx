@@ -70,14 +70,7 @@ const AppContent = () => {
             setDbError("CONNECTION_ERROR");
           } else {
             console.error("Auth init session error:", error);
-            // For any other authentication errors (like missing or invalid refresh token),
-            // we perform a clean reset of localStorage and local auth state.
-            localStorage.clear();
-            try {
-              await supabase.auth.signOut({ scope: 'local' });
-            } catch (signOutError) {
-              console.error("Local sign out error during recovery:", signOutError);
-            }
+            localStorage.removeItem('local_session_user');
             setSession(null);
             setAuthLoading(false);
             return;
@@ -112,7 +105,7 @@ const AppContent = () => {
         recordActivity(newSession.user.id, newSession.user.email || '');
       }
       if (event === 'SIGNED_OUT') {
-        localStorage.clear();
+        localStorage.removeItem('local_session_user');
         setDbError(null);
       }
     });

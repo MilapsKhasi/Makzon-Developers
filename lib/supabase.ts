@@ -116,6 +116,85 @@ class MockBuilder {
     return this;
   }
 
+  gt(column: string, value: any) {
+    this.filters.push((item: any) => {
+      const val = item[column];
+      if (val === null || val === undefined) return false;
+      return String(val) > String(value);
+    });
+    return this;
+  }
+
+  lt(column: string, value: any) {
+    this.filters.push((item: any) => {
+      const val = item[column];
+      if (val === null || val === undefined) return false;
+      return String(val) < String(value);
+    });
+    return this;
+  }
+
+  ilike(column: string, pattern: string) {
+    const cleanPattern = pattern ? String(pattern).replace(/%/g, '').toLowerCase() : '';
+    this.filters.push((item: any) => {
+      const val = item[column];
+      if (val === null || val === undefined) return false;
+      const strVal = String(val).toLowerCase();
+      return pattern && pattern.includes('%') ? strVal.includes(cleanPattern) : strVal === cleanPattern;
+    });
+    return this;
+  }
+
+  like(column: string, pattern: string) {
+    const cleanPattern = pattern ? String(pattern).replace(/%/g, '') : '';
+    this.filters.push((item: any) => {
+      const val = item[column];
+      if (val === null || val === undefined) return false;
+      const strVal = String(val);
+      return pattern && pattern.includes('%') ? strVal.includes(cleanPattern) : strVal === cleanPattern;
+    });
+    return this;
+  }
+
+  in(column: string, values: any[]) {
+    const set = new Set((values || []).map((v) => String(v)));
+    this.filters.push((item: any) => set.has(String(item[column])));
+    return this;
+  }
+
+  is(column: string, value: any) {
+    this.filters.push((item: any) => item[column] === value);
+    return this;
+  }
+
+  or(filters: string) {
+    return this;
+  }
+
+  match(query: Record<string, any>) {
+    this.filters.push((item: any) => {
+      for (const key of Object.keys(query)) {
+        if (item[key] !== query[key]) return false;
+      }
+      return true;
+    });
+    return this;
+  }
+
+  filter(column: string, operator: string, value: any) {
+    if (operator === 'eq') return this.eq(column, value);
+    if (operator === 'neq') return this.neq(column, value);
+    if (operator === 'gt') return this.gt(column, value);
+    if (operator === 'gte') return this.gte(column, value);
+    if (operator === 'lt') return this.lt(column, value);
+    if (operator === 'lte') return this.lte(column, value);
+    if (operator === 'ilike') return this.ilike(column, value);
+    if (operator === 'like') return this.like(column, value);
+    if (operator === 'in') return this.in(column, value);
+    if (operator === 'is') return this.is(column, value);
+    return this;
+  }
+
   order(column: string, options?: { ascending?: boolean }) {
     this.orderByField = column;
     this.orderAscending = options?.ascending !== false;
@@ -340,6 +419,14 @@ function seedLocalStorage() {
   }
 }
 
+const authListeners = new Set<(event: string, session: any) => void>();
+
+function notifyAuthListeners(event: string, session: any) {
+  authListeners.forEach((cb) => {
+    try { cb(event, session); } catch (e) { console.error("Auth listener error:", e); }
+  });
+}
+
 const mockAuth = {
   async getSession() {
     seedLocalStorage();
@@ -348,16 +435,12 @@ const mockAuth = {
       return { data: { session: null }, error: null };
     }
     const user = JSON.parse(userJson);
-    return {
-      data: {
-        session: {
-          user,
-          access_token: 'local-token',
-          refresh_token: 'local-refresh-token'
-        }
-      },
-      error: null
+    const session = {
+      user,
+      access_token: 'local-token',
+      refresh_token: 'local-refresh-token'
     };
+    return { data: { session }, error: null };
   },
   async getUser() {
     seedLocalStorage();
@@ -369,29 +452,35 @@ const mockAuth = {
   },
   async signInWithPassword({ email }: any) {
     seedLocalStorage();
-    const user = { id: 'local-user-1', email, created_at: new Date().toISOString() };
+    const user = { id: 'local-user-1', email: email || 'offline@zenterprime.com', created_at: new Date().toISOString() };
+    const session = { user, access_token: 'local-token', refresh_token: 'local-refresh-token' };
     localStorage.setItem('local_session_user', JSON.stringify(user));
     localStorage.setItem('activeCompanyId', 'local-company-1');
     localStorage.setItem('activeCompanyName', 'Local Demo Company');
-    return { data: { user }, error: null };
+    notifyAuthListeners('SIGNED_IN', session);
+    return { data: { user, session }, error: null };
   },
   async signUp({ email }: any) {
     seedLocalStorage();
-    const user = { id: 'local-user-1', email, created_at: new Date().toISOString() };
+    const user = { id: 'local-user-1', email: email || 'offline@zenterprime.com', created_at: new Date().toISOString() };
+    const session = { user, access_token: 'local-token', refresh_token: 'local-refresh-token' };
     localStorage.setItem('local_session_user', JSON.stringify(user));
     localStorage.setItem('activeCompanyId', 'local-company-1');
     localStorage.setItem('activeCompanyName', 'Local Demo Company');
-    return { data: { user }, error: null };
+    notifyAuthListeners('SIGNED_IN', session);
+    return { data: { user, session }, error: null };
   },
   async signOut() {
     localStorage.removeItem('local_session_user');
+    notifyAuthListeners('SIGNED_OUT', null);
     return { error: null };
   },
   onAuthStateChange(callback: any) {
     seedLocalStorage();
+    authListeners.add(callback);
     const userJson = localStorage.getItem('local_session_user');
     const user = userJson ? JSON.parse(userJson) : null;
-    const session = user ? { user, access_token: 'local-token' } : null;
+    const session = user ? { user, access_token: 'local-token', refresh_token: 'local-refresh-token' } : null;
     
     setTimeout(() => {
       callback(user ? 'SIGNED_IN' : 'SIGNED_OUT', session);
@@ -400,7 +489,9 @@ const mockAuth = {
     return {
       data: {
         subscription: {
-          unsubscribe() {}
+          unsubscribe() {
+            authListeners.delete(callback);
+          }
         }
       }
     };
@@ -458,6 +549,60 @@ class ResilientQueryBuilder {
   lte(...args: any[]) {
     if (this.realQb?.lte) this.realQb = (this.realQb.lte as any)(...args);
     (this.mockQb.lte as any)(...args);
+    return this;
+  }
+
+  gt(...args: any[]) {
+    if (this.realQb?.gt) this.realQb = (this.realQb.gt as any)(...args);
+    (this.mockQb.gt as any)(...args);
+    return this;
+  }
+
+  lt(...args: any[]) {
+    if (this.realQb?.lt) this.realQb = (this.realQb.lt as any)(...args);
+    (this.mockQb.lt as any)(...args);
+    return this;
+  }
+
+  ilike(...args: any[]) {
+    if (this.realQb?.ilike) this.realQb = (this.realQb.ilike as any)(...args);
+    (this.mockQb.ilike as any)(...args);
+    return this;
+  }
+
+  like(...args: any[]) {
+    if (this.realQb?.like) this.realQb = (this.realQb.like as any)(...args);
+    (this.mockQb.like as any)(...args);
+    return this;
+  }
+
+  in(...args: any[]) {
+    if (this.realQb?.in) this.realQb = (this.realQb.in as any)(...args);
+    (this.mockQb.in as any)(...args);
+    return this;
+  }
+
+  is(...args: any[]) {
+    if (this.realQb?.is) this.realQb = (this.realQb.is as any)(...args);
+    (this.mockQb.is as any)(...args);
+    return this;
+  }
+
+  or(...args: any[]) {
+    if (this.realQb?.or) this.realQb = (this.realQb.or as any)(...args);
+    (this.mockQb.or as any)(...args);
+    return this;
+  }
+
+  match(...args: any[]) {
+    if (this.realQb?.match) this.realQb = (this.realQb.match as any)(...args);
+    (this.mockQb.match as any)(...args);
+    return this;
+  }
+
+  filter(...args: any[]) {
+    if (this.realQb?.filter) this.realQb = (this.realQb.filter as any)(...args);
+    (this.mockQb.filter as any)(...args);
     return this;
   }
 
@@ -585,6 +730,9 @@ const resilientAuth = {
         enableOfflineMode();
         return await mockAuth.getSession();
       }
+      if (!res?.data?.session && typeof window !== 'undefined' && localStorage.getItem('local_session_user')) {
+        return await mockAuth.getSession();
+      }
       return res;
     } catch (err: any) {
       if (isNetworkError(err)) {
@@ -604,6 +752,9 @@ const resilientAuth = {
         enableOfflineMode();
         return await mockAuth.getUser();
       }
+      if (!res?.data?.user && typeof window !== 'undefined' && localStorage.getItem('local_session_user')) {
+        return await mockAuth.getUser();
+      }
       return res;
     } catch (err: any) {
       if (isNetworkError(err)) {
@@ -619,9 +770,16 @@ const resilientAuth = {
     }
     try {
       const res = await realSupabase.auth.signInWithPassword(params);
-      if (res?.error && isNetworkError(res.error)) {
-        enableOfflineMode();
-        return await mockAuth.signInWithPassword(params);
+      if (res?.error) {
+        if (isNetworkError(res.error)) {
+          enableOfflineMode();
+          return await mockAuth.signInWithPassword(params);
+        }
+        return res;
+      }
+      if (res?.data?.user) {
+        localStorage.setItem('local_session_user', JSON.stringify(res.data.user));
+        notifyAuthListeners('SIGNED_IN', res.data.session);
       }
       return res;
     } catch (err: any) {
@@ -642,6 +800,10 @@ const resilientAuth = {
         enableOfflineMode();
         return await mockAuth.signUp(params);
       }
+      if (res?.data?.user) {
+        localStorage.setItem('local_session_user', JSON.stringify(res.data.user));
+        notifyAuthListeners('SIGNED_IN', res.data.session);
+      }
       return res;
     } catch (err: any) {
       if (isNetworkError(err)) {
@@ -660,13 +822,30 @@ const resilientAuth = {
     return await mockAuth.signOut();
   },
   onAuthStateChange(callback: any) {
+    const mockSub = mockAuth.onAuthStateChange(callback);
     try {
-      const sub = realSupabase.auth.onAuthStateChange(callback);
-      if (sub?.data?.subscription) return sub;
+      const realSub = realSupabase.auth.onAuthStateChange((event, session) => {
+        if (session?.user) {
+          localStorage.setItem('local_session_user', JSON.stringify(session.user));
+        }
+        callback(event, session);
+      });
+      if (realSub?.data?.subscription) {
+        return {
+          data: {
+            subscription: {
+              unsubscribe() {
+                try { realSub.data.subscription.unsubscribe(); } catch {}
+                try { mockSub.data.subscription.unsubscribe(); } catch {}
+              }
+            }
+          }
+        };
+      }
     } catch {
       // ignore
     }
-    return mockAuth.onAuthStateChange(callback);
+    return mockSub;
   }
 };
 
