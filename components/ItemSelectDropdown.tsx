@@ -112,14 +112,24 @@ const ItemSelectDropdown: React.FC<ItemSelectDropdownProps> = ({
     setTimeout(() => {
       updatePosition();
       inputRef.current?.focus();
+      inputRef.current?.select();
     }, 30);
   };
 
   return (
     <div ref={containerRef} className="relative w-full h-full min-w-[200px]">
       <div
+        tabIndex={0}
+        role="button"
+        aria-expanded={isOpen}
         onClick={handleOpen}
-        className="w-full h-10 px-3 flex items-center justify-between cursor-pointer bg-transparent hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+        onKeyDown={(e) => {
+          if (!isOpen && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown')) {
+            e.preventDefault();
+            handleOpen();
+          }
+        }}
+        className="w-full h-10 px-3 flex items-center justify-between cursor-pointer bg-transparent hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors focus:outline-none focus:ring-1 focus:ring-primary rounded"
       >
         {isOpen ? (
           <input
@@ -135,6 +145,17 @@ const ItemSelectDropdown: React.FC<ItemSelectDropdownProps> = ({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
+                setIsOpen(false);
+              } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (filteredItems.length > 0) {
+                  onSelect(filteredItems[0]);
+                  setIsOpen(false);
+                } else {
+                  setIsOpen(false);
+                  onAddNewItem();
+                }
+              } else if (e.key === 'Tab') {
                 setIsOpen(false);
               }
             }}

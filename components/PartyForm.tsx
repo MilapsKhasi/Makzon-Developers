@@ -47,7 +47,10 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
     } else if (prefilledName) {
       setFormData((prev: any) => ({ ...prev, name: prefilledName }));
     }
-    setTimeout(() => firstInputRef.current?.focus(), 100);
+    setTimeout(() => {
+      firstInputRef.current?.focus();
+      firstInputRef.current?.select();
+    }, 100);
   }, [initialData, prefilledName]);
 
   const handleChange = (field: string, value: any) => { 

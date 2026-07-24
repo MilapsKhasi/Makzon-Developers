@@ -70,6 +70,8 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     setFormData(next);
   }, [future, formData]);
 
+  const formRef = useRef<HTMLFormElement>(null);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -80,10 +82,46 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         e.preventDefault();
         redo();
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (formRef.current) {
+          if (typeof formRef.current.requestSubmit === 'function') {
+            formRef.current.requestSubmit();
+          } else {
+            const btn = formRef.current.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+            if (btn) btn.click();
+            else formRef.current.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo]);
+
+  // Auto focus & select first field on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formRef.current) {
+        const focusableInputs = formRef.current.querySelectorAll<
+          HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+        >('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
+
+        if (focusableInputs.length > 0) {
+          const firstInput = focusableInputs[0];
+          firstInput.focus();
+          if (
+            'select' in firstInput &&
+            typeof (firstInput as HTMLInputElement).select === 'function' &&
+            !['date', 'checkbox', 'radio', 'file'].includes(firstInput.type)
+          ) {
+            (firstInput as HTMLInputElement).select();
+          }
+        }
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const [customers, setCustomers] = useState<any[]>([]);
   const [stockItems, setStockItems] = useState<any[]>([]);
@@ -432,7 +470,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         initialPayments={Array.isArray(formData.payment_details) ? formData.payment_details : (formData.payment_details ? [formData.payment_details] : [])}
       />
 
-      <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center space-x-4">
             {appSettings.gstEnabled && (

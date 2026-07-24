@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -19,20 +19,70 @@ const Modal: React.FC<ModalProps> = ({
   maxWidth = 'max-w-2xl',
   preventBackdropClose = false
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       
-      const handleEsc = (e: KeyboardEvent) => {
+      const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
           onClose();
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (modalRef.current) {
+            const form = modalRef.current.querySelector('form');
+            if (form) {
+              if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+              } else {
+                const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+                if (submitBtn) submitBtn.click();
+                else form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+              }
+            } else {
+              const primaryBtn = modalRef.current.querySelector('button[type="submit"], button.bg-primary') as HTMLButtonElement | null;
+              if (primaryBtn) primaryBtn.click();
+            }
+          }
         }
       };
-      
-      window.addEventListener('keydown', handleEsc);
+
+      window.addEventListener('keydown', handleKeyDown);
+
+      // Auto focus & auto select first editable field or button in modal
+      const timer = setTimeout(() => {
+        if (modalRef.current) {
+          const focusableInputs = modalRef.current.querySelectorAll<
+            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          >('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
+
+          if (focusableInputs.length > 0) {
+            const firstInput = focusableInputs[0];
+            firstInput.focus();
+            if (
+              'select' in firstInput &&
+              typeof (firstInput as HTMLInputElement).select === 'function' &&
+              !['date', 'checkbox', 'radio', 'file'].includes(firstInput.type)
+            ) {
+              (firstInput as HTMLInputElement).select();
+            }
+          } else {
+            const focusableBtns = modalRef.current.querySelectorAll<HTMLButtonElement>(
+              'button:not([disabled]):not([aria-label="Close"])'
+            );
+            if (focusableBtns.length > 0) {
+              focusableBtns[0].focus();
+            }
+          }
+        }
+      }, 50);
+
       return () => {
         document.body.style.overflow = 'unset';
-        window.removeEventListener('keydown', handleEsc);
+        window.removeEventListener('keydown', handleKeyDown);
+        clearTimeout(timer);
       };
     }
   }, [isOpen, onClose]);
@@ -45,10 +95,18 @@ const Modal: React.FC<ModalProps> = ({
         className="absolute inset-0 bg-slate-900/30 dark:bg-slate-950/60" 
         onClick={() => !preventBackdropClose && onClose()} 
       />
-      <div className={`relative bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 w-full ${maxWidth} flex flex-col overflow-hidden rounded-md max-h-[90vh]`}>
+      <div 
+        ref={modalRef}
+        className={`relative bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 w-full ${maxWidth} flex flex-col overflow-hidden rounded-md max-h-[90vh]`}
+      >
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <h3 className="text-[18px] font-medium text-slate-900 dark:text-slate-100 capitalize">{title}</h3>
-          <button onClick={onClose} className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-none">
+          <button 
+            type="button" 
+            aria-label="Close"
+            onClick={onClose} 
+            className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-none"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>

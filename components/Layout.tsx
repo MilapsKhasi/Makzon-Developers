@@ -70,6 +70,68 @@ const Layout = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Universal Keyboard Shortcuts (Ctrl+K, Ctrl+N, Ctrl+S, Esc)
+  useEffect(() => {
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      const isCtrl = e.ctrlKey || e.metaKey;
+
+      // Ctrl + K -> Global Search
+      if (isCtrl && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setIsGlobalSearchOpen(prev => !prev);
+        return;
+      }
+
+      // Ctrl + N -> Create New
+      if (isCtrl && (e.key === 'n' || e.key === 'N')) {
+        e.preventDefault();
+        setIsCreateNewModalOpen(true);
+        return;
+      }
+
+      // Ctrl + S -> Save active form or modal
+      if (isCtrl && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        // Look for open modal form
+        const modalForm = document.querySelector('.fixed form') as HTMLFormElement | null;
+        if (modalForm) {
+          if (typeof modalForm.requestSubmit === 'function') {
+            modalForm.requestSubmit();
+          } else {
+            const btn = modalForm.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+            if (btn) btn.click();
+            else modalForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }
+          return;
+        }
+
+        // Look for main page form
+        const pageForm = document.querySelector('main form, form') as HTMLFormElement | null;
+        if (pageForm) {
+          if (typeof pageForm.requestSubmit === 'function') {
+            pageForm.requestSubmit();
+          } else {
+            const btn = pageForm.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+            if (btn) btn.click();
+            else pageForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }
+          return;
+        }
+      }
+
+      // Esc -> Close search / create new modal / mobile menu / workspace menu
+      if (e.key === 'Escape') {
+        if (isGlobalSearchOpen) setIsGlobalSearchOpen(false);
+        if (isCreateNewModalOpen) setIsCreateNewModalOpen(false);
+        if (isMobileMenuOpen) setIsMobileMenuOpen(false);
+        if (showWorkspaceMenu) setShowWorkspaceMenu(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+  }, [isGlobalSearchOpen, isCreateNewModalOpen, isMobileMenuOpen, showWorkspaceMenu]);
+
   // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);

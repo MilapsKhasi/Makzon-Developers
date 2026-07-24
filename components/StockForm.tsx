@@ -37,7 +37,10 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
         kg_per_bag: toDisplayValue(initialData.kg_per_bag)
       });
     }
-    setTimeout(() => firstInputRef.current?.focus(), 100);
+    setTimeout(() => {
+      firstInputRef.current?.focus();
+      firstInputRef.current?.select();
+    }, 100);
   }, [initialData]);
 
   const handleInputChange = (field: string, value: any) => { 

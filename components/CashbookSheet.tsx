@@ -96,6 +96,44 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     }
   }, [initialData, prevBalance, prevDate]);
 
+  // Auto focus & select first input on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const firstInput = document.querySelector<HTMLInputElement>('input:not([disabled])');
+      if (firstInput) {
+        firstInput.focus();
+        if (typeof firstInput.select === 'function' && !['date', 'checkbox', 'radio'].includes(firstInput.type)) {
+          firstInput.select();
+        }
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Keyboard shortcuts (Ctrl+S, Esc)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        onSave({ 
+          id: initialData?.id, 
+          date: reportDate, 
+          openingBalance, 
+          prevDate: openingDateText,
+          incomeTotal, 
+          expenseTotal, 
+          balance: closingBalance, 
+          incomeRows, 
+          expenseRows 
+        });
+      } else if (e.key === 'Escape') {
+        onCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [initialData, reportDate, openingBalance, openingDateText, incomeTotal, expenseTotal, closingBalance, incomeRows, expenseRows, onSave, onCancel]);
+
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) {
