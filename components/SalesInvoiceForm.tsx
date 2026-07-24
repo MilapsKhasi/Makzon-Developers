@@ -412,7 +412,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       if (user) recordActivity(user.id, user.email || '');
 
       const payload: any = {
-          customer_name: formData.customer_name,
+          customer_name: (formData.customer_name || '').trim().toUpperCase(),
           invoice_number: formData.invoice_number,
           date: formData.date,
           total_without_gst: formData.total_without_gst,
@@ -523,7 +523,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
             <div className="space-y-1.5">
                 <label className="text-[14px] font-medium dark:text-slate-300 capitalize">Customer Name</label>
                 <div className="flex gap-3">
-                  <input required list="clist" value={toDisplayValue(formData.customer_name)} onChange={e => updateFormData({...formData, customer_name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] uppercase font-bold" />
+                  <input required list="clist" value={toDisplayValue(formData.customer_name)} onChange={e => updateFormData({...formData, customer_name: e.target.value.toUpperCase()})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] uppercase font-bold" />
                   <button type="button" onClick={() => setCustomerModal({ isOpen: true, initialData: customers.find(c=>c.name===formData.customer_name), prefilledName: formData.customer_name })} className="h-10 w-10 flex items-center justify-center rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"><UserRoundPen className="w-4 h-4 text-slate-400" /></button>
                 </div>
                 <datalist id="clist">{customers.map(c => <option key={c.id} value={c.name} />)}</datalist>

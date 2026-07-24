@@ -54,7 +54,11 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
   }, [initialData, prefilledName]);
 
   const handleChange = (field: string, value: any) => { 
-    setFormData((prev: any) => ({ ...prev, [field]: value })); 
+    if (field === 'name') {
+      setFormData((prev: any) => ({ ...prev, name: typeof value === 'string' ? value.toUpperCase() : value })); 
+    } else {
+      setFormData((prev: any) => ({ ...prev, [field]: value })); 
+    }
   };
 
   const handleTypeChange = (type: 'customer' | 'vendor' | 'both') => {
@@ -82,7 +86,7 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
         balance: toStorageValue(formData.balance),
         company_id: cid, 
         is_deleted: false,
-        name: formData.name.trim()
+        name: formData.name.trim().toUpperCase()
       };
       
       // Save to 'vendors' table, which acts as our unified 'parties' table

@@ -20,6 +20,12 @@ const Modal: React.FC<ModalProps> = ({
   preventBackdropClose = false
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const hasFocusedRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -27,7 +33,7 @@ const Modal: React.FC<ModalProps> = ({
       
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
-          onClose();
+          onCloseRef.current();
         } else if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
           e.preventDefault();
           e.stopPropagation();
@@ -51,41 +57,40 @@ const Modal: React.FC<ModalProps> = ({
 
       window.addEventListener('keydown', handleKeyDown);
 
-      // Auto focus & auto select first editable field or button in modal
-      const timer = setTimeout(() => {
-        if (modalRef.current) {
-          const focusableInputs = modalRef.current.querySelectorAll<
-            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-          >('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
+      // Auto focus once when modal opens
+      let timer: NodeJS.Timeout | null = null;
+      if (!hasFocusedRef.current) {
+        hasFocusedRef.current = true;
+        timer = setTimeout(() => {
+          if (modalRef.current) {
+            const focusableInputs = modalRef.current.querySelectorAll<
+              HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+            >('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
 
-          if (focusableInputs.length > 0) {
-            const firstInput = focusableInputs[0];
-            firstInput.focus();
-            if (
-              'select' in firstInput &&
-              typeof (firstInput as HTMLInputElement).select === 'function' &&
-              !['date', 'checkbox', 'radio', 'file'].includes(firstInput.type)
-            ) {
-              (firstInput as HTMLInputElement).select();
-            }
-          } else {
-            const focusableBtns = modalRef.current.querySelectorAll<HTMLButtonElement>(
-              'button:not([disabled]):not([aria-label="Close"])'
-            );
-            if (focusableBtns.length > 0) {
-              focusableBtns[0].focus();
+            if (focusableInputs.length > 0) {
+              const firstInput = focusableInputs[0];
+              firstInput.focus();
+            } else {
+              const focusableBtns = modalRef.current.querySelectorAll<HTMLButtonElement>(
+                'button:not([disabled]):not([aria-label="Close"])'
+              );
+              if (focusableBtns.length > 0) {
+                focusableBtns[0].focus();
+              }
             }
           }
-        }
-      }, 50);
+        }, 50);
+      }
 
       return () => {
         document.body.style.overflow = 'unset';
         window.removeEventListener('keydown', handleKeyDown);
-        clearTimeout(timer);
+        if (timer) clearTimeout(timer);
       };
+    } else {
+      hasFocusedRef.current = false;
     }
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

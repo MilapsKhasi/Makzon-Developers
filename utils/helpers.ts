@@ -102,10 +102,15 @@ export const safeSupabaseSave = async (table: string, payload: any, id?: string)
 
   let cleanPayload: any = { ...payload };
   
-  // Convert empty strings to null to avoid Postgres numeric syntax errors
+  // Convert empty strings to null & ensure code/name fields (GSTIN, HSN, Name, Vendor/Customer/Item Name) are UPPERCASE
   Object.keys(cleanPayload).forEach(key => {
     if (cleanPayload[key] === '') {
       cleanPayload[key] = null;
+    } else if (
+      typeof cleanPayload[key] === 'string' &&
+      ['gstin', 'hsn', 'hsn_sac', 'sac', 'pan', 'ifsc', 'sku', 'name', 'customer_name', 'vendor_name', 'item_name', 'party_name', 'company_name', 'account_name'].includes(key.toLowerCase())
+    ) {
+      cleanPayload[key] = cleanPayload[key].toUpperCase();
     }
   });
 
@@ -254,12 +259,12 @@ export const fetchStockItemsWithBalance = async (company_id: string) => {
 export const ensureStockItems = async (items: any[], company_id: string) => {
   if (!items || !Array.isArray(items)) return;
   for (const item of items) {
-    const itemName = item.itemName?.trim();
+    const itemName = item.itemName?.trim().toUpperCase();
     if (!itemName) continue;
     const { data: existing } = await supabase.from('stock_items').select('id').eq('company_id', company_id).eq('name', itemName).eq('is_deleted', false).maybeSingle();
     const payload: any = {
       name: itemName,
-      hsn: item.hsnCode || '',
+      hsn: (item.hsnCode || '').toUpperCase(),
       rate: Number(item.rate) || 0,
       tax_rate: Number(item.tax_rate) || 0,
       unit: item.unit || 'PCS',
@@ -273,7 +278,7 @@ export const ensureStockItems = async (items: any[], company_id: string) => {
 
 export const ensureParty = async (name: string, type: 'customer' | 'vendor', company_id: string) => {
   if (!name || !name.trim()) return;
-  const nameTrim = name.trim();
+  const nameTrim = name.trim().toUpperCase();
 
   // 1. Search unified 'vendors' table
   const { data: existingVendor } = await supabase

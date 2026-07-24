@@ -413,7 +413,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
       if (user) recordActivity(user.id, user.email || '');
 
       const payload: any = {
-          vendor_name: formData.vendor_name,
+          vendor_name: (formData.vendor_name || '').trim().toUpperCase(),
           bill_number: formData.bill_number,
           date: formData.date,
           total_without_gst: formData.total_without_gst,
@@ -523,7 +523,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
             <div className="space-y-1.5">
                 <label className="text-[14px] font-medium dark:text-slate-300 capitalize">Vendor Name</label>
                 <div className="flex gap-3">
-                  <input required list="vlist" value={toDisplayValue(formData.vendor_name)} onChange={e => updateFormData({...formData, vendor_name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] uppercase font-bold" />
+                  <input required list="vlist" value={toDisplayValue(formData.vendor_name)} onChange={e => updateFormData({...formData, vendor_name: e.target.value.toUpperCase()})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] uppercase font-bold" />
                   <button type="button" onClick={() => setVendorModal({ isOpen: true, initialData: vendors.find(v=>v.name===formData.vendor_name), prefilledName: formData.vendor_name })} className="h-10 w-10 flex items-center justify-center rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"><UserRoundPen className="w-4 h-4 text-slate-400" /></button>
                 </div>
                 <datalist id="vlist">{vendors.map(v => <option key={v.id} value={v.name} />)}</datalist>

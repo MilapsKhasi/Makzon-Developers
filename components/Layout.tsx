@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet } from 'lucide-react';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import Logo from './Logo';
@@ -10,6 +10,7 @@ import ConfirmDialog from './ConfirmDialog';
 import UpdateNotification from './UpdateNotification';
 import CreateNewModal from './CreateNewModal';
 import GlobalSearchModal from './GlobalSearchModal';
+import ImportExcelModal from './ImportExcelModal';
 import { getUserActivity } from '../utils/activityTracker';
 
 const Layout = () => {
@@ -19,6 +20,7 @@ const Layout = () => {
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [isCreateNewModalOpen, setIsCreateNewModalOpen] = useState(false);
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
+  const [isImportExcelOpen, setIsImportExcelOpen] = useState(false);
   const { activeCompany, setCompany } = useCompany();
   const navigate = useNavigate();
   const location = useLocation();
@@ -528,6 +530,14 @@ const Layout = () => {
               </kbd>
             </button>
             <button
+              onClick={() => setIsImportExcelOpen(true)}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded capitalize flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              title="Import Excel / CSV Data"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Import Excel</span>
+            </button>
+            <button
               onClick={() => setIsCreateNewModalOpen(true)}
               className="px-3.5 py-1.5 bg-primary text-white font-medium text-xs rounded capitalize hover:bg-primary-dark flex items-center gap-1.5 shadow-sm transition-all"
             >
@@ -540,6 +550,10 @@ const Layout = () => {
         <GlobalSearchModal
           isOpen={isGlobalSearchOpen}
           onClose={() => setIsGlobalSearchOpen(false)}
+        />
+        <ImportExcelModal
+          isOpen={isImportExcelOpen}
+          onClose={() => setIsImportExcelOpen(false)}
         />
         <CreateNewModal
           isOpen={isCreateNewModalOpen}

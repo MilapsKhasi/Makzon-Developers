@@ -45,7 +45,11 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
   }, [initialData]);
 
   const handleInputChange = (field: string, value: any) => { 
-    setFormData({ ...formData, [field]: value }); 
+    if (field === 'name') {
+      setFormData({ ...formData, name: typeof value === 'string' ? value.toUpperCase() : value });
+    } else {
+      setFormData({ ...formData, [field]: value }); 
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,7 +64,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
 
         const storageData = { 
           ...formData, 
-          name: formData.name.trim(),
+          name: formData.name.trim().toUpperCase(),
           rate: toStorageValue(formData.rate), 
           selling_price: toStorageValue(formData.selling_price),
           in_stock: toStorageValue(formData.in_stock),
