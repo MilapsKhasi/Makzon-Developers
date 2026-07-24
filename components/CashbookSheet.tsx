@@ -96,6 +96,14 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     }
   }, [initialData, prevBalance, prevDate]);
 
+  const calculateTotal = (rows: CashbookRow[]) => {
+    return rows.reduce((acc, row) => acc + (parseFloat(row.amount) || 0), 0);
+  };
+
+  const incomeTotal = calculateTotal(incomeRows);
+  const expenseTotal = calculateTotal(expenseRows);
+  const closingBalance = openingBalance + incomeTotal - expenseTotal;
+
   // Auto focus & select first input on mount
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -225,10 +233,6 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     }
   };
 
-  const calculateTotal = (rows: CashbookRow[]) => {
-    return rows.reduce((acc, row) => acc + (parseFloat(row.amount) || 0), 0);
-  };
-
   const handleExportXLSX = () => {
     const companyName = localStorage.getItem('activeCompanyName') || 'Workspace';
     const cleanIncome = incomeRows.filter(r => r.particulars.trim() !== '' && r.amount !== '');
@@ -242,10 +246,6 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     const cleanExpense = expenseRows.filter(r => r.particulars.trim() !== '' && r.amount !== '');
     exportCashbookEntryToPDF(cleanIncome, cleanExpense, { companyName, date: reportDate, openingBalance, openingDateText });
   };
-
-  const incomeTotal = calculateTotal(incomeRows);
-  const expenseTotal = calculateTotal(expenseRows);
-  const closingBalance = openingBalance + incomeTotal - expenseTotal;
 
   return (
     <div className="bg-white dark:bg-slate-900 w-full border border-slate-300 dark:border-slate-800 rounded-md flex flex-col h-full animate-in fade-in duration-300 overflow-hidden">

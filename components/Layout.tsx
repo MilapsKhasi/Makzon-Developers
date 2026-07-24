@@ -76,24 +76,27 @@ const Layout = () => {
       const isCtrl = e.ctrlKey || e.metaKey;
 
       // Ctrl + K -> Global Search
-      if (isCtrl && (e.key === 'k' || e.key === 'K')) {
+      if (isCtrl && (e.key === 'k' || e.key === 'K' || e.code === 'KeyK')) {
         e.preventDefault();
+        e.stopPropagation();
         setIsGlobalSearchOpen(prev => !prev);
         return;
       }
 
       // Ctrl + N -> Create New
-      if (isCtrl && (e.key === 'n' || e.key === 'N')) {
+      if (isCtrl && (e.key === 'n' || e.key === 'N' || e.code === 'KeyN')) {
         e.preventDefault();
+        e.stopPropagation();
         setIsCreateNewModalOpen(true);
         return;
       }
 
       // Ctrl + S -> Save active form or modal
-      if (isCtrl && (e.key === 's' || e.key === 'S')) {
+      if (isCtrl && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
         e.preventDefault();
+        e.stopPropagation();
         // Look for open modal form
-        const modalForm = document.querySelector('.fixed form') as HTMLFormElement | null;
+        const modalForm = document.querySelector('.fixed form, [role="dialog"] form') as HTMLFormElement | null;
         if (modalForm) {
           if (typeof modalForm.requestSubmit === 'function') {
             modalForm.requestSubmit();
@@ -128,8 +131,8 @@ const Layout = () => {
       }
     };
 
-    window.addEventListener('keydown', handleGlobalShortcuts);
-    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+    window.addEventListener('keydown', handleGlobalShortcuts, true);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts, true);
   }, [isGlobalSearchOpen, isCreateNewModalOpen, isMobileMenuOpen, showWorkspaceMenu]);
 
   // Close mobile menu on route change
