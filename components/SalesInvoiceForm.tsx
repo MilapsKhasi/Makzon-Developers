@@ -404,6 +404,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (!formData.customer_name || !formData.invoice_number) return alert("Required: Customer Name and Invoice No");
     setLoading(true);
     try {
@@ -637,17 +638,17 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         </div>
 
         <div className="flex items-center justify-end space-x-4">
-            <button type="button" onClick={() => setShowPrintModal(true)} className="border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-5 py-3 rounded font-bold text-[14px] hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center shadow-sm active:scale-95 transition-all">
+            <button type="button" onClick={() => setShowPrintModal(true)} disabled={loading} className="border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-5 py-3 rounded font-bold text-[14px] hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center shadow-sm active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 <Printer className="w-4 h-4 mr-2 text-red-600" /> Print Preview
             </button>
-            <button type="button" onClick={onCancel} className="text-[14px] text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium capitalize px-2">Discard</button>
-            <button type="submit" onClick={() => { shouldPrintRef.current = false; setIsSaveAndNew(true); }} disabled={loading} className="bg-emerald-600 text-white px-6 py-3 rounded font-bold text-[14px] hover:bg-emerald-700 shadow active:scale-95 flex items-center capitalize transition-all">
+            <button type="button" onClick={onCancel} disabled={loading} className="text-[14px] text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium capitalize px-2 disabled:opacity-50 disabled:cursor-not-allowed">Discard</button>
+            <button type="submit" onClick={() => { shouldPrintRef.current = false; setIsSaveAndNew(true); }} disabled={loading} className="bg-emerald-600 text-white px-6 py-3 rounded font-bold text-[14px] hover:bg-emerald-700 shadow active:scale-95 flex items-center capitalize transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 {loading && isSaveAndNew && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Save & New
             </button>
-            <button type="submit" onClick={() => { shouldPrintRef.current = false; setIsSaveAndNew(false); }} disabled={loading} className="bg-slate-800 dark:bg-slate-700 text-white px-6 py-3 rounded font-bold text-[14px] hover:bg-slate-900 shadow active:scale-95 flex items-center capitalize transition-all">
+            <button type="submit" onClick={() => { shouldPrintRef.current = false; setIsSaveAndNew(false); }} disabled={loading} className="bg-slate-800 dark:bg-slate-700 text-white px-6 py-3 rounded font-bold text-[14px] hover:bg-slate-900 shadow active:scale-95 flex items-center capitalize transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 {loading && !shouldPrintRef.current && !isSaveAndNew && <Loader2 className="w-4 h-4 animate-spin mr-2" />}{initialData ? 'Update' : 'Save'}
             </button>
-            <button type="submit" onClick={() => { shouldPrintRef.current = true; setIsSaveAndNew(false); }} disabled={loading} className="bg-primary text-white px-8 py-3 rounded font-bold text-[14px] hover:bg-primary-dark shadow-lg active:scale-95 flex items-center capitalize transition-all">
+            <button type="submit" onClick={() => { shouldPrintRef.current = true; setIsSaveAndNew(false); }} disabled={loading} className="bg-primary text-white px-8 py-3 rounded font-bold text-[14px] hover:bg-primary-dark shadow-lg active:scale-95 flex items-center capitalize transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 {loading && shouldPrintRef.current && <Loader2 className="w-4 h-4 animate-spin mr-2" />}<Printer className="w-4 h-4 mr-2 inline" />{initialData ? 'Update & Print' : 'Save & Print'}
             </button>
         </div>

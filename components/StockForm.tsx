@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Package, Tag, Box, Hash, Scale, X } from 'lucide-react';
+import { Save, Package, Tag, Box, Hash, Scale, X, Loader2 } from 'lucide-react';
 import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES } from '../utils/helpers';
 import { recordActivity } from '../utils/activityTracker';
 import { supabase, getAuthUser } from '../lib/supabase';
@@ -14,6 +14,7 @@ interface StockFormProps {
 const TAX_RATES = [0, 5, 12, 18, 28];
 
 const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }) => {
+  const [loading, setLoading] = useState(false);
   const [isSaveAndNew, setIsSaveAndNew] = useState(false);
   const [formData, setFormData] = useState<any>({
       name: '', sku: '', unit: 'PCS', hsn: '', rate: 0, selling_price: 0, in_stock: 0, description: '', tax_rate: 18, kg_per_bag: 0
@@ -49,25 +50,33 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
 
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+      if (loading) return;
       if (!formData.name.trim()) return alert("Item name is mandatory.");
       
-      const user = await getAuthUser();
-      if (user) recordActivity(user.id, user.email || '');
+      setLoading(true);
+      try {
+        const user = await getAuthUser();
+        if (user) recordActivity(user.id, user.email || '');
 
-      const storageData = { 
-        ...formData, 
-        name: formData.name.trim(),
-        rate: toStorageValue(formData.rate), 
-        selling_price: toStorageValue(formData.selling_price),
-        in_stock: toStorageValue(formData.in_stock),
-        kg_per_bag: toStorageValue(formData.kg_per_bag)
-      };
-      onSubmit(storageData, isSaveAndNew);
-      if (isSaveAndNew) {
-        setFormData({
-          name: '', sku: '', unit: 'PCS', hsn: '', rate: 0, selling_price: 0, in_stock: 0, description: '', tax_rate: 18, kg_per_bag: 0
-        });
-        setTimeout(() => firstInputRef.current?.focus(), 100);
+        const storageData = { 
+          ...formData, 
+          name: formData.name.trim(),
+          rate: toStorageValue(formData.rate), 
+          selling_price: toStorageValue(formData.selling_price),
+          in_stock: toStorageValue(formData.in_stock),
+          kg_per_bag: toStorageValue(formData.kg_per_bag)
+        };
+        await onSubmit(storageData, isSaveAndNew);
+        if (isSaveAndNew) {
+          setFormData({
+            name: '', sku: '', unit: 'PCS', hsn: '', rate: 0, selling_price: 0, in_stock: 0, description: '', tax_rate: 18, kg_per_bag: 0
+          });
+          setTimeout(() => firstInputRef.current?.focus(), 100);
+        }
+      } catch (err: any) {
+        alert("Error saving item: " + err.message);
+      } finally {
+        setLoading(false);
       }
   }
 
@@ -183,12 +192,12 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
             </div>
 
             <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end space-x-4">
-                <button type="button" onClick={onCancel} className="text-[13px] text-slate-400 dark:text-slate-500 font-normal hover:text-slate-700 dark:hover:text-slate-300 transition-none">Discard Changes</button>
-                <button type="submit" onClick={() => setIsSaveAndNew(true)} className="bg-emerald-600 text-white px-6 py-2.5 rounded font-normal text-[14px] hover:bg-emerald-700 transition-none flex items-center">
-                    Save & New
+                <button type="button" onClick={onCancel} disabled={loading} className="text-[13px] text-slate-400 dark:text-slate-500 font-normal hover:text-slate-700 dark:hover:text-slate-300 transition-none disabled:opacity-50 disabled:cursor-not-allowed">Discard Changes</button>
+                <button type="submit" onClick={() => setIsSaveAndNew(true)} disabled={loading} className="bg-emerald-600 text-white px-6 py-2.5 rounded font-normal text-[14px] hover:bg-emerald-700 transition-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                    {loading && isSaveAndNew && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Save & New
                 </button>
-                <button type="submit" onClick={() => setIsSaveAndNew(false)} className="bg-primary text-white px-10 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center">
-                    <Save className="w-4 h-4 mr-2" /> {initialData ? 'Update Record' : 'Create Item'}
+                <button type="submit" onClick={() => setIsSaveAndNew(false)} disabled={loading} className="bg-primary text-white px-10 py-2.5 rounded font-normal text-[14px] hover:bg-primary-dark transition-none flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                    {loading && !isSaveAndNew ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} {initialData ? 'Update Record' : 'Create Item'}
                 </button>
             </div>
         </form>

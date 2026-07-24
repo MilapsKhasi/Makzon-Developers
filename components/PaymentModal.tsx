@@ -23,6 +23,7 @@ interface PaymentModalProps {
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onSubmit, billNumber, totalAmount, initialPayments }) => {
   const today = new Date().toISOString().split('T')[0];
   
+  const [saving, setSaving] = useState(false);
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
 
   useEffect(() => {
@@ -80,14 +81,20 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onSubmit, 
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const formattedPayments = payments.map(p => ({
-      payment_date: p.date,
-      payment_method: p.method,
-      payment_amount: parseFloat(p.amount) || 0
-    }));
-    onSubmit(formattedPayments);
+    if (saving) return;
+    setSaving(true);
+    try {
+      const formattedPayments = payments.map(p => ({
+        payment_date: p.date,
+        payment_method: p.method,
+        payment_amount: parseFloat(p.amount) || 0
+      }));
+      await onSubmit(formattedPayments);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const totalPaid = payments.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
@@ -193,14 +200,16 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onSubmit, 
         </div>
 
         <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex gap-3 shrink-0">
-          <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+          <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
             Cancel
           </button>
           <button 
             type="button"
             onClick={handleSubmit}
-            className="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-dark shadow-lg active:scale-95 transition-all"
+            disabled={saving}
+            className="flex-1 px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary-dark shadow-lg active:scale-95 transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             Submit Payments
           </button>
         </div>

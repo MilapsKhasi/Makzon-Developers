@@ -151,6 +151,7 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
     const cid = getActiveCompanyId();
     if (!cid) {
       alert('Please select or create a workspace first.');

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Undo, Redo, Share2, RotateCcw, Eraser, Check, Plus } from 'lucide-react';
+import { X, Undo, Redo, Share2, RotateCcw, Eraser, Check, Plus, Loader2 } from 'lucide-react';
 import Modal from './Modal';
 
 export interface ColumnDef {
@@ -23,6 +23,7 @@ interface BulkEntryModalProps {
 const INITIAL_ROWS = 50;
 
 const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ isOpen, onClose, title, columns, onSave }) => {
+  const [loading, setLoading] = useState(false);
   // Initialize grid with empty strings
   const createEmptyRows = (count: number) => Array(count).fill(null).map(() => 
     columns.reduce((acc, col) => ({ ...acc, [col.key]: '' }), {})
@@ -106,7 +107,8 @@ const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ isOpen, onClose, title,
       alert('Table data copied to clipboard!');
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
+      if (loading) return;
       // Filter out empty rows
       const validRows = gridData.filter(row => {
           return Object.values(row).some(val => val !== '' && val !== null);
@@ -117,7 +119,12 @@ const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ isOpen, onClose, title,
           return;
       }
 
-      onSave(validRows);
+      setLoading(true);
+      try {
+        await onSave(validRows);
+      } finally {
+        setLoading(false);
+      }
   };
 
   const TooltipButton = ({ icon: Icon, onClick, tip, disabled = false }: any) => (
@@ -221,9 +228,10 @@ const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ isOpen, onClose, title,
         <div className="pt-4 mt-2 flex justify-end">
             <button 
                 onClick={handleCreate}
-                className="flex items-center px-6 py-2 bg-primary text-white font-bold rounded-md hover:bg-yellow-400 transition-colors shadow-sm"
+                disabled={loading}
+                className="flex items-center px-6 py-2 bg-primary text-white font-bold rounded-md hover:bg-yellow-400 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                <Check className="w-4 h-4 mr-2" />
+                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
                 Create Entries
             </button>
         </div>

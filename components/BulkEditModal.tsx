@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Undo, Redo, Share2, RotateCcw, Save, Trash2, AlertTriangle } from 'lucide-react';
+import { X, Undo, Redo, Share2, RotateCcw, Save, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import Modal from './Modal';
 
 export interface ColumnDef {
@@ -22,6 +22,7 @@ interface BulkEditModalProps {
 }
 
 const BulkEditModal: React.FC<BulkEditModalProps> = ({ isOpen, onClose, title, columns, initialData, onSave }) => {
+  const [saving, setSaving] = useState(false);
   const [gridData, setGridData] = useState<any[]>([]);
   const [history, setHistory] = useState<any[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -101,8 +102,14 @@ const BulkEditModal: React.FC<BulkEditModalProps> = ({ isOpen, onClose, title, c
       alert('Table data copied to clipboard!');
   };
 
-  const handleSave = () => {
-      onSave(gridData);
+  const handleSave = async () => {
+      if (saving) return;
+      setSaving(true);
+      try {
+        await onSave(gridData);
+      } finally {
+        setSaving(false);
+      }
   };
 
   const TooltipButton = ({ icon: Icon, onClick, tip, disabled = false, className = '' }: any) => (
@@ -249,9 +256,10 @@ const BulkEditModal: React.FC<BulkEditModalProps> = ({ isOpen, onClose, title, c
         <div className="pt-4 mt-2 flex justify-end">
             <button 
                 onClick={handleSave}
-                className="flex items-center px-6 py-2 bg-primary text-white font-bold rounded-md hover:bg-yellow-400 transition-colors shadow-sm"
+                disabled={saving}
+                className="flex items-center px-6 py-2 bg-primary text-white font-bold rounded-md hover:bg-yellow-400 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                <Save className="w-4 h-4 mr-2" />
+                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                 Update Entries
             </button>
         </div>

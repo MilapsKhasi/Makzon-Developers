@@ -405,6 +405,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (!formData.vendor_name || !formData.bill_number) return alert("Required: Vendor and Bill No");
     setLoading(true);
     try {
@@ -637,11 +638,11 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
         </div>
 
         <div className="flex items-center justify-end space-x-6">
-            <button type="button" onClick={onCancel} className="text-[14px] text-slate-400 hover:text-slate-800 font-medium capitalize">Discard</button>
-            <button type="submit" onClick={() => setIsSaveAndNew(true)} disabled={loading} className="bg-emerald-600 text-white px-6 py-3 rounded font-bold text-[14px] hover:bg-emerald-700 shadow active:scale-95 flex items-center capitalize transition-all">
+            <button type="button" onClick={onCancel} disabled={loading} className="text-[14px] text-slate-400 hover:text-slate-800 font-medium capitalize disabled:opacity-50 disabled:cursor-not-allowed">Discard</button>
+            <button type="submit" onClick={() => setIsSaveAndNew(true)} disabled={loading} className="bg-emerald-600 text-white px-6 py-3 rounded font-bold text-[14px] hover:bg-emerald-700 shadow active:scale-95 flex items-center capitalize transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 {loading && isSaveAndNew && <Loader2 className="w-4 h-4 animate-spin mr-2" />}Save & New
             </button>
-            <button type="submit" onClick={() => setIsSaveAndNew(false)} disabled={loading} className="bg-primary text-white px-10 py-3 rounded font-bold text-[14px] hover:bg-primary-dark shadow-lg active:scale-95 flex items-center capitalize transition-all">
+            <button type="submit" onClick={() => setIsSaveAndNew(false)} disabled={loading} className="bg-primary text-white px-10 py-3 rounded font-bold text-[14px] hover:bg-primary-dark shadow-lg active:scale-95 flex items-center capitalize transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 {loading && !isSaveAndNew && <Loader2 className="w-4 h-4 animate-spin mr-2" />}{initialData ? 'Update Bill' : 'Save Statement'}
             </button>
         </div>

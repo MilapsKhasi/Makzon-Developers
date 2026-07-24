@@ -67,6 +67,7 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     if (!formData.name.trim()) return alert("Party Name is required.");
     setLoading(true);
     try {
@@ -273,21 +274,22 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
 
         {/* Fixed Footer */}
         <div className="px-8 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end space-x-4 bg-white dark:bg-slate-900 shrink-0">
-            <button type="button" onClick={onCancel} className="text-[13px] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-none font-normal">Discard</button>
+            <button type="button" onClick={onCancel} disabled={loading} className="text-[13px] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-none font-normal disabled:opacity-50 disabled:cursor-not-allowed">Discard</button>
             <button 
               type="button" 
               onClick={() => { setIsSaveAndNew(true); handleSubmit(new Event('submit') as any); }} 
-              className="px-6 py-2 border border-slate-200 dark:border-slate-700 rounded-md text-[13px] font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-none flex items-center capitalize"
+              disabled={loading}
+              className="px-6 py-2 border border-slate-200 dark:border-slate-700 rounded-md text-[13px] font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-none flex items-center capitalize disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save & New
+              {loading && isSaveAndNew ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null} Save & New
             </button>
             <button 
               type="submit" 
               onClick={() => setIsSaveAndNew(false)}
               disabled={loading} 
-              className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-md font-medium text-xs transition-none flex items-center justify-center min-w-[100px] capitalize"
+              className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-md font-medium text-xs transition-none flex items-center justify-center min-w-[100px] capitalize disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Party'}
+              {loading && !isSaveAndNew ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Party'}
             </button>
         </div>
       </form>

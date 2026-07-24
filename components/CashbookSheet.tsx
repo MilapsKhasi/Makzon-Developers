@@ -118,29 +118,35 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     return () => clearTimeout(timer);
   }, []);
 
+  const executeSave = () => {
+    if (loading) return;
+    setLoading(true);
+    onSave({ 
+      id: initialData?.id, 
+      date: reportDate, 
+      openingBalance, 
+      prevDate: openingDateText,
+      incomeTotal, 
+      expenseTotal, 
+      balance: closingBalance, 
+      incomeRows, 
+      expenseRows 
+    });
+  };
+
   // Keyboard shortcuts (Ctrl+S, Esc)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        onSave({ 
-          id: initialData?.id, 
-          date: reportDate, 
-          openingBalance, 
-          prevDate: openingDateText,
-          incomeTotal, 
-          expenseTotal, 
-          balance: closingBalance, 
-          incomeRows, 
-          expenseRows 
-        });
+        executeSave();
       } else if (e.key === 'Escape') {
         onCancel();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [initialData, reportDate, openingBalance, openingDateText, incomeTotal, expenseTotal, closingBalance, incomeRows, expenseRows, onSave, onCancel]);
+  }, [initialData, reportDate, openingBalance, openingDateText, incomeTotal, expenseTotal, closingBalance, incomeRows, expenseRows, onSave, onCancel, loading]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -272,22 +278,9 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
             <FileSpreadsheet className="w-4 h-4 sm:mr-2 text-emerald-500" /> <span className="hidden sm:inline">Excel</span>
           </button>
           <button 
-            onClick={() => {
-              setLoading(true);
-              onSave({ 
-                id: initialData?.id, 
-                date: reportDate, 
-                openingBalance, 
-                prevDate: openingDateText,
-                incomeTotal, 
-                expenseTotal, 
-                balance: closingBalance, 
-                incomeRows, 
-                expenseRows 
-              });
-            }}
+            onClick={executeSave}
             disabled={loading}
-            className="bg-primary text-white px-4 sm:px-8 py-2 sm:py-1.5 rounded font-bold text-[12px] hover:bg-primary-dark transition-all flex items-center ml-2 uppercase shadow-sm whitespace-nowrap"
+            className="bg-primary text-white px-4 sm:px-8 py-2 sm:py-1.5 rounded font-bold text-[12px] hover:bg-primary-dark transition-all flex items-center ml-2 uppercase shadow-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 sm:mr-2" />}
             <span className="hidden sm:inline">{initialData ? 'Update Entry' : 'Save Statement'}</span>
