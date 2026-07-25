@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import { 
   Plus, Search, Landmark, ArrowLeft, Maximize2, Minimize2, 
-  Trash2, Edit, FileText, User, Filter, AlertCircle, Phone, 
+  Trash2, Edit, Eye, FileText, User, Filter, AlertCircle, Phone, 
   Mail, MapPin
 } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -85,10 +85,12 @@ const Parties = () => {
 
       const partyMap = new Map();
       (custData || []).forEach((c: any) => {
-        partyMap.set(c.id, { ...c, party_type: c.party_type || 'customer', is_customer: true });
+        const key = c.name ? c.name.trim().toUpperCase() : c.id;
+        partyMap.set(key, { ...c, party_type: c.party_type || 'customer', is_customer: true });
       });
       (partyData || []).forEach((v: any) => {
-        partyMap.set(v.id, v);
+        const key = v.name ? v.name.trim().toUpperCase() : v.id;
+        partyMap.set(key, v);
       });
 
       setParties(Array.from(partyMap.values()));
@@ -120,6 +122,12 @@ const Parties = () => {
 
   useEffect(() => {
     loadData();
+    window.addEventListener('appSettingsChanged', loadData);
+    window.addEventListener('partiesUpdated', loadData);
+    return () => {
+      window.removeEventListener('appSettingsChanged', loadData);
+      window.removeEventListener('partiesUpdated', loadData);
+    };
   }, [cid]);
 
   // Handle saving party
@@ -491,30 +499,30 @@ const Parties = () => {
                     <button 
                       onClick={() => { setEditingParty(selectedParty); setIsFormOpen(true); }} 
                       title="Edit Profile"
-                      className="p-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 rounded-md transition-none"
+                      className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md transition-none shadow-xs"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => setIsLedgerOpen(true)} 
-                      title="View Statement"
-                      className="p-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 rounded-md transition-none"
+                      title="Opening Statement / Ledger"
+                      className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md transition-none shadow-xs"
                     >
-                      <FileText className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteParty(selectedParty)} 
-                      title="Delete Account"
-                      className="p-2 border border-slate-200 dark:border-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-400 dark:text-slate-500 rounded-md transition-none"
-                    >
-                      <Trash2 className="w-4 h-4" />
+                      <Eye className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => setIsFullScreen(!isFullScreen)} 
                       title={isFullScreen ? "Exit Fullscreen" : "Fullscreen View"}
-                      className="p-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 rounded-md transition-none hidden lg:block"
+                      className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md transition-none hidden lg:block shadow-xs"
                     >
                       {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteParty(selectedParty)} 
+                      title="Delete Account"
+                      className="p-2 border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-md transition-none shadow-xs"
+                    >
+                      <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                     </button>
                   </div>
                 </div>

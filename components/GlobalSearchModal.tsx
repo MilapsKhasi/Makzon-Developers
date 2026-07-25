@@ -200,8 +200,14 @@ const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }
 
       // 3. Parties (Customers & Vendors)
       const partyMap = new Map();
-      (customerData || []).forEach((c: any) => partyMap.set(c.id, { ...c, is_customer: true }));
-      (vendorData || []).forEach((v: any) => partyMap.set(v.id, v));
+      (customerData || []).forEach((c: any) => {
+        const key = c.name ? c.name.trim().toUpperCase() : c.id;
+        partyMap.set(key, { ...c, is_customer: true });
+      });
+      (vendorData || []).forEach((v: any) => {
+        const key = v.name ? v.name.trim().toUpperCase() : v.id;
+        partyMap.set(key, v);
+      });
 
       Array.from(partyMap.values()).forEach((party: any) => {
         const name = party.name || '';

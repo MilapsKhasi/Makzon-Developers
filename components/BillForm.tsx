@@ -268,10 +268,12 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
     const partyMap = new Map();
     (legacyCustomers || []).forEach((c: any) => {
-      partyMap.set(c.id, { ...c, party_type: c.party_type || 'customer', is_customer: true });
+      const key = c.name ? c.name.trim().toUpperCase() : c.id;
+      partyMap.set(key, { ...c, party_type: c.party_type || 'customer', is_customer: true });
     });
     (vendorData || []).forEach((p: any) => {
-      partyMap.set(p.id, p);
+      const key = p.name ? p.name.trim().toUpperCase() : p.id;
+      partyMap.set(key, p);
     });
 
     const allParties = Array.from(partyMap.values());

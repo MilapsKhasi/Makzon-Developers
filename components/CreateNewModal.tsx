@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   FileText, ShoppingCart, ArrowDownCircle, ArrowUpCircle, 
   Users, UserPlus, Package, FolderPlus, Building, 
-  BookOpen, Percent, Crown, Plus, X, Lock, ShieldAlert
+  BookOpen, Percent, Crown, Plus, X, Lock, ShieldAlert, Truck
 } from 'lucide-react';
 import Modal from './Modal';
 import SalesInvoiceForm from './SalesInvoiceForm';
@@ -11,6 +11,7 @@ import BillForm from './BillForm';
 import PaymentVoucherModal from './PaymentVoucherModal';
 import PartyForm from './PartyForm';
 import StockForm from './StockForm';
+import DeliveryChallanForm from './DeliveryChallanForm';
 
 interface CreateNewModalProps {
   isOpen: boolean;
@@ -22,7 +23,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
 
   // Active sub-form or premium modal
   const [activeView, setActiveView] = useState<
-    'list' | 'sales_invoice' | 'purchase_bill' | 'receive_payment' | 'make_payment' | 'customer' | 'vendor' | 'stock_item' | 'premium_notice'
+    'list' | 'sales_invoice' | 'purchase_bill' | 'receive_payment' | 'make_payment' | 'customer' | 'vendor' | 'stock_item' | 'delivery_challan' | 'premium_notice'
   >('list');
 
   const [premiumNotice, setPremiumNotice] = useState<{ title: string; edition: string }>({
@@ -54,11 +55,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
         setActiveView('stock_item');
         break;
       case 'delivery_challan':
-        setPremiumNotice({
-          title: 'Delivery Challan',
-          edition: 'Standard & Advanced Edition'
-        });
-        setActiveView('premium_notice');
+        setActiveView('delivery_challan');
         break;
       case 'purchase_order':
         setPremiumNotice({
@@ -172,18 +169,15 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
                 <button
                   type="button"
                   onClick={() => handleSelectOption('delivery_challan')}
-                  className="flex items-center justify-between p-3 rounded-lg border border-amber-200/60 dark:border-amber-900/30 bg-amber-50/30 dark:bg-amber-950/10 hover:bg-amber-50 dark:hover:bg-amber-950/20 text-left transition-all cursor-pointer group"
+                  className="flex items-center justify-between p-3 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-900 hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 text-left transition-all cursor-pointer group"
                 >
                   <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
-                      <FileText className="w-4 h-4" />
+                    <div className="p-2 rounded-md bg-emerald-100/60 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                      <Truck className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="flex items-center space-x-1.5">
-                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Delivery Challan</h4>
-                        <span className="text-[10px]">👑</span>
-                      </div>
-                      <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Standard & Advanced Edition</p>
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400">Delivery Challan</h4>
+                      <p className="text-[10px] text-slate-400">Issue delivery dispatch note</p>
                     </div>
                   </div>
                 </button>
@@ -441,6 +435,15 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
               if (!isSaveAndNew) resetAll();
             }}
             onCancel={resetAll}
+          />
+        </Modal>
+      )}
+
+      {activeView === 'delivery_challan' && (
+        <Modal isOpen={true} onClose={resetAll} title="Create Delivery Challan" maxWidth="max-w-5xl">
+          <DeliveryChallanForm
+            onSubmit={handleFormSuccess}
+            onCancel={() => setActiveView('list')}
           />
         </Modal>
       )}

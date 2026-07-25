@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, History, Trash2, Edit, Package, Maximize2, Minimize2, Plus, TrendingUp, TrendingDown, Layers, ArrowDownLeft, ArrowUpRight, ArrowLeft } from 'lucide-react';
+import { Search, History, Trash2, Edit, Eye, Package, Maximize2, Minimize2, Plus, TrendingUp, TrendingDown, Layers, ArrowDownLeft, ArrowUpRight, ArrowLeft } from 'lucide-react';
 import { getActiveCompanyId, formatDate, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import StockForm from '../components/StockForm';
@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 
 const Stock = () => {
   const location = useLocation();
+  const cid = getActiveCompanyId();
   const [items, setItems] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,8 +98,12 @@ const Stock = () => {
   useEffect(() => {
     loadData();
     window.addEventListener('appSettingsChanged', loadData);
-    return () => window.removeEventListener('appSettingsChanged', loadData);
-  }, []);
+    window.addEventListener('stockUpdated', loadData);
+    return () => {
+      window.removeEventListener('appSettingsChanged', loadData);
+      window.removeEventListener('stockUpdated', loadData);
+    };
+  }, [cid]);
 
   const handleSaveItem = async (itemData: any, isSaveAndNew?: boolean) => {
     const cid = getActiveCompanyId();
@@ -268,9 +273,34 @@ const Stock = () => {
                     </div>
                     </div>
                     <div className="flex items-center space-x-1 sm:space-x-2">
-                    <button onClick={() => setIsFullScreen(!isFullScreen)} className="hidden sm:block p-2.5 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-slate-900 dark:hover:text-white shadow-sm">{isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}</button>
-                    <button onClick={() => { setEditingItem(selectedItem); setIsModalOpen(true); }} className="p-2.5 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-slate-900 dark:hover:text-white shadow-sm"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => setDeleteDialog({ isOpen: true, item: selectedItem })} className="p-2.5 text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-rose-500 shadow-sm"><Trash2 className="w-4 h-4" /></button>
+                      <button 
+                        onClick={() => { setEditingItem(selectedItem); setIsModalOpen(true); }} 
+                        title="Edit Stock Master"
+                        className="p-2.5 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-slate-900 dark:hover:text-white shadow-xs"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => document.getElementById('stock-movement-log')?.scrollIntoView({ behavior: 'smooth' })} 
+                        title="View Stock Movement Statement"
+                        className="p-2.5 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-slate-900 dark:hover:text-white shadow-xs"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => setIsFullScreen(!isFullScreen)} 
+                        title={isFullScreen ? "Exit Fullscreen" : "Fullscreen View"}
+                        className="hidden sm:block p-2.5 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-slate-900 dark:hover:text-white shadow-xs"
+                      >
+                        {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                      </button>
+                      <button 
+                        onClick={() => setDeleteDialog({ isOpen: true, item: selectedItem })} 
+                        title="Delete Stock Item"
+                        className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-lg shadow-xs"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                      </button>
                     </div>
                 </div>
                 
@@ -304,7 +334,7 @@ const Stock = () => {
                     </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-4" id="stock-movement-log">
                     <h4 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest flex items-center">
                         <History className="w-4 h-4 mr-2 text-slate-300 dark:text-slate-600" /> Stock Movement Log
                     </h4>

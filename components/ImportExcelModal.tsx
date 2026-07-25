@@ -40,6 +40,14 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
   const [conflicts, setConflicts] = useState<ConflictItem[]>([]);
   const [existingEntries, setExistingEntries] = useState<any[]>([]);
 
+  // Template Mismatch state
+  const [templateMismatch, setTemplateMismatch] = useState<{
+    detectedTab: TabType;
+    uploadedFile: File;
+  } | null>(null);
+
+  const pendingFileRef = useRef<File | null>(null);
+
   // Track if CSV template was downloaded per tab
   const [downloadedTabs, setDownloadedTabs] = useState<Record<TabType, boolean>>({
     customers: false,
@@ -53,7 +61,13 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
   // Reset state when tab changes or modal opens
   useEffect(() => {
     if (isOpen) {
-      resetTabState();
+      if (pendingFileRef.current) {
+        const fileToProcess = pendingFileRef.current;
+        pendingFileRef.current = null;
+        processUploadedFile(fileToProcess, activeTab);
+      } else {
+        resetTabState();
+      }
     }
   }, [isOpen, activeTab]);
 
@@ -66,6 +80,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
     setImportSuccess(false);
     setSuccessMessage('');
     setErrorMsg('');
+    setTemplateMismatch(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -118,37 +133,111 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
   // =========================================================================
   // Fetch Existing Entries for Duplicate Check
   // =========================================================================
-  const fetchExistingEntries = async (cid: string) => {
+  const fetchExistingEntries = async (cid: string, tab: TabType = activeTab) => {
     try {
-      if (activeTab === 'customers') {
+      if (tab === 'customers' || tab === 'vendors') {
         const [{ data: custs }, { data: vends }] = await Promise.all([
           supabase.from('customers').select('*').eq('company_id', cid).eq('is_deleted', false),
           supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false)
         ]);
         const map = new Map();
-        (custs || []).forEach((c: any) => map.set(c.id, c));
-        (vends || []).filter((v: any) => v.party_type === 'customer' || v.is_customer).forEach((v: any) => map.set(v.id, v));
+        (custs || []).forEach((c: any) => map.set(c.id, { ...c, _table: 'customers' }));
+        (vends || []).forEach((v: any) => map.set(v.id, { ...v, _table: 'vendors' }));
         return Array.from(map.values());
-      } else if (activeTab === 'vendors') {
-        const { data: vends } = await supabase.from('vendors').select('*').eq('company_id', cid).eq('is_deleted', false);
-        return (vends || []).filter((v: any) => v.party_type === 'vendor' || !v.is_customer);
-      } else if (activeTab === 'stock_items') {
+      } else if (tab === 'stock_items') {
         const { data: items } = await supabase.from('stock_items').select('*').eq('company_id', cid).eq('is_deleted', false);
-        return items || [];
-      } else if (activeTab === 'stock_groups') {
-        // Try stock_groups table, fallback to stock_items categories
+        return (items || []).map((i: any) => ({ ...i, _table: 'stock_items' }));
+      } else if (tab === 'stock_groups') {
         const { data: groups } = await supabase.from('stock_groups').select('*').eq('company_id', cid).eq('is_deleted', false);
-        if (groups && groups.length > 0) return groups;
+        if (groups && groups.length > 0) return groups.map((g: any) => ({ ...g, _table: 'stock_groups' }));
         
         const { data: items } = await supabase.from('stock_items').select('category').eq('company_id', cid).eq('is_deleted', false);
         const uniqueCategories = Array.from(new Set((items || []).map((i: any) => i.category).filter(Boolean)));
-        return uniqueCategories.map((cat, idx) => ({ id: `cat-${idx}`, name: cat }));
+        return uniqueCategories.map((cat, idx) => ({ id: `cat-${idx}`, name: cat, _table: 'stock_groups' }));
       }
       return [];
     } catch (err) {
       console.warn("Failed fetching existing entries for conflict detection:", err);
       return [];
     }
+  };
+
+  const TAB_LABELS: Record<TabType, { singular: string; plural: string; label: string }> = {
+    customers: { singular: 'Customer', plural: 'Customers', label: 'Customers' },
+    vendors: { singular: 'Vendor', plural: 'Vendors', label: 'Vendors' },
+    stock_items: { singular: 'Stock Item', plural: 'Stock Items', label: 'Stock Items' },
+    stock_groups: { singular: 'Stock Group', plural: 'Stock Groups', label: 'Stock Groups' },
+  };
+
+  const detectTemplateModule = (rawHeaderRow: any[], canonicalHeaders: string[]): TabType | null => {
+    if (!rawHeaderRow || rawHeaderRow.length === 0) return null;
+
+    const raw0 = String(rawHeaderRow[0] || '').trim().toLowerCase();
+    const raw1 = String(rawHeaderRow[1] || '').trim().toLowerCase();
+    const combined01 = `${raw0} ${raw1}`.trim();
+    const allRaw = rawHeaderRow.map(c => String(c || '').trim().toLowerCase());
+
+    // 1. Direct match on first column or combined header
+    if (
+      raw0 === 'customer' || raw0 === 'customers' || raw0.startsWith('customer') ||
+      raw0.startsWith('cust ') || raw0.startsWith('client') ||
+      combined01.includes('customer') || combined01.includes('client') ||
+      canonicalHeaders[0] === 'Customer Name'
+    ) {
+      return 'customers';
+    }
+
+    if (
+      raw0 === 'vendor' || raw0 === 'vendors' || raw0.startsWith('vendor') ||
+      raw0 === 'supplier' || raw0.startsWith('supplier') ||
+      combined01.includes('vendor') || combined01.includes('supplier') ||
+      canonicalHeaders[0] === 'Vendor Name'
+    ) {
+      return 'vendors';
+    }
+
+    if (
+      raw0 === 'item' || raw0 === 'items' || raw0.startsWith('item') ||
+      raw0 === 'product' || raw0.startsWith('product') ||
+      combined01.includes('item') || combined01.includes('product') ||
+      canonicalHeaders[0] === 'Item Name'
+    ) {
+      return 'stock_items';
+    }
+
+    if (
+      raw0 === 'group' || raw0 === 'groups' || raw0.startsWith('group') ||
+      raw0 === 'stock group' || raw0 === 'parent group' ||
+      combined01.includes('group') ||
+      canonicalHeaders[0] === 'Group Name'
+    ) {
+      return 'stock_groups';
+    }
+
+    // 2. Fallback check anywhere in headers
+    if (canonicalHeaders.includes('Customer Name') || allRaw.some(h => h.includes('customer'))) {
+      return 'customers';
+    }
+    if (canonicalHeaders.includes('Vendor Name') || allRaw.some(h => h.includes('vendor') || h.includes('supplier'))) {
+      return 'vendors';
+    }
+    if (
+      canonicalHeaders.includes('Item Name') || 
+      canonicalHeaders.includes('Purchase Rate') || 
+      canonicalHeaders.includes('Selling Price') ||
+      canonicalHeaders.includes('Opening Stock') ||
+      allRaw.some(h => h.includes('item') || h.includes('hsn') || h.includes('selling price') || h.includes('purchase rate'))
+    ) {
+      return 'stock_items';
+    }
+    if (
+      canonicalHeaders.includes('Group Name') ||
+      allRaw.some(h => h.includes('parent group') || h.includes('stock group'))
+    ) {
+      return 'stock_groups';
+    }
+
+    return null;
   };
 
   // Normalize string for fuzzy matching
@@ -304,10 +393,10 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
-    await processUploadedFile(selectedFile);
+    await processUploadedFile(selectedFile, activeTab);
   };
 
-  const processUploadedFile = async (selectedFile: File) => {
+  const processUploadedFile = async (selectedFile: File, currentTab: TabType = activeTab) => {
     setFile(selectedFile);
     setScanning(true);
     setErrorMsg('');
@@ -352,7 +441,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
         // Check adjacent cell combination
         if (cellVal2) {
           const combinedRaw = `${cellVal1} ${cellVal2}`;
-          const normalizedCombined = normalizeHeaderString(combinedRaw, activeTab);
+          const normalizedCombined = normalizeHeaderString(combinedRaw, currentTab);
           const lower1 = cellVal1.toLowerCase().replace(/[^a-z0-9]/g, '');
           const lower2 = cellVal2.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -371,7 +460,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
         }
 
         // Single column header
-        const normalizedSingle = normalizeHeaderString(cellVal1, activeTab);
+        const normalizedSingle = normalizeHeaderString(cellVal1, currentTab);
         colMappings.push({
           indices: [col],
           canonicalName: normalizedSingle
@@ -383,6 +472,17 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
 
       if (headers.length === 0) {
         throw new Error("Could not detect valid column headers in the uploaded file.");
+      }
+
+      // Intelligent Template Mismatch Detection
+      const detectedTab = detectTemplateModule(rawHeaderRow, headers);
+      if (detectedTab && detectedTab !== currentTab) {
+        setTemplateMismatch({
+          detectedTab,
+          uploadedFile: selectedFile,
+        });
+        setScanning(false);
+        return;
       }
 
       const dataRows: any[] = [];
@@ -413,48 +513,78 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
 
       // Fetch existing system entries to perform conflict check
       const cid = getActiveCompanyId();
-      const existing = await fetchExistingEntries(cid);
+      const existing = await fetchExistingEntries(cid, currentTab);
       setExistingEntries(existing);
 
-      // Identify conflicts
+      // Identify conflicts (both system entries & intra-file duplicates)
       const conflictList: ConflictItem[] = [];
+      const scannedSoFar: any[] = [...existing];
 
       dataRows.forEach((row, index) => {
         const matches: any[] = [];
 
-        if (activeTab === 'customers' || activeTab === 'vendors') {
+        if (currentTab === 'customers' || currentTab === 'vendors') {
           const rowName = cleanStr(getValue(row, ['Customer Name', 'Vendor Name', 'Name', 'Party Name', 'Account Name']));
           const rowPhone = cleanStr(getValue(row, ['Phone', 'Mobile', 'Contact', 'Phone Number']));
           const rowGst = cleanStr(getValue(row, ['GSTIN', 'GST', 'GST Number', 'GSTIN/UIN', 'GSTIN / UIN']));
 
-          existing.forEach((item: any) => {
+          scannedSoFar.forEach((item: any) => {
             const sysName = cleanStr(item.name);
             const sysPhone = cleanStr(item.phone);
             const sysGst = cleanStr(item.gstin);
 
-            if ((rowName && rowName === sysName) || (rowPhone && rowPhone === sysPhone && rowPhone.length >= 7) || (rowGst && rowGst === sysGst && rowGst.length >= 10)) {
+            if (
+              (rowName && rowName === sysName) ||
+              (rowPhone && rowPhone === sysPhone && rowPhone.length >= 7) ||
+              (rowGst && rowGst === sysGst && rowGst.length >= 10)
+            ) {
               matches.push(item);
             }
           });
-        } else if (activeTab === 'stock_items') {
+
+          if (rowName || rowPhone || rowGst) {
+            scannedSoFar.push({
+              id: `temp-row-${index}`,
+              name: getValue(row, ['Customer Name', 'Vendor Name', 'Name', 'Party Name', 'Account Name']),
+              phone: rowPhone,
+              gstin: rowGst,
+              _table: 'vendors'
+            });
+          }
+        } else if (currentTab === 'stock_items') {
           const rowName = cleanStr(getValue(row, ['Item Name', 'Name', 'Product Name', 'Item']));
 
-          existing.forEach((item: any) => {
+          scannedSoFar.forEach((item: any) => {
             const sysName = cleanStr(item.name);
-
             if (rowName && rowName === sysName) {
               matches.push(item);
             }
           });
-        } else if (activeTab === 'stock_groups') {
+
+          if (rowName) {
+            scannedSoFar.push({
+              id: `temp-row-${index}`,
+              name: getValue(row, ['Item Name', 'Name', 'Product Name', 'Item']),
+              _table: 'stock_items'
+            });
+          }
+        } else if (currentTab === 'stock_groups') {
           const rowName = cleanStr(getValue(row, ['Group Name', 'Name', 'Category', 'Group']));
 
-          existing.forEach((item: any) => {
+          scannedSoFar.forEach((item: any) => {
             const sysName = cleanStr(item.name);
             if (rowName && rowName === sysName) {
               matches.push(item);
             }
           });
+
+          if (rowName) {
+            scannedSoFar.push({
+              id: `temp-row-${index}`,
+              name: getValue(row, ['Group Name', 'Name', 'Category', 'Group']),
+              _table: 'stock_groups'
+            });
+          }
         }
 
         if (matches.length > 0) {
@@ -478,6 +608,27 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
     } finally {
       setScanning(false);
     }
+  };
+
+  const handleMismatchSwitchAndContinue = () => {
+    if (!templateMismatch) return;
+    const targetTab = templateMismatch.detectedTab;
+    const uploadedFile = templateMismatch.uploadedFile;
+
+    pendingFileRef.current = uploadedFile;
+    setTemplateMismatch(null);
+    setActiveTab(targetTab);
+  };
+
+  const handleMismatchCancel = () => {
+    setTemplateMismatch(null);
+    setFile(null);
+    setParsedHeaders([]);
+    setParsedRows([]);
+    setConflicts([]);
+    setExistingEntries([]);
+    setErrorMsg('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // Set resolution for a conflict item
@@ -519,6 +670,9 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
       let remappedCount = 0;
       let discardedCount = 0;
 
+      // Track newly created IDs for intra-file batch mapping
+      const batchCreatedIds = new Map<number, string>();
+
       // Conflict map for quick lookup by rowIndex
       const conflictMap = new Map<number, ConflictItem>();
       conflicts.forEach(c => conflictMap.set(c.importedRowIndex, c));
@@ -531,6 +685,13 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
         if (conflict && conflict.resolution === 'discard') {
           discardedCount++;
           continue;
+        }
+
+        // Resolve target ID if it points to a temp row from earlier in the batch
+        let realTargetId = conflict?.targetSystemId;
+        if (realTargetId && realTargetId.startsWith('temp-row-')) {
+          const tempIdx = parseInt(realTargetId.replace('temp-row-', ''), 10);
+          realTargetId = batchCreatedIds.get(tempIdx);
         }
 
         // Handle Customers
@@ -558,13 +719,17 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
             is_deleted: false
           };
 
-          if (conflict && conflict.resolution === 'remap' && conflict.targetSystemId) {
-            await safeSupabaseSave('vendors', payload, conflict.targetSystemId);
-            try { await safeSupabaseSave('customers', payload, conflict.targetSystemId); } catch (e) {}
+          if (conflict && conflict.resolution === 'remap' && realTargetId) {
+            const matchObj = conflict.matchingSystemEntries.find(m => m.id === conflict.targetSystemId);
+            const targetTable = matchObj?._table === 'customers' ? 'customers' : 'vendors';
+            await safeSupabaseSave(targetTable, payload, realTargetId);
+            batchCreatedIds.set(i, realTargetId);
             remappedCount++;
           } else {
-            await safeSupabaseSave('vendors', payload);
-            try { await safeSupabaseSave('customers', payload); } catch (e) {}
+            // Save ONLY to 'vendors' table (our primary unified parties table)
+            const res = await safeSupabaseSave('vendors', payload);
+            const savedId = res?.data?.[0]?.id;
+            if (savedId) batchCreatedIds.set(i, savedId);
             newCount++;
           }
         }
@@ -594,11 +759,16 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
             is_deleted: false
           };
 
-          if (conflict && conflict.resolution === 'remap' && conflict.targetSystemId) {
-            await safeSupabaseSave('vendors', payload, conflict.targetSystemId);
+          if (conflict && conflict.resolution === 'remap' && realTargetId) {
+            const matchObj = conflict.matchingSystemEntries.find(m => m.id === conflict.targetSystemId);
+            const targetTable = matchObj?._table === 'customers' ? 'customers' : 'vendors';
+            await safeSupabaseSave(targetTable, payload, realTargetId);
+            batchCreatedIds.set(i, realTargetId);
             remappedCount++;
           } else {
-            await safeSupabaseSave('vendors', payload);
+            const res = await safeSupabaseSave('vendors', payload);
+            const savedId = res?.data?.[0]?.id;
+            if (savedId) batchCreatedIds.set(i, savedId);
             newCount++;
           }
         }
@@ -626,11 +796,14 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
             is_deleted: false
           };
 
-          if (conflict && conflict.resolution === 'remap' && conflict.targetSystemId) {
-            await supabase.from('stock_items').update(payload).eq('id', conflict.targetSystemId);
+          if (conflict && conflict.resolution === 'remap' && realTargetId) {
+            await supabase.from('stock_items').update(payload).eq('id', realTargetId);
+            batchCreatedIds.set(i, realTargetId);
             remappedCount++;
           } else {
-            await supabase.from('stock_items').insert([{ ...payload, company_id: cid }]);
+            const { data: inserted } = await supabase.from('stock_items').insert([{ ...payload, company_id: cid }]).select();
+            const savedId = inserted?.[0]?.id;
+            if (savedId) batchCreatedIds.set(i, savedId);
             newCount++;
           }
         }
@@ -652,14 +825,17 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
           };
 
           try {
-            if (conflict && conflict.resolution === 'remap' && conflict.targetSystemId) {
-              await supabase.from('stock_groups').update(payload).eq('id', conflict.targetSystemId);
+            if (conflict && conflict.resolution === 'remap' && realTargetId) {
+              await supabase.from('stock_groups').update(payload).eq('id', realTargetId);
+              batchCreatedIds.set(i, realTargetId);
               remappedCount++;
             } else {
-              const { error } = await supabase.from('stock_groups').insert([{ ...payload, company_id: cid }]);
+              const { data: inserted, error } = await supabase.from('stock_groups').insert([{ ...payload, company_id: cid }]).select();
               if (error) {
                 console.warn("stock_groups table insert note:", error.message);
               }
+              const savedId = inserted?.[0]?.id;
+              if (savedId) batchCreatedIds.set(i, savedId);
               newCount++;
             }
           } catch (e) {
@@ -675,6 +851,8 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
 
       // Trigger app refresh
       window.dispatchEvent(new Event('appSettingsChanged'));
+      window.dispatchEvent(new Event('partiesUpdated'));
+      window.dispatchEvent(new Event('stockUpdated'));
       if (onSuccess) onSuccess();
 
     } catch (err: any) {
@@ -1054,6 +1232,48 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
                 )}
               </button>
             )}
+          </div>
+        )}
+
+        {/* Smart Template Mismatch Confirmation Dialog */}
+        {templateMismatch && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-200">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-200 dark:border-amber-800">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Wrong Template Detected
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
+                    It looks like you've uploaded a <strong className="text-slate-900 dark:text-white font-semibold">{TAB_LABELS[templateMismatch.detectedTab].singular}</strong> template while you are currently in the <strong className="text-slate-900 dark:text-white font-semibold">{TAB_LABELS[activeTab].label}</strong> import tab.
+                  </p>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
+                    Would you like to switch to the <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">{TAB_LABELS[templateMismatch.detectedTab].label}</strong> tab and continue importing this file?
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleMismatchCancel}
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleMismatchSwitchAndContinue}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-md transition-all flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <span>Switch &amp; Continue</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

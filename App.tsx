@@ -17,6 +17,7 @@ import Payments from './pages/Payments';
 import Auth from './pages/Auth';
 import Companies from './pages/Companies';
 import UserActivity from './pages/UserActivity';
+import DeliveryChallans from './pages/DeliveryChallans';
 import SplashScreen from './components/SplashScreen';
 import { CompanyProvider, useCompany } from './context/CompanyContext';
 import { supabase } from './lib/supabase';
@@ -297,6 +298,7 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
           <Route path="receive-payment" element={<Payments typeFilter="Receipt" />} />
           <Route path="make-payment" element={<Payments typeFilter="Payment" />} />
           <Route path="sales" element={<Sales />} />
+          <Route path="delivery-challan" element={<DeliveryChallans />} />
           <Route path="parties" element={<Parties />} />
           <Route path="cashbook" element={<Cashbook />} />
           <Route path="additional-charges" element={<AdditionalCharges />} />

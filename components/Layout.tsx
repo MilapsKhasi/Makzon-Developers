@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet, Truck } from 'lucide-react';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import Logo from './Logo';
@@ -292,6 +292,7 @@ const Layout = () => {
       items: [
         { icon: FileText, label: 'Sales Invoices', path: '/sales' },
         { icon: ArrowDownCircle, label: 'Receive Payment', path: '/receive-payment' },
+        { icon: Truck, label: 'Delivery Challan', path: '/delivery-challan' },
       ]
     },
     {
@@ -554,6 +555,11 @@ const Layout = () => {
         <ImportExcelModal
           isOpen={isImportExcelOpen}
           onClose={() => setIsImportExcelOpen(false)}
+          onSuccess={() => {
+            window.dispatchEvent(new Event('appSettingsChanged'));
+            window.dispatchEvent(new Event('partiesUpdated'));
+            window.dispatchEvent(new Event('stockUpdated'));
+          }}
         />
         <CreateNewModal
           isOpen={isCreateNewModalOpen}

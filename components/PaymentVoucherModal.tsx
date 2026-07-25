@@ -62,10 +62,12 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
 
       const partyMap = new Map();
       (custs || []).forEach((c: any) => {
-        partyMap.set(c.id, { ...c, party_type: c.party_type || 'customer', is_customer: true });
+        const key = c.name ? c.name.trim().toUpperCase() : c.id;
+        partyMap.set(key, { ...c, party_type: c.party_type || 'customer', is_customer: true });
       });
       (vends || []).forEach((v: any) => {
-        partyMap.set(v.id, v);
+        const key = v.name ? v.name.trim().toUpperCase() : v.id;
+        partyMap.set(key, v);
       });
 
       const allParties = Array.from(partyMap.values());
