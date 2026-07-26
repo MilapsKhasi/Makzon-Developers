@@ -90,6 +90,7 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
   const [vendors, setVendors] = useState<any[]>([]);
 
   const [partyBills, setPartyBills] = useState<any[]>([]);
+  const [alreadyPaidBillIds, setAlreadyPaidBillIds] = useState<string[]>([]);
   const [selectedBillIds, setSelectedBillIds] = useState<string[]>([]);
   const [loadingBills, setLoadingBills] = useState(false);
 
@@ -106,6 +107,7 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
     const fetchPartyBills = async () => {
       if (!partyName) {
         setPartyBills([]);
+        setAlreadyPaidBillIds([]);
         setSelectedBillIds([]);
         return;
       }
@@ -124,19 +126,29 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
         
         if (error) throw error;
 
-        // Filter out standalone payment/receipt vouchers and match the selected party name
+        // Collect all linked bill IDs from existing vouchers (excluding current editing voucher)
+        const paidIds = (data || [])
+          .filter((item: any) => {
+            const isVoucher = item.items && (item.items as any).is_payment_voucher === true;
+            return isVoucher && (!editingVoucher || item.id !== editingVoucher.id);
+          })
+          .flatMap((v: any) => v.items?.linked_bills || []);
+
+        setAlreadyPaidBillIds(paidIds);
+
+        // Filter out standalone payment/receipt vouchers and match the selected party name (case-insensitive)
+        const pNameLower = partyName.trim().toLowerCase();
         const bills = (data || []).filter((item: any) => {
           const isVoucher = item.items && (item.items as any).is_payment_voucher === true;
-          const nameMatch = voucherType === 'Receipt' 
-            ? item.customer_name === partyName 
-            : item.vendor_name === partyName;
+          const itemParty = (voucherType === 'Receipt' ? item.customer_name : item.vendor_name) || '';
+          const nameMatch = itemParty.trim().toLowerCase() === pNameLower;
           return !isVoucher && nameMatch;
         });
 
         setPartyBills(bills);
         
         // If we are editing, restore selected bills if they match current party and type
-        if (editingVoucher && editingVoucher.party_name === partyName && editingVoucher.type === voucherType) {
+        if (editingVoucher && editingVoucher.party_name?.trim().toLowerCase() === pNameLower && editingVoucher.type === voucherType) {
           const linked = editingVoucher.raw?.items?.linked_bills || [];
           setSelectedBillIds(linked);
         } else {
@@ -167,15 +179,14 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
     });
   };
 
-  const alreadyPaidBillIds = useMemo(() => {
-    return vouchers
-      .filter((v: Voucher) => v.type === voucherType && (!editingVoucher || v.id !== editingVoucher.id))
-      .flatMap((v: Voucher) => v.raw?.items?.linked_bills || []);
-  }, [vouchers, voucherType, editingVoucher]);
-
   const totalOutstanding = useMemo(() => {
     return partyBills
-      .filter((b: any) => !alreadyPaidBillIds.includes(b.id))
+      .filter((b: any) => {
+        const hasDirectPayment = (Array.isArray(b.items?.payment_details) && b.items.payment_details.length > 0) ||
+                                 (Array.isArray(b.payment_details) && b.payment_details.length > 0);
+        const isLinked = alreadyPaidBillIds.includes(b.id);
+        return !hasDirectPayment && !isLinked;
+      })
       .reduce((sum: number, b: any) => sum + (Number(b.grand_total) || 0), 0);
   }, [partyBills, alreadyPaidBillIds]);
 
@@ -470,6 +481,14 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
         await syncTransactionToCashbook(res.data[0]);
       }
 
+      // Update linked bills status to 'Paid'
+      if (selectedBillIds.length > 0) {
+        await supabase
+          .from(table)
+          .update({ status: 'Paid' })
+          .in('id', selectedBillIds);
+      }
+
       window.dispatchEvent(new Event('appSettingsChanged'));
       if (!isSaveAndNew) {
         setIsModalOpen(false);
@@ -499,6 +518,11 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
 
       if (voucher.raw) {
         await unsyncTransactionFromCashbook(voucher.raw);
+
+        const linked = voucher.raw.items?.linked_bills || [];
+        if (linked.length > 0) {
+          await supabase.from(table).update({ status: 'Pending' }).in('id', linked);
+        }
       }
 
       window.dispatchEvent(new Event('appSettingsChanged'));
@@ -527,7 +551,7 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
   const pageTitle = isReceiptMode 
     ? 'Receive Payment' 
     : isPaymentMode 
-      ? 'Make Payment' 
+      ? 'Pay Supplier' 
       : 'Payments & Receipts';
 
   const pageSubtitle = isReceiptMode
@@ -539,7 +563,7 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
   const newButtonLabel = isReceiptMode
     ? 'Receive Payment'
     : isPaymentMode
-      ? 'Make Payment'
+      ? 'Pay Supplier'
       : 'New Voucher';
 
   const partyColumnHeader = isReceiptMode
@@ -701,7 +725,7 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
             : isReceiptMode 
               ? "Receive Payment Entry" 
               : isPaymentMode 
-                ? "Make Payment Entry" 
+                ? "Pay Supplier Entry" 
                 : "Payment & Receipt Voucher Entry"
         }
         maxWidth="max-w-xl"
@@ -832,7 +856,9 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
               ) : (
                 <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-100 dark:divide-slate-800">
                   {partyBills.map((b: any) => {
-                    const isAlreadyPaid = alreadyPaidBillIds.includes(b.id);
+                    const hasDirectPayment = (Array.isArray(b.items?.payment_details) && b.items.payment_details.length > 0) ||
+                                             (Array.isArray(b.payment_details) && b.payment_details.length > 0);
+                    const isAlreadyPaid = hasDirectPayment || alreadyPaidBillIds.includes(b.id);
                     const isChecked = isAlreadyPaid || selectedBillIds.includes(b.id);
                     const billNo = b.invoice_number || b.bill_number;
                     return (

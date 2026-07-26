@@ -73,7 +73,7 @@ export const NewVoucherDropdown: React.FC<NewVoucherDropdownProps> = ({
             className="w-full text-left px-3.5 py-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 flex items-center gap-2.5 font-medium transition-colors cursor-pointer"
           >
             <ArrowUpCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-            <span>Make Payment</span>
+            <span>Pay Supplier</span>
           </button>
         </div>
       )}

@@ -29,6 +29,7 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
   const [customers, setCustomers] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
   const [partyBills, setPartyBills] = useState<any[]>([]);
+  const [alreadyPaidBillIds, setAlreadyPaidBillIds] = useState<string[]>([]);
   const [selectedBillIds, setSelectedBillIds] = useState<string[]>([]);
   const [loadingBills, setLoadingBills] = useState(false);
 
@@ -47,6 +48,7 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
     setAmount('');
     setDescription('');
     setSelectedBillIds([]);
+    setAlreadyPaidBillIds([]);
     setPartyBills([]);
   };
 
@@ -93,6 +95,7 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
   useEffect(() => {
     if (!isOpen || !partyName) {
       setPartyBills([]);
+      setAlreadyPaidBillIds([]);
       setSelectedBillIds([]);
       return;
     }
@@ -112,11 +115,19 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
 
         if (error) throw error;
 
+        // Extract already paid bill IDs from all payment/receipt vouchers
+        const paidIds = (data || [])
+          .filter((item: any) => item.items && (item.items as any).is_payment_voucher === true)
+          .flatMap((v: any) => v.items?.linked_bills || []);
+
+        setAlreadyPaidBillIds(paidIds);
+
+        // Filter bills for the selected party using case-insensitive matching
+        const pNameLower = partyName.trim().toLowerCase();
         const bills = (data || []).filter((item: any) => {
           const isVoucher = item.items && (item.items as any).is_payment_voucher === true;
-          const nameMatch = voucherType === 'Receipt'
-            ? item.customer_name === partyName
-            : item.vendor_name === partyName;
+          const itemParty = (voucherType === 'Receipt' ? item.customer_name : item.vendor_name) || '';
+          const nameMatch = itemParty.trim().toLowerCase() === pNameLower;
           return !isVoucher && nameMatch;
         });
 
@@ -148,8 +159,15 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
   };
 
   const totalOutstanding = useMemo(() => {
-    return partyBills.reduce((sum: number, b: any) => sum + (Number(b.grand_total) || 0), 0);
-  }, [partyBills]);
+    return partyBills
+      .filter((b: any) => {
+        const hasDirectPayment = (Array.isArray(b.items?.payment_details) && b.items.payment_details.length > 0) ||
+                                 (Array.isArray(b.payment_details) && b.payment_details.length > 0);
+        const isLinked = alreadyPaidBillIds.includes(b.id);
+        return !hasDirectPayment && !isLinked;
+      })
+      .reduce((sum: number, b: any) => sum + (Number(b.grand_total) || 0), 0);
+  }, [partyBills, alreadyPaidBillIds]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,6 +260,14 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
         await syncTransactionToCashbook(res.data[0]);
       }
 
+      // Update linked bills status to 'Paid'
+      if (selectedBillIds.length > 0) {
+        await supabase
+          .from(table)
+          .update({ status: 'Paid' })
+          .in('id', selectedBillIds);
+      }
+
       window.dispatchEvent(new Event('appSettingsChanged'));
 
       if (onSuccess) onSuccess();
@@ -262,7 +288,7 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={voucherType === 'Receipt' ? 'New Receive Payment Voucher' : 'New Make Payment Voucher'}
+      title={voucherType === 'Receipt' ? 'New Receive Payment Voucher' : 'New Pay Supplier Voucher'}
       maxWidth="max-w-xl"
     >
       <form onSubmit={handleSave} className="p-6 space-y-4">
@@ -389,22 +415,39 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
             ) : (
               <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-100 dark:divide-slate-800">
                 {partyBills.map((b) => {
-                  const isChecked = selectedBillIds.includes(b.id);
+                  const hasDirectPayment = (Array.isArray(b.items?.payment_details) && b.items.payment_details.length > 0) ||
+                                           (Array.isArray(b.payment_details) && b.payment_details.length > 0);
+                  const isPaid = hasDirectPayment || alreadyPaidBillIds.includes(b.id);
+                  const isChecked = isPaid || selectedBillIds.includes(b.id);
                   const billNo = b.invoice_number || b.bill_number;
                   return (
                     <label
                       key={b.id}
-                      className={`flex items-center justify-between py-2 px-2.5 rounded-md text-[11px] transition-colors cursor-pointer ${isChecked ? 'bg-primary/5 dark:bg-primary/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
+                      className={`flex items-center justify-between py-2 px-2.5 rounded-md text-[11px] transition-colors ${
+                        isPaid
+                          ? 'opacity-65 bg-slate-100/50 dark:bg-slate-800/20 cursor-not-allowed'
+                          : isChecked
+                            ? 'bg-primary/5 dark:bg-primary/10 cursor-pointer'
+                            : 'hover:bg-slate-100 dark:hover:bg-slate-800/50 cursor-pointer'
+                      }`}
                     >
                       <div className="flex items-center space-x-2.5">
                         <input
                           type="checkbox"
                           checked={isChecked}
-                          onChange={() => handleBillToggle(b.id)}
-                          className="w-3.5 h-3.5 rounded border-slate-300 text-primary focus:ring-primary dark:bg-slate-800 dark:border-slate-700"
+                          disabled={isPaid}
+                          onChange={() => !isPaid && handleBillToggle(b.id)}
+                          className="w-3.5 h-3.5 rounded border-slate-300 text-primary focus:ring-primary dark:bg-slate-800 dark:border-slate-700 disabled:opacity-75 disabled:text-emerald-600"
                         />
                         <div className="flex flex-col">
-                          <span className="font-semibold text-slate-900 dark:text-white font-mono">{billNo}</span>
+                          <div className="flex items-center space-x-1.5">
+                            <span className="font-semibold text-slate-900 dark:text-white font-mono">{billNo}</span>
+                            {isPaid && (
+                              <span className="px-1.5 py-0.5 text-[8px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 rounded">
+                                Paid
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[9px] text-slate-400">{formatDate(b.date)}</span>
                         </div>
                       </div>

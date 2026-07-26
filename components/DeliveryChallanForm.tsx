@@ -203,8 +203,8 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
     setSaving(true);
     try {
       // Auto register party & stock items
-      await ensureParty(cid, partyName, 'customer');
-      await ensureStockItems(cid, validItems);
+      await ensureParty(partyName, 'customer', cid);
+      await ensureStockItems(validItems, cid);
 
       const itemsPayload = {
         is_delivery_challan: true,
@@ -251,28 +251,11 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Bar Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-lg">
-            <Truck className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              {initialData ? 'Edit Delivery Challan' : 'Create Delivery Challan'}
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Generate goods transport dispatch note for party
-            </p>
-          </div>
-        </div>
-      </div>
-
+    <div className="space-y-6 p-5">
       {/* Basic Info Fields */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-md border border-slate-200/80 dark:border-slate-800">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
             Customer / Party Name *
           </label>
           <div className="relative">
@@ -283,7 +266,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
               value={partyName}
               onChange={(e) => setPartyName(e.target.value)}
               placeholder="Select or enter party name"
-              className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+              className="w-full h-10 pl-9 pr-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-slate-300 dark:focus:border-slate-600"
             />
             <datalist id="dc-parties-list">
               {parties.map(p => (
@@ -294,7 +277,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
             Challan Number *
           </label>
           <div className="relative">
@@ -304,13 +287,13 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
               value={challanNumber}
               onChange={(e) => setChallanNumber(e.target.value)}
               placeholder={loadingChallanNo ? 'Generating...' : 'e.g. DC-001'}
-              className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-medium text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+              className="w-full h-10 pl-9 pr-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-mono font-medium text-slate-900 dark:text-white focus:outline-none focus:border-slate-300 dark:focus:border-slate-600"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
             Challan Date *
           </label>
           <div className="relative">
@@ -319,16 +302,16 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+              className="w-full h-10 pl-9 pr-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:border-slate-300 dark:focus:border-slate-600"
             />
           </div>
         </div>
       </div>
 
       {/* Transport & Vehicle Details */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-3">
-        <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center space-x-2">
-          <Truck className="w-3.5 h-3.5 text-emerald-500" />
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-md border border-slate-200/80 dark:border-slate-800 space-y-3">
+        <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center space-x-2">
+          <Truck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           <span>Dispatch & Transport Details</span>
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -341,7 +324,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
               value={vehicleNo}
               onChange={(e) => setVehicleNo(e.target.value)}
               placeholder="e.g. MH-12-AB-1234"
-              className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+              className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-300 dark:focus:border-slate-600"
             />
           </div>
 
@@ -354,7 +337,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
               value={driverName}
               onChange={(e) => setDriverName(e.target.value)}
               placeholder="e.g. Ramesh / 9876543210"
-              className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+              className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-300 dark:focus:border-slate-600"
             />
           </div>
 
@@ -367,7 +350,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
               value={ewayBillNo}
               onChange={(e) => setEwayBillNo(e.target.value)}
               placeholder="e.g. 123456789012"
-              className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+              className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-300 dark:focus:border-slate-600"
             />
           </div>
 
@@ -380,22 +363,22 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
               value={dispatchDestination}
               onChange={(e) => setDispatchDestination(e.target.value)}
               placeholder="e.g. Warehouse 3, Pune"
-              className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+              className="w-full h-10 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-300 dark:focus:border-slate-600"
             />
           </div>
         </div>
       </div>
 
       {/* Dispatched Stock Items Table */}
-      <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
+      <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900">
         <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
             Dispatched Items & Quantities
           </span>
           <button
             type="button"
             onClick={addLineItem}
-            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-medium flex items-center space-x-1"
+            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-medium flex items-center space-x-1 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Item</span>
@@ -507,7 +490,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
       {/* Summary & Notes */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
             Dispatch Notes / Terms
           </label>
           <textarea
@@ -515,11 +498,11 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="e.g. Goods delivered in good condition. Subject to verification at destination."
-            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-300 dark:focus:border-slate-600"
           />
         </div>
 
-        <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+        <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-md border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
           <div className="flex justify-between text-slate-600 dark:text-slate-400">
             <span>Taxable Subtotal</span>
             <span className="font-mono font-medium text-slate-900 dark:text-white">
@@ -547,7 +530,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          className="h-10 px-4 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
         >
           Cancel
         </button>
@@ -556,7 +539,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
           type="button"
           onClick={() => handleSave(true, false)}
           disabled={saving}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium flex items-center space-x-1.5 transition-colors shadow-sm"
+          className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-xs font-medium flex items-center space-x-2 transition-colors shadow-xs"
         >
           <Printer className="w-4 h-4" />
           <span>Save & Print</span>
@@ -566,7 +549,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
           type="button"
           onClick={() => handleSave(false, false)}
           disabled={saving}
-          className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 transition-colors shadow-sm"
+          className="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-semibold flex items-center space-x-2 transition-colors shadow-xs"
         >
           <Save className="w-4 h-4" />
           <span>{saving ? 'Saving...' : 'Save Delivery Challan'}</span>

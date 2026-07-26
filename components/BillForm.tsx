@@ -34,7 +34,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     duties_and_taxes: [], 
     round_off: 0, 
     grand_total: 0, 
-    status: 'Paid',
+    status: 'Pending',
     description: '',
     payment_details: null
   });

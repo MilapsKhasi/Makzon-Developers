@@ -219,7 +219,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
                       <ArrowUpCircle className="w-4 h-4 text-rose-500" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Make Payment</h4>
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Pay Supplier</h4>
                       <p className="text-[10px] text-slate-400">Record payment to vendor</p>
                     </div>
                   </div>

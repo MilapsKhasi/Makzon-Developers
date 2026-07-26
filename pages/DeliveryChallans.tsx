@@ -162,7 +162,7 @@ export const DeliveryChallans = () => {
               setEditingChallan(null);
               setIsModalOpen(true);
             }}
-            className="px-5 py-2 rounded-md font-medium text-xs bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center justify-center space-x-1.5 w-full sm:w-auto shadow-sm"
+            className="h-10 px-5 rounded-md font-medium text-xs bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center justify-center space-x-2 w-full sm:w-auto shadow-xs"
           >
             <Plus className="w-4 h-4" />
             <span>New Delivery Challan</span>
@@ -183,53 +183,53 @@ export const DeliveryChallans = () => {
       ) : (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium capitalize block mb-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-6 shadow-xs">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium capitalize block mb-1.5">
                 Total Delivery Challans
               </span>
-              <span className="text-[24px] font-bold text-slate-900 dark:text-white font-mono">
+              <span className="text-[26px] font-semibold text-slate-900 dark:text-white font-mono">
                 {filtered.length}
               </span>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium capitalize block mb-1">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-6 shadow-xs">
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium capitalize block mb-1.5">
                 Total Dispatched Goods Value
               </span>
-              <span className="text-[24px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+              <span className="text-[26px] font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
                 ₹{totalDispatchedValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </span>
             </div>
           </div>
 
           {/* Search Bar & Table */}
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by challan number, customer name, or vehicle number..."
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-emerald-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs"
+                className="w-full h-10 pl-10 pr-4 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-400 dark:focus:border-slate-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs"
               />
             </div>
 
-            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-xs overflow-x-auto">
+            <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900 shadow-xs overflow-x-auto">
               <table className="clean-table min-w-[850px] w-full text-xs">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    <th className="w-12 text-center py-3">Sr</th>
-                    <th className="py-3">Date</th>
-                    <th className="py-3">Challan #</th>
-                    <th className="py-3">Customer Name</th>
-                    <th className="py-3">Vehicle / Transport</th>
-                    <th className="text-right py-3">Subtotal</th>
-                    <th className="text-right py-3">Total Value</th>
-                    <th className="text-center py-3">Status</th>
-                    <th className="text-center py-3">Actions</th>
+                  <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest">
+                    <th className="w-12 text-center py-3.5">Sr</th>
+                    <th className="py-3.5 capitalize">Date</th>
+                    <th className="py-3.5 capitalize">Challan #</th>
+                    <th className="py-3.5 capitalize">Customer Name</th>
+                    <th className="py-3.5 capitalize">Vehicle / Transport</th>
+                    <th className="text-right py-3.5 capitalize">Subtotal</th>
+                    <th className="text-right py-3.5 capitalize">Total Value</th>
+                    <th className="text-center py-3.5 capitalize">Status</th>
+                    <th className="text-center py-3.5 capitalize">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -246,32 +246,32 @@ export const DeliveryChallans = () => {
                           key={c.id}
                           className="hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors"
                         >
-                          <td className="text-center text-slate-400">{i + 1}</td>
-                          <td className="text-slate-600 dark:text-slate-300 font-medium">
+                          <td className="text-center py-3.5 text-slate-400">{i + 1}</td>
+                          <td className="py-3.5 text-slate-600 dark:text-slate-300 font-medium">
                             {formatDate(c.date)}
                           </td>
-                          <td className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          <td className="py-3.5 font-mono font-bold text-emerald-600 dark:text-emerald-400">
                             {c.invoice_number || c.bill_number}
                           </td>
-                          <td className="font-semibold text-slate-900 dark:text-white">
+                          <td className="py-3.5 font-semibold text-slate-900 dark:text-white">
                             {c.customer_name || c.vendor_name}
                           </td>
-                          <td className="text-slate-600 dark:text-slate-300 font-mono text-[11px]">
+                          <td className="py-3.5 text-slate-600 dark:text-slate-300 font-mono text-[11px]">
                             {veh}
                           </td>
-                          <td className="text-right font-mono text-slate-600 dark:text-slate-400">
+                          <td className="py-3.5 text-right font-mono text-slate-600 dark:text-slate-400">
                             ₹{(Number(c.total_without_gst) || 0).toFixed(2)}
                           </td>
-                          <td className="text-right font-mono font-bold text-slate-900 dark:text-white">
+                          <td className="py-3.5 text-right font-mono font-bold text-slate-900 dark:text-white">
                             ₹{(Number(c.grand_total) || 0).toFixed(2)}
                           </td>
-                          <td className="text-center">
-                            <span className="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                          <td className="py-3.5 text-center">
+                            <span className="inline-block px-2.5 py-1 text-[10px] font-medium rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
                               {c.status || 'Dispatched'}
                             </span>
                           </td>
-                          <td className="text-center">
-                            <div className="flex items-center justify-center space-x-1.5">
+                          <td className="py-3.5 text-center">
+                            <div className="flex items-center justify-center space-x-1">
                               <button
                                 onClick={() => setPrintModalChallan(c)}
                                 className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-md transition-all"

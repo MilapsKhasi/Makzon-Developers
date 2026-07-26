@@ -299,7 +299,7 @@ const Layout = () => {
       groupName: 'Purchases',
       items: [
         { icon: ShoppingCart, label: 'Purchase Bill', path: '/bills' },
-        { icon: ArrowUpCircle, label: 'Make Payment', path: '/make-payment' },
+        { icon: ArrowUpCircle, label: 'Pay Supplier', path: '/make-payment' },
       ]
     },
     {

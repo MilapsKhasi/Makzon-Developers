@@ -165,7 +165,7 @@ const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }
               category: 'payments',
               title: `Payment ${billNo}`,
               subtitle: `To: ${vendName}`,
-              detail: desc || 'Make Payment Entry',
+              detail: desc || 'Pay Supplier Entry',
               date: item.date,
               amount: amt,
               badge: 'Payment',

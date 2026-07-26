@@ -16,7 +16,7 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<any>({
     date: '', displayDate: '', bill_number: '', vendor_name: '',
-    total_without_gst: 0, total_gst: 0, round_off: 0, grand_total: 0, status: 'Paid'
+    total_without_gst: 0, total_gst: 0, round_off: 0, grand_total: 0, status: 'Pending'
   });
 
   useEffect(() => {
@@ -30,7 +30,7 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
         total_gst: initialData.total_gst || 0,
         round_off: initialData.round_off || 0,
         grand_total: initialData.grand_total || 0,
-        status: initialData.status || 'Paid'
+        status: initialData.status || 'Pending'
       });
     }
   }, [initialData]);
