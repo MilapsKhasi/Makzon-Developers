@@ -107,7 +107,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
     <>
       {/* 1. Main Grouped Selection Modal */}
       {activeView === 'list' && (
-        <Modal isOpen={isOpen} onClose={resetAll} title="Create New" maxWidth="max-w-2xl">
+        <Modal isOpen={isOpen} onClose={resetAll} title="Quick Create" maxWidth="max-w-2xl">
           <div className="p-5 space-y-5">
             {/* Sales Group */}
             <div>
@@ -375,7 +375,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
 
       {/* 2. Sub-Modals for creation */}
       {activeView === 'sales_invoice' && (
-        <Modal isOpen={true} onClose={resetAll} title="New Sales Invoice" maxWidth="max-w-4xl">
+        <Modal isOpen={true} onClose={resetAll} title="New Sales Invoice" maxWidth="max-w-5xl">
           <SalesInvoiceForm
             onSubmit={(inv, shouldPrint, isSaveAndNew) => {
               if (!isSaveAndNew) resetAll();
@@ -387,7 +387,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
       )}
 
       {activeView === 'purchase_bill' && (
-        <Modal isOpen={true} onClose={resetAll} title="New Purchase Bill" maxWidth="max-w-4xl">
+        <Modal isOpen={true} onClose={resetAll} title="New Purchase Bill" maxWidth="max-w-5xl">
           <BillForm
             onSubmit={(bill, isSaveAndNew) => {
               if (!isSaveAndNew) resetAll();
@@ -414,7 +414,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
           isOpen={true}
           onClose={resetAll}
           title={activeView === 'customer' ? 'Register New Customer' : 'Register New Vendor'}
-          maxWidth="max-w-2xl"
+          maxWidth="max-w-5xl"
         >
           <PartyForm
             defaultType={activeView}
@@ -428,7 +428,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
       )}
 
       {activeView === 'stock_item' && (
-        <Modal isOpen={true} onClose={resetAll} title="Add New Stock Item" maxWidth="max-w-2xl">
+        <Modal isOpen={true} onClose={resetAll} title="Add New Stock Item" maxWidth="max-w-5xl">
           <StockForm
             onSubmit={(item, isSaveAndNew) => {
               window.dispatchEvent(new Event('appSettingsChanged'));

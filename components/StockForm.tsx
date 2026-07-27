@@ -9,11 +9,12 @@ interface StockFormProps {
   initialData?: any;
   onSubmit: (item: any, isSaveAndNew?: boolean) => void;
   onCancel: () => void;
+  focusStockField?: boolean;
 }
 
 const TAX_RATES = [0, 5, 12, 18, 28];
 
-const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }) => {
+const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel, focusStockField }) => {
   const [loading, setLoading] = useState(false);
   const [isSaveAndNew, setIsSaveAndNew] = useState(false);
   const [formData, setFormData] = useState<any>({
@@ -22,6 +23,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
 
   const currencySymbol = CURRENCIES[getAppSettings().currency as keyof typeof CURRENCIES]?.symbol || '₹';
   const firstInputRef = useRef<HTMLInputElement>(null);
+  const stockInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialData) {
@@ -39,10 +41,15 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
       });
     }
     setTimeout(() => {
-      firstInputRef.current?.focus();
-      firstInputRef.current?.select();
-    }, 100);
-  }, [initialData]);
+      if (focusStockField && stockInputRef.current) {
+        stockInputRef.current.focus();
+        stockInputRef.current.select();
+      } else {
+        firstInputRef.current?.focus();
+        firstInputRef.current?.select();
+      }
+    }, 150);
+  }, [initialData, focusStockField]);
 
   const handleInputChange = (field: string, value: any) => { 
     if (field === 'name') {
@@ -141,6 +148,7 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel }
                     <div className="space-y-1.5">
                         <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Opening Stock</label>
                         <input 
+                            ref={stockInputRef}
                             type="number" 
                             step="any" 
                             value={toDisplayValue(formData.in_stock)} 

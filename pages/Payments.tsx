@@ -29,6 +29,8 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
   const location = useLocation();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalReceivables, setTotalReceivables] = useState(0);
+  const [totalPayables, setTotalPayables] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; voucher: Voucher | null }>({ isOpen: false, voucher: null });
   const [searchQuery, setSearchQuery] = useState('');
@@ -202,20 +204,56 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
       let receipts: Voucher[] = [];
       let payments: Voucher[] = [];
 
-      // 1. Fetch Receipts (from sales_invoices where is_payment_voucher = true)
+      let receiptsQuery = supabase
+        .from('sales_invoices')
+        .select('*')
+        .eq('company_id', cid)
+        .eq('is_deleted', false);
+
+      let paymentsQuery = supabase
+        .from('purchase_bills')
+        .select('*')
+        .eq('company_id', cid)
+        .eq('is_deleted', false);
+
+      if (dateRange.startDate && dateRange.endDate) {
+        receiptsQuery = receiptsQuery.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
+        paymentsQuery = paymentsQuery.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
+      }
+
+      const [{ data: receiptsData }, { data: paymentsData }] = await Promise.all([
+        receiptsQuery,
+        paymentsQuery
+      ]);
+
+      // Calculate Total Receivables and Payables
+      const allPaymentVouchers = [
+        ...(paymentsData || []).map((b: any) => normalizeBill(b)).filter((b: any) => b?.items_raw?.is_payment_voucher === true),
+        ...(receiptsData || []).map((s: any) => normalizeBill(s)).filter((s: any) => s?.items_raw?.is_payment_voucher === true)
+      ];
+
+      const actualSales = (receiptsData || []).map((s: any) => normalizeBill(s)).filter((s: any) => s && !s?.items_raw?.is_payment_voucher);
+      const actualBills = (paymentsData || []).map((b: any) => normalizeBill(b)).filter((b: any) => b && !b?.items_raw?.is_payment_voucher);
+
+      const getInvoiceOutstanding = (inv: any, isSale: boolean) => {
+        if (inv.status === 'Paid') return 0;
+        const linkedVouchers = allPaymentVouchers.filter(v => {
+          const isCorrectType = isSale ? (v.customer_name || v.type === 'Sale') : (v.vendor_name || v.type === 'Purchase');
+          return isCorrectType && v.items_raw?.linked_bills?.includes(inv.id);
+        });
+        const totalPaidOnInv = linkedVouchers.reduce((sum, v) => {
+          const pDetails = v.items_raw?.payment_details;
+          const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
+          return sum + pArray.reduce((s: number, p: any) => s + (Number(p.payment_amount) || 0), 0);
+        }, 0);
+        return Math.max(0, Number(inv.grand_total || 0) - totalPaidOnInv);
+      };
+
+      setTotalReceivables(actualSales.reduce((sum: number, inv: any) => sum + getInvoiceOutstanding(inv, true), 0));
+      setTotalPayables(actualBills.reduce((sum: number, inv: any) => sum + getInvoiceOutstanding(inv, false), 0));
+
+      // 1. Process Receipts
       if (!typeFilter || typeFilter === 'Receipt') {
-        let receiptsQuery = supabase
-          .from('sales_invoices')
-          .select('*')
-          .eq('company_id', cid)
-          .eq('is_deleted', false);
-
-        if (dateRange.startDate && dateRange.endDate) {
-          receiptsQuery = receiptsQuery.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
-        }
-
-        const { data: receiptsData } = await receiptsQuery;
-
         receipts = (receiptsData || [])
           .filter((item: any) => item.items && (item.items as any).is_payment_voucher === true)
           .map((item: any) => {
@@ -238,20 +276,8 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
           });
       }
 
-      // 2. Fetch Payments (from purchase_bills where is_payment_voucher = true)
+      // 2. Process Payments
       if (!typeFilter || typeFilter === 'Payment') {
-        let paymentsQuery = supabase
-          .from('purchase_bills')
-          .select('*')
-          .eq('company_id', cid)
-          .eq('is_deleted', false);
-
-        if (dateRange.startDate && dateRange.endDate) {
-          paymentsQuery = paymentsQuery.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
-        }
-
-        const { data: paymentsData } = await paymentsQuery;
-
         payments = (paymentsData || [])
           .filter((item: any) => item.items && (item.items as any).is_payment_voucher === true)
           .map((item: any) => {
@@ -572,6 +598,18 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
       ? 'Vendor Name'
       : 'Party Name';
 
+  const totalReceived = useMemo(() => {
+    return filteredVouchers
+      .filter(v => v.type === 'Receipt')
+      .reduce((sum, v) => sum + Number(v.amount || 0), 0);
+  }, [filteredVouchers]);
+
+  const totalPaid = useMemo(() => {
+    return filteredVouchers
+      .filter(v => v.type === 'Payment')
+      .reduce((sum, v) => sum + Number(v.amount || 0), 0);
+  }, [filteredVouchers]);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
@@ -596,7 +634,7 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
         </div>
         <button
           onClick={() => { resetForm(); setIsModalOpen(true); }}
-          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm"
+          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
         >
           <Plus className="w-4 h-4 mr-2" /> {newButtonLabel}
         </button>
@@ -616,6 +654,100 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
           </div>
           <DateFilter ref={dateFilterRef} onFilterChange={setDateRange} />
         </div>
+
+        {/* Summary Cards */}
+        {isReceiptMode ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Received</p>
+                <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
+                  {formatCurrency(totalReceived)}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <ArrowDownCircle className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Receivables</p>
+                <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">
+                  {formatCurrency(totalReceivables)}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <CreditCard className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+        ) : isPaymentMode ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Paid</p>
+                <p className="text-xl font-bold font-mono text-rose-600 dark:text-rose-400 mt-1">
+                  {formatCurrency(totalPaid)}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-lg bg-rose-100/80 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                <ArrowUpCircle className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Payables</p>
+                <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">
+                  {formatCurrency(totalPayables)}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-lg bg-rose-100/80 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                <CreditCard className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+            <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Received</p>
+                <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">{formatCurrency(totalReceived)}</p>
+              </div>
+              <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <ArrowDownCircle className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Receivables</p>
+                <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">{formatCurrency(totalReceivables)}</p>
+              </div>
+              <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <CreditCard className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Paid</p>
+                <p className="text-xl font-bold font-mono text-rose-600 dark:text-rose-400 mt-1">{formatCurrency(totalPaid)}</p>
+              </div>
+              <div className="w-9 h-9 rounded-lg bg-rose-100/80 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                <ArrowUpCircle className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Payables</p>
+                <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">{formatCurrency(totalPayables)}</p>
+              </div>
+              <div className="w-9 h-9 rounded-lg bg-rose-100/80 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                <CreditCard className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="h-64 flex items-center justify-center">
@@ -728,7 +860,7 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
                 ? "Pay Supplier Entry" 
                 : "Payment & Receipt Voucher Entry"
         }
-        maxWidth="max-w-xl"
+        maxWidth="max-w-5xl"
       >
         <form onSubmit={handleSaveVoucher} className="p-6 space-y-4">
           {!typeFilter && (

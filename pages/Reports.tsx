@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, ChevronDown, FileText, Loader2 } from 'lucide-react';
+import { Search, ChevronDown, FileText, Loader2, BarChart3, FileDown } from 'lucide-react';
 import DateFilter from '../components/DateFilter';
 import ExportModal from '../components/ExportModal';
 import { getActiveCompanyId, formatDate, normalizeBill } from '../utils/helpers';
@@ -168,80 +168,90 @@ const Reports = () => {
     <div className="space-y-6 animate-in fade-in duration-300">
       <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} onExport={handleExport} reportName={`${activeTab}`} />
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
-        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Reports Engine</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4 print:hidden">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <BarChart3 className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Reports Engine</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Comprehensive business intelligence, tax audit registers, and summary ledgers</p>
+          </div>
+        </div>
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+          <DateFilter onFilterChange={setDateRange} />
           <button 
             onClick={() => setIsExportModalOpen(true)}
             disabled={reportTableData.length === 0}
-            className="px-6 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs font-medium capitalize hover:bg-slate-50 dark:hover:bg-slate-700/50 disabled:opacity-50 shadow-sm transition-all text-slate-600 dark:text-slate-300 w-full sm:w-auto"
+            className="w-full sm:w-auto px-4 py-2.5 bg-primary text-white font-medium text-sm hover:bg-primary-dark rounded-md shadow-sm transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer"
           >
-            Export Statement
+            <FileDown className="w-4 h-4 mr-2" /> Export Statement
           </button>
-          <DateFilter onFilterChange={setDateRange} />
         </div>
       </div>
 
-      <div className="relative print:hidden">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-4 h-4" />
-        <input 
-          type="text" 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Filter report data..." 
-          className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm" 
-        />
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-6 min-h-[500px]">
-        <div className="w-full lg:w-64 flex lg:flex-col overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 gap-1 print:hidden scrollbar-none">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`whitespace-nowrap lg:whitespace-normal text-left px-4 py-2 text-xs font-medium transition-none capitalize rounded-md shrink-0 lg:shrink ${
-                activeTab === tab ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold shadow-md' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-6 space-y-4">
+        <div className="relative print:hidden">
+          <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+          <input 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Filter report data..." 
+            className="w-full max-w-md pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg text-xs outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+          />
         </div>
 
-        <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden flex flex-col shadow-sm print:border-none">
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30 flex justify-between items-center">
-             <h3 className="text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest">{activeTab} Register</h3>
-             <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize">{reportTableData.length} entries matching</span>
+        <div className="flex flex-col lg:flex-row gap-6 min-h-[500px]">
+          <div className="w-full lg:w-64 flex lg:flex-col overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 gap-1 print:hidden scrollbar-none">
+            {tabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`whitespace-nowrap lg:whitespace-normal text-left px-4 py-2.5 text-xs font-semibold transition-all capitalize rounded-lg shrink-0 lg:shrink ${
+                  activeTab === tab ? 'bg-primary text-white font-bold shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
 
-          <div className="flex-1 overflow-auto bg-white dark:bg-slate-900 custom-scrollbar overflow-x-auto">
-            {loading ? (
-                <div className="h-full flex items-center justify-center py-24"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
-            ) : reportTableData.length === 0 ? (
+          <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden flex flex-col print:border-none">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex justify-between items-center">
+              <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{activeTab} Register</h3>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">{reportTableData.length} entries matching</span>
+            </div>
+
+            <div className="flex-1 overflow-auto bg-white dark:bg-slate-900 custom-scrollbar overflow-x-auto">
+              {loading ? (
+                <div className="h-full flex items-center justify-center py-24"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+              ) : reportTableData.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center py-32 text-center">
-                    <FileText className="w-12 h-12 text-slate-100 dark:text-slate-800 mb-4" />
-                    <p className="text-slate-300 dark:text-slate-700 italic text-xs capitalize">Report set is currently empty.</p>
+                  <FileText className="w-12 h-12 text-slate-200 dark:text-slate-800 mb-4" />
+                  <p className="text-slate-400 dark:text-slate-600 italic text-xs capitalize">Report set is currently empty.</p>
                 </div>
-            ) : (
-                <table className="clean-table w-full text-[11px] min-w-[800px]">
-                  <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                    <tr>
+              ) : (
+                <table className="w-full text-left border-collapse text-xs min-w-[800px]">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                       {Object.keys(reportTableData[0] || {}).map(h => (
-                          <th key={h} className="py-3 px-4 text-left whitespace-nowrap font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{h}</th>
+                        <th key={h} className="py-3.5 px-4 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                     {reportTableData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                      <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
                         {Object.values(row).map((val: any, vIdx) => (
-                          <td key={vIdx} className="py-3 px-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-300">{val}</td>
+                          <td key={vIdx} className="py-3 px-4 whitespace-nowrap font-mono">{val}</td>
                         ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Plus, Printer, Edit, Trash2, Truck, Calendar, FileText } from 'lucide-react';
-import { formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
+import { Search, Plus, Printer, Edit, Trash2, Truck, Loader2 } from 'lucide-react';
+import { formatDate, formatCurrency, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import DeliveryChallanForm from '../components/DeliveryChallanForm';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -37,25 +37,57 @@ export const DeliveryChallans = () => {
     if (!cid) return;
 
     try {
-      let query = supabase
+      // 1. Fetch from delivery_challans table
+      let dcQuery = supabase
+        .from('delivery_challans')
+        .select('*')
+        .eq('company_id', cid)
+        .eq('is_deleted', false);
+
+      if (dateRange.startDate && dateRange.endDate) {
+        dcQuery = dcQuery.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
+      }
+
+      const { data: dcRes } = await dcQuery.order('date', { ascending: false });
+
+      // 2. Fetch legacy from sales_invoices table
+      let salesQuery = supabase
         .from('sales_invoices')
         .select('*')
         .eq('company_id', cid)
         .eq('is_deleted', false);
 
       if (dateRange.startDate && dateRange.endDate) {
-        query = query.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
+        salesQuery = salesQuery.gte('date', dateRange.startDate).lte('date', dateRange.endDate);
       }
 
-      const { data, error } = await query.order('date', { ascending: false });
-      if (error) throw error;
+      const { data: salesRes } = await salesQuery.order('date', { ascending: false });
 
-      // Filter to only include delivery challans (by items_raw.is_delivery_challan or invoice_number starting with DC-)
-      const dcData = (data || [])
+      const dcMapped = (dcRes || []).map((item: any) => ({
+        ...item,
+        invoice_number: item.challan_number || item.invoice_number,
+        bill_number: item.challan_number || item.invoice_number,
+        grand_total: item.total_goods_value ?? item.grand_total ?? item.total_without_gst ?? 0,
+        total_without_gst: item.total_goods_value ?? item.total_without_gst ?? 0
+      })).map(normalizeBill);
+
+      const legacyDcMapped = (salesRes || [])
         .map(normalizeBill)
         .filter((b: any) => b && (b.items_raw?.is_delivery_challan === true || b.invoice_number?.startsWith('DC-')));
 
-      setChallans(dcData);
+      const mergedMap = new Map();
+      dcMapped.forEach((item: any) => mergedMap.set(item.id, item));
+      legacyDcMapped.forEach((item: any) => {
+        if (!mergedMap.has(item.id)) {
+          mergedMap.set(item.id, item);
+        }
+      });
+
+      const finalChallans = Array.from(mergedMap.values()).sort((a: any, b: any) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      setChallans(finalChallans);
     } catch (err: any) {
       console.error('Error loading delivery challans:', err.message || err);
     } finally {
@@ -81,22 +113,27 @@ export const DeliveryChallans = () => {
   const filtered = challans.filter(c => {
     const search = searchQuery.toLowerCase();
     const customer = c.customer_name?.toLowerCase() || '';
-    const num = c.invoice_number?.toLowerCase() || c.bill_number?.toLowerCase() || '';
+    const num = c.invoice_number?.toLowerCase() || c.bill_number?.toLowerCase() || c.challan_number?.toLowerCase() || '';
     const veh = c.items_raw?.vehicle_no?.toLowerCase() || '';
     return customer.includes(search) || num.includes(search) || veh.includes(search);
   });
 
   const confirmDelete = async () => {
     if (!deleteDialog.challan) return;
-    const { error } = await supabase
+    const item = deleteDialog.challan;
+
+    await supabase
+      .from('delivery_challans')
+      .update({ is_deleted: true })
+      .eq('id', item.id);
+
+    await supabase
       .from('sales_invoices')
       .update({ is_deleted: true })
-      .eq('id', deleteDialog.challan.id);
+      .eq('id', item.id);
 
-    if (!error) {
-      loadData();
-      window.dispatchEvent(new Event('appSettingsChanged'));
-    }
+    loadData();
+    window.dispatchEvent(new Event('appSettingsChanged'));
     setDeleteDialog({ isOpen: false, challan: null });
   };
 
@@ -144,176 +181,161 @@ export const DeliveryChallans = () => {
       />
 
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize flex items-center space-x-2">
-            <Truck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <span>Delivery Challan Ledger</span>
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Manage goods transport, dispatch notes, and delivery challans
-          </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <Truck className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Delivery Challan Ledger</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Manage goods transport, dispatch notes, and delivery challans</p>
+          </div>
         </div>
-
-        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-          <DateFilter ref={dateFilterRef} onFilterChange={setDateRange} />
-          <button
-            onClick={() => {
-              setEditingChallan(null);
-              setIsModalOpen(true);
-            }}
-            className="h-10 px-5 rounded-md font-medium text-xs bg-emerald-600 hover:bg-emerald-700 text-white transition-colors flex items-center justify-center space-x-2 w-full sm:w-auto shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Delivery Challan</span>
-          </button>
-        </div>
-      </div>
-
-      {!loading && challans.length === 0 ? (
-        <EmptyState
-          title="No Delivery Challans"
-          message="Issue delivery challans to track goods dispatched to customers before invoicing."
-          actionLabel="Create Delivery Challan"
-          onAction={() => {
+        <button
+          onClick={() => {
             setEditingChallan(null);
             setIsModalOpen(true);
           }}
-        />
-      ) : (
-        <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-6 shadow-xs">
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium capitalize block mb-1.5">
-                Total Delivery Challans
-              </span>
-              <span className="text-[26px] font-semibold text-slate-900 dark:text-white font-mono">
-                {filtered.length}
-              </span>
-            </div>
+          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
+        >
+          <Plus className="w-4 h-4 mr-2" /> New Delivery Challan
+        </button>
+      </div>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-6 shadow-xs">
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium capitalize block mb-1.5">
-                Total Dispatched Goods Value
-              </span>
-              <span className="text-[26px] font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
-                ₹{totalDispatchedValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-              </span>
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-4 sm:p-6 space-y-4">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full md:max-w-xs shrink-0">
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+            <input 
+              ref={searchInputRef}
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search challan, customer, or vehicle..." 
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg text-xs outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+          <DateFilter ref={dateFilterRef} onFilterChange={setDateRange} />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+          <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Challans</p>
+              <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">{filtered.length}</p>
+            </div>
+            <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Truck className="w-4 h-4" />
             </div>
           </div>
 
-          {/* Search Bar & Table */}
-          <div className="space-y-6">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by challan number, customer name, or vehicle number..."
-                className="w-full h-10 pl-10 pr-4 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-400 dark:focus:border-slate-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs"
-              />
+          <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Dispatched Goods Value</p>
+              <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">{formatCurrency(totalDispatchedValue)}</p>
             </div>
-
-            <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900 shadow-xs overflow-x-auto">
-              <table className="clean-table min-w-[850px] w-full text-xs">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest">
-                    <th className="w-12 text-center py-3.5">Sr</th>
-                    <th className="py-3.5 capitalize">Date</th>
-                    <th className="py-3.5 capitalize">Challan #</th>
-                    <th className="py-3.5 capitalize">Customer Name</th>
-                    <th className="py-3.5 capitalize">Vehicle / Transport</th>
-                    <th className="text-right py-3.5 capitalize">Subtotal</th>
-                    <th className="text-right py-3.5 capitalize">Total Value</th>
-                    <th className="text-center py-3.5 capitalize">Status</th>
-                    <th className="text-center py-3.5 capitalize">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={9} className="text-center py-16 text-slate-400 font-medium text-xs">
-                        Loading delivery challans...
-                      </td>
-                    </tr>
-                  ) : filtered.map((c, i) => {
-                      const veh = c.items_raw?.vehicle_no || '—';
-                      return (
-                        <tr
-                          key={c.id}
-                          className="hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors"
-                        >
-                          <td className="text-center py-3.5 text-slate-400">{i + 1}</td>
-                          <td className="py-3.5 text-slate-600 dark:text-slate-300 font-medium">
-                            {formatDate(c.date)}
-                          </td>
-                          <td className="py-3.5 font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                            {c.invoice_number || c.bill_number}
-                          </td>
-                          <td className="py-3.5 font-semibold text-slate-900 dark:text-white">
-                            {c.customer_name || c.vendor_name}
-                          </td>
-                          <td className="py-3.5 text-slate-600 dark:text-slate-300 font-mono text-[11px]">
-                            {veh}
-                          </td>
-                          <td className="py-3.5 text-right font-mono text-slate-600 dark:text-slate-400">
-                            ₹{(Number(c.total_without_gst) || 0).toFixed(2)}
-                          </td>
-                          <td className="py-3.5 text-right font-mono font-bold text-slate-900 dark:text-white">
-                            ₹{(Number(c.grand_total) || 0).toFixed(2)}
-                          </td>
-                          <td className="py-3.5 text-center">
-                            <span className="inline-block px-2.5 py-1 text-[10px] font-medium rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
-                              {c.status || 'Dispatched'}
-                            </span>
-                          </td>
-                          <td className="py-3.5 text-center">
-                            <div className="flex items-center justify-center space-x-1">
-                              <button
-                                onClick={() => setPrintModalChallan(c)}
-                                className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-md transition-all"
-                                title="Print Delivery Challan"
-                              >
-                                <Printer className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setEditingChallan(c);
-                                  setIsModalOpen(true);
-                                }}
-                                className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-all"
-                                title="Edit Challan"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setDeleteDialog({ isOpen: true, challan: c })}
-                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md transition-all"
-                                title="Delete Challan"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  {!loading && filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={9} className="text-center py-16 text-slate-400 italic font-medium text-xs">
-                        No delivery challans found matching filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+            <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <Truck className="w-4 h-4" />
             </div>
           </div>
-        </>
-      )}
+        </div>
+
+        {loading ? (
+          <div className="h-64 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            title="No Delivery Challans"
+            message="Issue delivery challans to track goods dispatched to customers before invoicing."
+            actionLabel="Create Delivery Challan"
+            onAction={() => {
+              setEditingChallan(null);
+              setIsModalOpen(true);
+            }}
+          />
+        ) : (
+          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-lg">
+            <table className="w-full text-left border-collapse min-w-[850px]">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  <th className="py-3.5 px-4 w-12 text-center">Sr</th>
+                  <th className="py-3.5 px-4">Date</th>
+                  <th className="py-3.5 px-4">Challan #</th>
+                  <th className="py-3.5 px-4">Customer Name</th>
+                  <th className="py-3.5 px-4">Vehicle / Transport</th>
+                  <th className="py-3.5 px-4 text-right">Subtotal</th>
+                  <th className="py-3.5 px-4 text-right">Total Value</th>
+                  <th className="py-3.5 px-4 text-center">Status</th>
+                  <th className="py-3.5 px-4 text-center w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[12px] text-slate-700 dark:text-slate-300">
+                {filtered.map((c, i) => {
+                  const veh = c.items_raw?.vehicle_no || '—';
+                  return (
+                    <tr
+                      key={c.id}
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all cursor-pointer"
+                    >
+                      <td className="py-3 px-4 text-center text-slate-400 font-mono">{i + 1}</td>
+                      <td className="py-3 px-4 font-mono">{formatDate(c.date)}</td>
+                      <td className="py-3 px-4 font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                        {c.invoice_number || c.bill_number}
+                      </td>
+                      <td className="py-3 px-4 font-medium text-slate-900 dark:text-white capitalize">
+                        {c.customer_name || c.vendor_name}
+                      </td>
+                      <td className="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                        {veh}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400">
+                        {formatCurrency(c.total_without_gst)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">
+                        {formatCurrency(c.grand_total)}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
+                          {c.status || 'Dispatched'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center space-x-1">
+                          <button
+                            onClick={() => setPrintModalChallan(c)}
+                            className="p-1 text-slate-400 hover:text-emerald-600 rounded transition-colors"
+                            title="Print Delivery Challan"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingChallan(c);
+                              setIsModalOpen(true);
+                            }}
+                            className="p-1 text-slate-400 hover:text-primary rounded transition-colors"
+                            title="Edit Challan"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteDialog({ isOpen: true, challan: c })}
+                            className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
+                            title="Delete Challan"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Print Modal */}
       <InvoicePrintModal

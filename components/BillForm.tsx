@@ -14,9 +14,10 @@ interface BillFormProps {
   initialData?: any;
   onSubmit: (bill: any, isSaveAndNew?: boolean) => void;
   onCancel: () => void;
+  focusQtyField?: boolean;
 }
 
-const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) => {
+const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel, focusQtyField }) => {
   const cid = getActiveCompanyId();
   const appSettings = getAppSettings();
   const today = new Date().toISOString().split('T')[0];
@@ -99,10 +100,19 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo]);
 
-  // Auto focus & select first field on mount
+  // Auto focus & select first field or qty field on mount
   useEffect(() => {
     const timer = setTimeout(() => {
       if (formRef.current) {
+        if (focusQtyField) {
+          const qtyInp = formRef.current.querySelector<HTMLInputElement>('[data-focus="qty-input"]');
+          if (qtyInp) {
+            qtyInp.focus();
+            qtyInp.select();
+            return;
+          }
+        }
+
         const focusableInputs = formRef.current.querySelectorAll<
           HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
         >('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
@@ -119,9 +129,9 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
           }
         }
       }
-    }, 100);
+    }, 150);
     return () => clearTimeout(timer);
-  }, []);
+  }, [focusQtyField]);
 
   const [vendors, setVendors] = useState<any[]>([]);
   const [stockItems, setStockItems] = useState<any[]>([]);
@@ -450,11 +460,11 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
 
   return (
     <div className="bg-white dark:bg-slate-900 w-full flex flex-col">
-      <Modal isOpen={vendorModal.isOpen} onClose={() => setVendorModal({ ...vendorModal, isOpen: false })} title="Party Master" maxWidth="max-w-4xl">
+      <Modal isOpen={vendorModal.isOpen} onClose={() => setVendorModal({ ...vendorModal, isOpen: false })} title="Party Master" maxWidth="max-w-5xl">
         <PartyForm defaultType="vendor" initialData={vendorModal.initialData} prefilledName={vendorModal.prefilledName} onSubmit={(v) => { setVendorModal({ ...vendorModal, isOpen: false }); loadDependencies(); }} onCancel={() => setVendorModal({ ...vendorModal, isOpen: false })} />
       </Modal>
 
-      <Modal isOpen={itemModal.isOpen} onClose={() => setItemModal({ isOpen: false, rowIdx: null })} title="Create New Item" maxWidth="max-w-3xl">
+      <Modal isOpen={itemModal.isOpen} onClose={() => setItemModal({ isOpen: false, rowIdx: null })} title="Create New Item" maxWidth="max-w-5xl">
         <StockForm onSubmit={handleSaveNewStockItem} onCancel={() => setItemModal({ isOpen: false, rowIdx: null })} />
       </Modal>
 
@@ -565,7 +575,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel }) 
                                     </td>
                                     <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={toDisplayValue(it.hsnCode)} onChange={e => updateItemRow(idx, 'hsnCode', e.target.value)} className="w-full h-10 px-3 outline-none bg-transparent font-mono text-slate-400 dark:text-slate-500" /></td>
                                     <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={toDisplayValue(it.rate)} onChange={e => updateItemRow(idx, 'rate', e.target.value)} className="w-full h-10 px-2 text-right outline-none font-mono font-bold dark:text-white bg-transparent" /></td>
-                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input value={toDisplayValue(it.qty)} onChange={e => updateItemRow(idx, 'qty', e.target.value)} className="w-full h-10 px-2 text-center outline-none font-mono font-bold dark:text-white bg-transparent" /></td>
+                                    <td className="p-0 border-r border-slate-100 dark:border-slate-800"><input data-focus={idx === 0 ? "qty-input" : undefined} value={toDisplayValue(it.qty)} onChange={e => updateItemRow(idx, 'qty', e.target.value)} className="w-full h-10 px-2 text-center outline-none font-mono font-bold dark:text-white bg-transparent" /></td>
                                     <td className="p-0 border-r border-slate-100 dark:border-slate-800">
                                         <div className="flex items-center h-10">
                                             <input type="text" value={toDisplayValue(it.discount)} onChange={e => updateItemRow(idx, 'discount', e.target.value)} className="w-1/2 h-full px-2 text-right outline-none bg-transparent dark:text-white border-r border-slate-100 dark:border-slate-800" />

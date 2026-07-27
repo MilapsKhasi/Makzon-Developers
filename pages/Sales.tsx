@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Loader2, Edit, Trash2, Plus, Printer } from 'lucide-react';
-import { formatDate, getActiveCompanyId, normalizeBill, unsyncTransactionFromCashbook } from '../utils/helpers';
+import { Search, Loader2, Edit, Trash2, Plus, Printer, TrendingUp } from 'lucide-react';
+import { formatDate, formatCurrency, getActiveCompanyId, normalizeBill, unsyncTransactionFromCashbook } from '../utils/helpers';
 import Modal from '../components/Modal';
 import SalesInvoiceForm from '../components/SalesInvoiceForm';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -212,7 +212,7 @@ const Sales = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingInvoice(null); }} title={editingInvoice ? "Update Sale Invoice" : "Generate Sale Invoice"} maxWidth="max-w-6xl">
+      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingInvoice(null); }} title={editingInvoice ? "Update Sale Invoice" : "Generate Sale Invoice"} maxWidth="max-w-5xl">
         <SalesInvoiceForm initialData={editingInvoice} onSubmit={(inv, shouldPrint, isSaveAndNew) => { if (!isSaveAndNew) { setIsModalOpen(false); setEditingInvoice(null); } loadData(); if (shouldPrint && inv) setPrintModalInvoice(inv); }} onCancel={() => { setIsModalOpen(false); setEditingInvoice(null); }} />
       </Modal>
 
@@ -224,113 +224,129 @@ const Sales = () => {
         message={`Permanently archive sale invoice ${deleteDialog.invoice?.invoice_number}? (Press Shift + D again to confirm, or Esc to cancel)`} 
       />
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Sales Ledger</h1>
-        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-          <DateFilter ref={dateFilterRef} onFilterChange={setDateRange} />
-          {invoices.length > 0 && (
-            <button 
-                ref={newSaleBtnRef}
-                onClick={() => { setEditingInvoice(null); setIsModalOpen(true); }}
-                className={`px-8 py-2 rounded-md font-medium text-sm transition-none capitalize border-2 w-full sm:w-auto ${headerFocusIdx === 2 ? 'border-slate-900 dark:border-white ring-2 ring-link ring-offset-2' : 'border-transparent bg-link text-white hover:bg-link/90'}`}
-            >
-                <Plus className="w-4 h-4 mr-2 inline" /> New Sale
-            </button>
-          )}
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Sales Ledger</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Generate sales invoices, track revenue, and manage customer accounts</p>
+          </div>
         </div>
+        <button
+          ref={newSaleBtnRef}
+          onClick={() => { setEditingInvoice(null); setIsModalOpen(true); }}
+          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
+        >
+          <Plus className="w-4 h-4 mr-2" /> New Sale
+        </button>
       </div>
 
-      {!loading && invoices.length === 0 ? (
-        <EmptyState 
-          title="No Sales Invoices" 
-          message="Start generating revenue records by creating your first sales invoice. Track payments and customer history efficiently!" 
-          actionLabel="Generate New Sale" 
-          onAction={() => { setEditingInvoice(null); setIsModalOpen(true); }} 
-        />
-      ) : (
-        <>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 inline-block w-full sm:w-auto min-w-[240px]">
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium capitalize tracking-tight mb-1 block">Total Revenue</span>
-                <span className="text-[24px] font-medium text-link font-mono">
-                    {filtered.reduce((acc, i) => acc + Number(i.grand_total || 0), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
-            </div>
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-4 sm:p-6 space-y-4">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full md:max-w-xs shrink-0">
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+            <input 
+              ref={searchInputRef}
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search invoice or customer..." 
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg text-xs outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+          <DateFilter ref={dateFilterRef} onFilterChange={setDateRange} />
+        </div>
 
-            <div className="space-y-4">
-                <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-4 h-4" />
-                <input 
-                    ref={searchInputRef}
-                    type="text" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search invoice number or customer name..." 
-                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 shadow-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-                </div>
-                
-                <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900 overflow-x-auto">
-                <table className="clean-table min-w-[800px]">
-                    <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest">
-                        <th className="w-16">Sr</th>
-                        <th className="capitalize">Date</th>
-                        <th className="capitalize">Invoice #</th>
-                        <th className="capitalize">Customer</th>
-                        <th className="text-right capitalize">Taxable</th>
-                        <th className="text-right capitalize">Gst</th>
-                        <th className="text-right capitalize">Net Total</th>
-                        <th className="text-center capitalize">Manage</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {loading ? (
-                        <tr><td colSpan={8} className="text-center py-20 text-slate-400 dark:text-slate-500 font-medium tracking-widest text-[10px] capitalize">Loading register...</td></tr>
-                    ) : filtered.map((inv, i) => {
-                        const isHighlighted = inv.id === highlightedId;
-                        return (
-                          <tr 
-                              key={inv.id} 
-                              ref={(el) => {
-                                if (el && isHighlighted) {
-                                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                }
-                              }}
-                              className={`transition-all cursor-pointer ${
-                                isHighlighted
-                                  ? 'bg-amber-100/90 dark:bg-amber-950/60 border-l-4 border-amber-500 ring-2 ring-amber-400/60 shadow-md font-semibold'
-                                  : selectedRowIdx === i 
-                                    ? 'bg-slate-50 dark:bg-slate-800 border-l-4 border-link' 
-                                    : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
-                              }`}
-                              onClick={() => { setSelectedRowIdx(i); setHighlightedId(inv.id); }}
-                          >
-                          <td className="text-slate-500 dark:text-slate-400">{i + 1}</td>
-                          <td className="text-slate-500 dark:text-slate-400">{formatDate(inv.date)}</td>
-                          <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{inv.bill_number}</td>
-                          <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{inv.vendor_name}</td>
-                          <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(inv.total_without_gst) || 0).toFixed(2)}</td>
-                          <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(inv.total_gst) || 0).toFixed(2)}</td>
-                          <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{(Number(inv.grand_total) || 0).toFixed(2)}</td>
-                          <td className="text-center">
-                              <div className="flex justify-center space-x-2">
-                                  <button onClick={(e) => { e.stopPropagation(); setPrintModalInvoice(inv); }} className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all" title="Print Invoice"><Printer className="w-4 h-4" /></button>
-                                  <button onClick={(e) => { e.stopPropagation(); setEditingInvoice(inv); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all" title="Edit Invoice"><Edit className="w-4 h-4" /></button>
-                                  <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, invoice: inv }); }} className="p-1.5 text-slate-400 hover:text-rose-50 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded transition-all" title="Delete Invoice"><Trash2 className="w-4 h-4" /></button>
-                              </div>
-                          </td>
-                          </tr>
-                        );
-                      })}
-                    {!loading && filtered.length === 0 && (
-                        <tr><td colSpan={8} className="text-center py-20 text-slate-300 italic font-medium">No sales invoices found matching filters.</td></tr>
-                    )}
-                    </tbody>
-                </table>
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+          <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Revenue</p>
+              <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">
+                {formatCurrency(filtered.reduce((acc, i) => acc + Number(i.grand_total || 0), 0))}
+              </p>
             </div>
-        </>
-      )}
+            <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="h-64 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState 
+            title="No Sales Invoices" 
+            message="Start generating revenue records by creating your first sales invoice. Track payments and customer history efficiently!" 
+            actionLabel="Generate New Sale" 
+            onAction={() => { setEditingInvoice(null); setIsModalOpen(true); }} 
+          />
+        ) : (
+          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-lg">
+            <table className="w-full text-left border-collapse min-w-[800px]">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  <th className="py-3.5 px-4 w-12">Sr</th>
+                  <th className="py-3.5 px-4">Date</th>
+                  <th className="py-3.5 px-4">Invoice #</th>
+                  <th className="py-3.5 px-4">Customer</th>
+                  <th className="py-3.5 px-4 text-right">Taxable</th>
+                  <th className="py-3.5 px-4 text-right">GST</th>
+                  <th className="py-3.5 px-4 text-right">Net Total</th>
+                  <th className="py-3.5 px-4 text-center w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[12px] text-slate-700 dark:text-slate-300">
+                {filtered.map((inv, i) => {
+                  const isHighlighted = inv.id === highlightedId;
+                  return (
+                    <tr 
+                      key={inv.id} 
+                      ref={(el) => {
+                        if (el && isHighlighted) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }}
+                      className={`transition-all cursor-pointer ${
+                        isHighlighted
+                          ? 'bg-amber-100/90 dark:bg-amber-950/60 border-l-4 border-amber-500 ring-2 ring-amber-400/60 shadow-md font-semibold'
+                          : selectedRowIdx === i 
+                            ? 'bg-slate-50 dark:bg-slate-800 border-l-4 border-primary font-medium' 
+                            : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
+                      }`}
+                      onClick={() => { setSelectedRowIdx(i); setHighlightedId(inv.id); }}
+                    >
+                      <td className="py-3 px-4 text-slate-400 font-mono">{i + 1}</td>
+                      <td className="py-3 px-4 font-mono">{formatDate(inv.date)}</td>
+                      <td className="py-3 px-4 font-mono font-semibold text-slate-900 dark:text-white">{inv.bill_number}</td>
+                      <td className="py-3 px-4 font-medium text-slate-900 dark:text-white capitalize">{inv.vendor_name}</td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400">{formatCurrency(inv.total_without_gst)}</td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400">{formatCurrency(inv.total_gst)}</td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">{formatCurrency(inv.grand_total)}</td>
+                      <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center space-x-1">
+                          <button onClick={() => setPrintModalInvoice(inv)} className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors" title="Print Invoice">
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-1 text-slate-400 hover:text-primary rounded transition-colors" title="Edit Invoice">
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setDeleteDialog({ isOpen: true, invoice: inv })} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors" title="Delete Invoice">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <InvoicePrintModal 
         isOpen={!!printModalInvoice} 

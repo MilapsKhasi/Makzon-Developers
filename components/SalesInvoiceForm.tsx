@@ -450,11 +450,11 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
 
   return (
     <div className="bg-white dark:bg-slate-900 w-full flex flex-col">
-      <Modal isOpen={customerModal.isOpen} onClose={() => setCustomerModal({ ...customerModal, isOpen: false })} title="Party Master" maxWidth="max-w-4xl">
+      <Modal isOpen={customerModal.isOpen} onClose={() => setCustomerModal({ ...customerModal, isOpen: false })} title="Party Master" maxWidth="max-w-5xl">
         <PartyForm defaultType="customer" initialData={customerModal.initialData} prefilledName={customerModal.prefilledName} onSubmit={(c) => { setCustomerModal({ ...customerModal, isOpen: false }); loadDependencies(); }} onCancel={() => setCustomerModal({ ...customerModal, isOpen: false })} />
       </Modal>
 
-      <Modal isOpen={itemModal.isOpen} onClose={() => setItemModal({ isOpen: false, rowIdx: null })} title="Create New Item" maxWidth="max-w-3xl">
+      <Modal isOpen={itemModal.isOpen} onClose={() => setItemModal({ isOpen: false, rowIdx: null })} title="Create New Item" maxWidth="max-w-5xl">
         <StockForm onSubmit={handleSaveNewStockItem} onCancel={() => setItemModal({ isOpen: false, rowIdx: null })} />
       </Modal>
 

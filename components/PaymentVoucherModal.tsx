@@ -289,7 +289,7 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={voucherType === 'Receipt' ? 'New Receive Payment Voucher' : 'New Pay Supplier Voucher'}
-      maxWidth="max-w-xl"
+      maxWidth="max-w-5xl"
     >
       <form onSubmit={handleSave} className="p-6 space-y-4">
         <div>

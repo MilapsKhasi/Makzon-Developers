@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Loader2, Calendar, Trash2, Edit, Eye, RefreshCw, Landmark, FileDown, AlertCircle } from 'lucide-react';
+import { Plus, Search, Loader2, Calendar, Trash2, Edit, Eye, RefreshCw, Landmark, FileDown, AlertCircle, Wallet } from 'lucide-react';
 import { formatDate, formatCurrency } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import CashbookSheet from '../components/CashbookSheet';
@@ -179,38 +179,34 @@ const Cashbook = () => {
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div className="flex items-center space-x-3">
-          <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Cashbook Register</h1>
-          <button onClick={loadData} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded transition-colors">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <Wallet className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Cashbook Register</h1>
+              <button onClick={loadData} className="p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded transition-colors" title="Refresh">
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Daily cash in hand statements, income, expenses, and net balances</p>
+          </div>
         </div>
-        <div className="flex flex-col items-end space-y-4 w-full sm:w-auto">
-            <div className="flex flex-wrap gap-2 justify-end w-full sm:w-auto">
-                <button 
-                  onClick={handleExportCSV}
-                  disabled={exporting || entries.length === 0}
-                  className="px-3 sm:px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-none font-medium flex items-center disabled:opacity-50 text-slate-600 dark:text-slate-300"
-                >
-                    {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <FileDown className="w-3.5 h-3.5 mr-2" />} Export Csv
-                </button>
-                <button 
-                  onClick={() => { setEditingEntry(null); setViewState('entry'); }} 
-                  className="bg-primary text-white px-4 sm:px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center shadow-sm"
-                >
-                <Plus className="w-4 h-4 mr-2" /> Create Statement
-                </button>
-            </div>
 
-            {/* Hidden Logic Source Card - Preserved for Linked Data but Hidden in UI */}
-            <div className="hidden">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 min-w-[320px] relative overflow-hidden">
-                <Landmark className="absolute top-0 right-0 p-4 opacity-5 w-20 h-20 text-white" />
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Live Logic Feed</span>
-                <div className="text-[28px] font-bold text-white font-mono leading-none mb-2">
-                    {formatCurrency(prevData.balance)}
-                </div>
-              </div>
-            </div>
+        <div className="flex flex-wrap gap-2 justify-end w-full sm:w-auto">
+          <button 
+            onClick={handleExportCSV}
+            disabled={exporting || entries.length === 0}
+            className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all font-semibold flex items-center disabled:opacity-50 text-slate-700 dark:text-slate-300 shadow-xs cursor-pointer"
+          >
+            {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <FileDown className="w-3.5 h-3.5 mr-2" />} Export CSV
+          </button>
+          <button 
+            onClick={() => { setEditingEntry(null); setViewState('entry'); }} 
+            className="bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center shadow-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4 mr-2" /> Create Statement
+          </button>
         </div>
       </div>
 

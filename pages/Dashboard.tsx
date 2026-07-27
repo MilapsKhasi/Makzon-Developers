@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Loader2, ShoppingCart, Package, Users, Receipt, Clock, BadgeIndianRupee } from 'lucide-react';
+import { Search, Loader2, ShoppingCart, Package, Users, Receipt, Clock, BadgeIndianRupee, LayoutDashboard } from 'lucide-react';
 import { getActiveCompanyId, formatDate, normalizeBill, formatCurrency } from '../utils/helpers';
 import DateFilter from '../components/DateFilter';
 import Modal from '../components/Modal';
@@ -141,7 +141,7 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Sales Invoice Modal */}
-      <Modal isOpen={isSalesModalOpen} onClose={() => setIsSalesModalOpen(false)} title="New Sales Invoice" maxWidth="max-w-4xl">
+      <Modal isOpen={isSalesModalOpen} onClose={() => setIsSalesModalOpen(false)} title="New Sales Invoice" maxWidth="max-w-5xl">
         <SalesInvoiceForm 
           onSubmit={(inv, shouldPrint, isSaveAndNew) => { 
             if (!isSaveAndNew) setIsSalesModalOpen(false); 
@@ -152,7 +152,7 @@ const Dashboard = () => {
       </Modal>
 
       {/* Purchase Bill Modal */}
-      <Modal isOpen={isPurchaseModalOpen} onClose={() => setIsPurchaseModalOpen(false)} title="New Purchase Bill" maxWidth="max-w-4xl">
+      <Modal isOpen={isPurchaseModalOpen} onClose={() => setIsPurchaseModalOpen(false)} title="New Purchase Bill" maxWidth="max-w-5xl">
         <BillForm 
           onSubmit={(bill, isSaveAndNew) => { 
             if (!isSaveAndNew) setIsPurchaseModalOpen(false); 
@@ -170,9 +170,17 @@ const Dashboard = () => {
         onSuccess={loadData}
       />
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Executive Summary</h1>
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <LayoutDashboard className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Executive Summary</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Real-time overview of sales, purchases, payables, receivables, and recent activity</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
           <DateFilter onFilterChange={setDateRange} />
           <NewVoucherDropdown
             onSelectSalesInvoice={() => setIsSalesModalOpen(true)}

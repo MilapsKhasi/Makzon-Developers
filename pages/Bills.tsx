@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Loader2, Edit, Trash2 } from 'lucide-react';
-import { formatDate, getActiveCompanyId, normalizeBill, unsyncTransactionFromCashbook } from '../utils/helpers';
+import { Search, Loader2, Edit, Trash2, Plus, ShoppingBag } from 'lucide-react';
+import { formatDate, formatCurrency, getActiveCompanyId, normalizeBill, unsyncTransactionFromCashbook } from '../utils/helpers';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -212,7 +212,7 @@ const Bills = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingBill ? "Edit Purchase Bill" : "Register Purchase Bill"} maxWidth="max-w-6xl">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingBill ? "Edit Purchase Bill" : "Register Purchase Bill"} maxWidth="max-w-5xl">
         <BillForm initialData={editingBill} onSubmit={() => { setIsModalOpen(false); loadData(); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>
 
@@ -220,110 +220,126 @@ const Bills = () => {
 
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, bill: null })} onConfirm={confirmDelete} title="Archive Bill" message={`Are you sure you want to delete bill ${deleteDialog.bill?.bill_number}? (Press Shift + D again to confirm)`} />
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Purchase Bills Ledger</h1>
-        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-          <DateFilter ref={dateFilterRef} onFilterChange={setDateRange} />
-          {bills.length > 0 && (
-            <button 
-                ref={newEntryBtnRef}
-                onClick={() => { setEditingBill(null); setIsModalOpen(true); }}
-                className={`bg-primary text-white px-6 py-2 rounded-md font-medium text-sm transition-none capitalize border-2 w-full sm:w-auto ${headerFocusIdx === 2 ? 'border-slate-900 dark:border-white ring-2 ring-primary ring-offset-2' : 'border-transparent hover:bg-primary-dark'}`}
-            >
-                New Entry
-            </button>
-          )}
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <ShoppingBag className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Purchase Bills Ledger</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Register purchase invoices, track vendor liabilities, and manage stock receipts</p>
+          </div>
         </div>
+        <button
+          ref={newEntryBtnRef}
+          onClick={() => { setEditingBill(null); setIsModalOpen(true); }}
+          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
+        >
+          <Plus className="w-4 h-4 mr-2" /> New Entry
+        </button>
       </div>
 
-      {!loading && bills.length === 0 ? (
-        <EmptyState 
-          title="No Purchase Bills Found" 
-          message="Keep track of your supply chain by registering your first purchase invoice today!" 
-          actionLabel="New Purchase Entry" 
-          onAction={() => { setEditingBill(null); setIsModalOpen(true); }} 
-        />
-      ) : (
-        <>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 inline-block w-full sm:w-auto min-w-[200px]">
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium capitalize tracking-tight mb-1 block">Total Purchase</span>
-                <span className="text-[24px] font-medium text-slate-900 dark:text-white leading-none">{totalPurchase.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-            </div>
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-4 sm:p-6 space-y-4">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full md:max-w-xs shrink-0">
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+            <input 
+              ref={searchInputRef}
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search bill or vendor..." 
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg text-xs outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+          <DateFilter ref={dateFilterRef} onFilterChange={setDateRange} />
+        </div>
 
-            <div className="space-y-4">
-                <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-4 h-4" />
-                <input 
-                    ref={searchInputRef}
-                    type="text" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search anything..." 
-                    className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-md text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-                </div>
-                
-                <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900 overflow-x-auto">
-                <table className="clean-table min-w-[800px]">
-                    <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800 text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest">
-                        <th className="w-16">Sr No</th>
-                        <th className="capitalize">Date</th>
-                        <th className="capitalize">Bill No</th>
-                        <th className="capitalize">Vendor</th>
-                        <th className="text-right capitalize">Without Gst</th>
-                        <th className="text-right capitalize">Gst</th>
-                        <th className="text-right capitalize">With Gst</th>
-                        <th className="text-center capitalize">Actions</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {loading ? (
-                        <tr><td colSpan={8} className="text-center py-20 text-slate-400 dark:text-slate-500 font-medium capitalize tracking-widest text-[10px]">Loading register...</td></tr>
-                    ) : filtered.map((b, i) => {
-                        const isHighlighted = b.id === highlightedId;
-                        return (
-                          <tr 
-                              key={b.id} 
-                              ref={(el) => {
-                                if (el && isHighlighted) {
-                                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                }
-                              }}
-                              className={`transition-all cursor-pointer ${
-                                isHighlighted
-                                  ? 'bg-amber-100/90 dark:bg-amber-950/60 border-l-4 border-amber-500 ring-2 ring-amber-400/60 shadow-md font-semibold'
-                                  : selectedRowIdx === i 
-                                    ? 'bg-slate-50 dark:bg-slate-800 border-l-4 border-primary' 
-                                    : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
-                              }`}
-                              onClick={() => { setSelectedRowIdx(i); setHighlightedId(b.id); }}
-                          >
-                          <td className="text-slate-500 dark:text-slate-400">{i + 1}</td>
-                          <td className="text-slate-500 dark:text-slate-400">{formatDate(b.date)}</td>
-                          <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{b.bill_number}</td>
-                          <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{b.vendor_name}</td>
-                          <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(b.total_without_gst) || 0).toFixed(2)}</td>
-                          <td className="text-right font-mono text-slate-500 dark:text-slate-400">{(Number(b.total_gst) || 0).toFixed(2)}</td>
-                          <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{(Number(b.grand_total) || 0).toFixed(2)}</td>
-                          <td className="text-center">
-                              <div className="flex justify-center space-x-2">
-                                  <button onClick={(e) => { e.stopPropagation(); setEditingBill(b); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-all"><Edit className="w-4 h-4" /></button>
-                                  <button onClick={(e) => { e.stopPropagation(); setDeleteDialog({ isOpen: true, bill: b }); }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-rose-900/20 rounded transition-all"><Trash2 className="w-4 h-4" /></button>
-                              </div>
-                          </td>
-                          </tr>
-                        );
-                      })}
-                    {!loading && filtered.length === 0 && (
-                        <tr><td colSpan={8} className="text-center py-20 text-slate-300 italic font-medium">No purchase bills found matching filters.</td></tr>
-                    )}
-                    </tbody>
-                </table>
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+          <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Purchase</p>
+              <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">
+                {formatCurrency(totalPurchase)}
+              </p>
             </div>
-        </>
-      )}
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+              <ShoppingBag className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="h-64 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <EmptyState 
+            title="No Purchase Bills Found" 
+            message="Keep track of your supply chain by registering your first purchase invoice today!" 
+            actionLabel="New Purchase Entry" 
+            onAction={() => { setEditingBill(null); setIsModalOpen(true); }} 
+          />
+        ) : (
+          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-lg">
+            <table className="w-full text-left border-collapse min-w-[800px]">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  <th className="py-3.5 px-4 w-12">Sr</th>
+                  <th className="py-3.5 px-4">Date</th>
+                  <th className="py-3.5 px-4">Bill No</th>
+                  <th className="py-3.5 px-4">Vendor</th>
+                  <th className="py-3.5 px-4 text-right">Without GST</th>
+                  <th className="py-3.5 px-4 text-right">GST</th>
+                  <th className="py-3.5 px-4 text-right">With GST</th>
+                  <th className="py-3.5 px-4 text-center w-24">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[12px] text-slate-700 dark:text-slate-300">
+                {filtered.map((b, i) => {
+                  const isHighlighted = b.id === highlightedId;
+                  return (
+                    <tr 
+                      key={b.id} 
+                      ref={(el) => {
+                        if (el && isHighlighted) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }}
+                      className={`transition-all cursor-pointer ${
+                        isHighlighted
+                          ? 'bg-amber-100/90 dark:bg-amber-950/60 border-l-4 border-amber-500 ring-2 ring-amber-400/60 shadow-md font-semibold'
+                          : selectedRowIdx === i 
+                            ? 'bg-slate-50 dark:bg-slate-800 border-l-4 border-primary font-medium' 
+                            : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
+                      }`}
+                      onClick={() => { setSelectedRowIdx(i); setHighlightedId(b.id); }}
+                    >
+                      <td className="py-3 px-4 text-slate-400 font-mono">{i + 1}</td>
+                      <td className="py-3 px-4 font-mono">{formatDate(b.date)}</td>
+                      <td className="py-3 px-4 font-mono font-semibold text-slate-900 dark:text-white">{b.bill_number}</td>
+                      <td className="py-3 px-4 font-medium text-slate-900 dark:text-white capitalize">{b.vendor_name}</td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400">{formatCurrency(b.total_without_gst)}</td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400">{formatCurrency(b.total_gst)}</td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">{formatCurrency(b.grand_total)}</td>
+                      <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center space-x-1">
+                          <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="p-1 text-slate-400 hover:text-primary rounded transition-colors" title="Edit Bill">
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors" title="Delete Bill">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

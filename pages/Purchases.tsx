@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Trash2, Filter, ChevronDown, Loader2, Info } from 'lucide-react';
+import { Search, Edit, Trash2, Filter, ChevronDown, Loader2, ShoppingBag, Plus } from 'lucide-react';
 import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
@@ -81,8 +81,8 @@ const Purchases = () => {
   });
 
   return (
-    <div className="space-y-6">
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Purchase Bill">
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Purchase Bill" maxWidth="max-w-5xl">
         <BillForm initialData={editingBill} onSubmit={(bill, isSaveAndNew) => { if (!isSaveAndNew) { setIsModalOpen(false); setEditingBill(null); } loadData(); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>
 
@@ -94,101 +94,122 @@ const Purchases = () => {
         message={`Delete purchase entry ${deleteDialog.bill?.bill_number}?`}
       />
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white uppercase">Purchase Register</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Manage and track all vendor purchase invoices.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <ShoppingBag className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Purchase Register</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Manage and track all vendor purchase invoices and bills</p>
+          </div>
         </div>
-        <div className="flex items-center space-x-2 w-full sm:w-auto">
-           <div className="relative w-full sm:w-auto">
+        <button
+          onClick={() => { setEditingBill(null); setIsModalOpen(true); }}
+          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
+        >
+          <Plus className="w-4 h-4 mr-2" /> New Purchase
+        </button>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-4 sm:p-6 space-y-4">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative w-full md:max-w-xs shrink-0">
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search bill or vendor..." 
+              className="w-full pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg text-xs outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+
+          <div className="relative">
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="flex items-center justify-between sm:justify-start space-x-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 w-full sm:w-auto"
+              className="flex items-center space-x-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer"
             >
-              <div className="flex items-center space-x-2">
-                <Filter className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                <span>Status: {statusFilter}</span>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <span>Status: {statusFilter}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
             {isMenuOpen && (
-              <div className="absolute top-full right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-lg z-50 py-1 min-w-[120px] w-full sm:w-auto">
+              <div className="absolute top-full right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-50 py-1 min-w-[130px]">
                 {['All', 'Paid', 'Pending'].map(opt => (
-                  <button key={opt} onClick={() => { setStatusFilter(opt); setIsMenuOpen(false); }} className={`w-full text-left px-4 py-2 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-700/50 ${statusFilter === opt ? 'bg-primary/10 dark:bg-primary/20 font-bold text-primary' : 'text-slate-600 dark:text-slate-300'}`}>{opt}</button>
+                  <button 
+                    key={opt} 
+                    onClick={() => { setStatusFilter(opt); setIsMenuOpen(false); }} 
+                    className={`w-full text-left px-4 py-2 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-700/50 ${statusFilter === opt ? 'bg-primary/10 text-primary font-bold' : 'text-slate-600 dark:text-slate-300'}`}
+                  >
+                    {opt}
+                  </button>
                 ))}
               </div>
             )}
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded shadow-sm">
-          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Gross Purchase</span>
-          <span className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(filtered.reduce((acc, b) => acc + Number(b.grand_total || 0), 0))}</span>
-        </div>
-        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded sm:col-span-1 lg:col-span-2 shadow-sm">
-          <div className="flex items-start space-x-3">
-             <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-               This view displays all finalized purchase transactions. You can edit individual bills to update line items or tax configurations.
-             </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+          <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Gross Purchase</p>
+              <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">
+                {formatCurrency(filtered.reduce((acc, b) => acc + Number(b.grand_total || 0), 0))}
+              </p>
+            </div>
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+              <ShoppingBag className="w-4 h-4" />
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-4 h-4" />
-          <input 
-            type="text" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search invoice or vendor..." 
-            className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm" 
-          />
-        </div>
-        
-        <div className="border border-slate-200 dark:border-slate-700 rounded overflow-hidden bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
-          <table className="clean-table w-full min-w-[800px]">
-            <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
-              <tr className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                <th className="py-3 px-4 text-left">Date</th>
-                <th className="py-3 px-4 text-left">Bill No</th>
-                <th className="py-3 px-4 text-left">Vendor Name</th>
-                <th className="py-3 px-4 text-right">Taxable</th>
-                <th className="py-3 px-4 text-right">Grand Total</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {loading ? (
-                <tr><td colSpan={7} className="text-center py-20 text-slate-400 dark:text-slate-500 uppercase text-[10px] font-bold">Fetching Records...</td></tr>
-              ) : filtered.map(b => (
-                <tr key={b.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <td className="py-3 px-4 text-slate-500 dark:text-slate-400 text-xs">{formatDate(b.date)}</td>
-                  <td className="py-3 px-4 font-mono font-bold text-slate-900 dark:text-slate-100 text-xs">{b.bill_number}</td>
-                  <td className="py-3 px-4 uppercase font-medium text-slate-700 dark:text-slate-300 text-xs">{b.vendor_name}</td>
-                  <td className="py-3 px-4 text-right font-mono text-slate-500 dark:text-slate-400 text-xs">{formatCurrency(b.total_without_gst, false)}</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-slate-100 text-xs">{formatCurrency(b.grand_total, false)}</td>
-                  <td className="py-3 px-4 text-center">
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-sm ${b.status === 'Paid' ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'}`}>{b.status}</span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex justify-end space-x-2">
-                      <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"><Edit className="w-4 h-4" /></button>
-                      <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                  </td>
+        {loading ? (
+          <div className="h-64 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-lg">
+            <table className="w-full text-left border-collapse min-w-[800px]">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  <th className="py-3.5 px-4">Date</th>
+                  <th className="py-3.5 px-4">Bill No</th>
+                  <th className="py-3.5 px-4">Vendor Name</th>
+                  <th className="py-3.5 px-4 text-right">Taxable</th>
+                  <th className="py-3.5 px-4 text-right">Grand Total</th>
+                  <th className="py-3.5 px-4 text-center">Status</th>
+                  <th className="py-3.5 px-4 text-center w-20">Actions</th>
                 </tr>
-              ))}
-              {!loading && filtered.length === 0 && (
-                <tr><td colSpan={7} className="py-20 text-center text-slate-300 dark:text-slate-700 italic font-medium">No purchase entries found matching filters.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[12px] text-slate-700 dark:text-slate-300">
+                {filtered.map(b => (
+                  <tr key={b.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
+                    <td className="py-3 px-4 font-mono">{formatDate(b.date)}</td>
+                    <td className="py-3 px-4 font-mono font-semibold text-slate-900 dark:text-white">{b.bill_number}</td>
+                    <td className="py-3 px-4 font-medium text-slate-900 dark:text-white capitalize">{b.vendor_name}</td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400">{formatCurrency(b.total_without_gst)}</td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">{formatCurrency(b.grand_total)}</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${b.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400'}`}>
+                        {b.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center space-x-1">
+                        <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="p-1 text-slate-400 hover:text-primary rounded transition-colors" title="Edit Bill"><Edit className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors" title="Delete Bill"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={7} className="py-16 text-center text-slate-400 italic">No purchase entries found matching filters.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

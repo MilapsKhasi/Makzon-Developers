@@ -16,7 +16,7 @@ const Modal: React.FC<ModalProps> = ({
   onClose, 
   title, 
   children, 
-  maxWidth = 'max-w-2xl',
+  maxWidth = 'max-w-5xl',
   preventBackdropClose = false
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);

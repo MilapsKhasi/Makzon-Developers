@@ -58,7 +58,7 @@ const Invoices = () => {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500">
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingInvoice ? "Edit Sales Invoice" : "Generate Sales Invoice"} maxWidth="max-w-full">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingInvoice ? "Edit Sales Invoice" : "Generate Sales Invoice"} maxWidth="max-w-5xl">
         <SalesInvoiceForm initialData={editingInvoice} onSubmit={(inv, shouldPrint) => { setIsModalOpen(false); loadData(); if (shouldPrint && inv) setPrintModalInvoice(inv); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>
 

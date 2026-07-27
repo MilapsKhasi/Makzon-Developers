@@ -532,7 +532,7 @@ const Layout = () => {
             </button>
             <button
               onClick={() => setIsImportExcelOpen(true)}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded capitalize flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 border border-emerald-600 hover:border-emerald-700 text-white font-medium text-xs rounded capitalize flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
               title="Import Excel / CSV Data"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -540,10 +540,10 @@ const Layout = () => {
             </button>
             <button
               onClick={() => setIsCreateNewModalOpen(true)}
-              className="px-3.5 py-1.5 bg-primary text-white font-medium text-xs rounded capitalize hover:bg-primary-dark flex items-center gap-1.5 shadow-sm transition-all"
+              className="px-3.5 py-1.5 bg-white dark:bg-slate-900 text-black dark:text-white border border-primary font-semibold text-xs rounded-md capitalize hover:bg-slate-50 dark:hover:bg-slate-800/80 flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Create New</span>
+              <Plus className="w-3.5 h-3.5 text-primary stroke-[2.5]" />
+              <span>Quick Create</span>
             </button>
           </div>
         </header>

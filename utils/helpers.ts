@@ -146,10 +146,10 @@ export const normalizeBill = (data: any) => {
   } else if (data.type === 'Purchase') {
     isSale = false;
   } else {
-    isSale = !!(data.customer_name || data.invoice_number) && !(data.vendor_name || data.bill_number);
+    isSale = !!(data.customer_name || data.invoice_number || data.challan_number) && !(data.vendor_name || data.bill_number);
   }
-  const partyName = data.customer_name || data.vendor_name || 'Unknown';
-  const docNumber = data.invoice_number || data.bill_number || 'N/A';
+  const partyName = isSale ? (data.customer_name ?? data.vendor_name ?? '') : (data.vendor_name ?? data.customer_name ?? '');
+  const docNumber = data.challan_number || data.invoice_number || data.bill_number || '';
   const itemsRaw = data.items || {};
   let line_items = [];
   let gstType = 'Intra-State';
@@ -164,10 +164,11 @@ export const normalizeBill = (data: any) => {
   return {
     ...data,
     type: isSale ? 'Sale' : 'Purchase',
-    vendor_name: partyName, 
-    customer_name: partyName, 
-    bill_number: docNumber, 
-    invoice_number: docNumber,
+    vendor_name: data.vendor_name !== undefined ? data.vendor_name : partyName, 
+    customer_name: data.customer_name !== undefined ? data.customer_name : partyName, 
+    bill_number: data.bill_number !== undefined ? data.bill_number : docNumber, 
+    invoice_number: data.invoice_number !== undefined ? data.invoice_number : docNumber,
+    challan_number: data.challan_number !== undefined ? data.challan_number : docNumber,
     gst_type: gstType,
     items: line_items,
     items_raw: itemsRaw                  

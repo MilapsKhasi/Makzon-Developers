@@ -327,7 +327,7 @@ const Parties = () => {
         isOpen={isFormOpen} 
         onClose={() => { setIsFormOpen(false); setEditingParty(null); }} 
         title={editingParty ? "Edit Party Profile" : "Register New Party Account"} 
-        maxWidth="max-w-4xl"
+        maxWidth="max-w-5xl"
       >
         <PartyForm 
           initialData={editingParty} 
@@ -356,14 +356,19 @@ const Parties = () => {
       )}
 
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4">
-        <div>
-          <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Parties Ledger Accounts</h1>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Unified register of Customers and Vendors</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <User className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Party Master & Accounts</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Unified register for Customer & Supplier accounts, balances, and contact details</p>
+          </div>
         </div>
         <button 
           onClick={() => { setEditingParty(null); setIsFormOpen(true); }} 
-          className="bg-primary text-white px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center capitalize w-full sm:w-auto justify-center shadow-sm"
+          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
         >
           <Plus className="w-4 h-4 mr-2" /> New Party Account
         </button>

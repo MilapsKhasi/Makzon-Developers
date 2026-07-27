@@ -174,21 +174,27 @@ const Stock = () => {
 
   return (
     <div className="space-y-6 h-full flex flex-col animate-in fade-in duration-300">
-      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} title={editingItem ? "Edit Stock Master" : "Add New Stock Item"}>
+      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} title={editingItem ? "Edit Stock Master" : "Add New Stock Item"} maxWidth="max-w-5xl">
         <StockForm initialData={editingItem} onSubmit={handleSaveItem} onCancel={() => { setIsModalOpen(false); setEditingItem(null); }} />
       </Modal>
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, item: null })} onConfirm={confirmDelete} title="Delete Stock Item" message={`Are you sure you want to remove "${deleteDialog.item?.name}" from master?`} />
       
-      <div className="flex flex-col sm:flex-row items-center justify-between shrink-0 gap-4">
-        <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize w-full sm:w-auto">Inventory Control</h1>
-        {items.length > 0 && (
-          <button 
-            onClick={() => { setEditingItem(null); setIsModalOpen(true); }} 
-            className="bg-primary text-white px-8 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-all capitalize flex items-center shadow-sm w-full sm:w-auto justify-center"
-          >
-            <Plus className="w-4 h-4 mr-2" /> New SKU Item
-          </button>
-        )}
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <Package className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Inventory & Stock Control</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Track stock balances, inward purchases, outward sales, and SKU registers</p>
+          </div>
+        </div>
+        <button
+          onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
+          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
+        >
+          <Plus className="w-4 h-4 mr-2" /> New SKU Item
+        </button>
       </div>
 
       {!loading && items.length === 0 ? (
