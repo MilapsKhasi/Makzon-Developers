@@ -405,19 +405,19 @@ const Parties = () => {
               <div className="bg-slate-100 dark:bg-slate-800/60 p-1 rounded-md flex space-x-1 shrink-0">
                 <button
                   onClick={() => setFilterType('all')}
-                  className={`flex-1 py-1.5 text-[11px] font-medium rounded transition-none capitalize ${filterType === 'all' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+                  className={`flex-1 py-1.5 text-[11px] font-medium rounded transition-none capitalize ${filterType === 'all' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
                 >
                   All
                 </button>
                 <button
                   onClick={() => setFilterType('debtor')}
-                  className={`flex-1 py-1.5 text-[11px] font-medium rounded transition-none capitalize ${filterType === 'debtor' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+                  className={`flex-1 py-1.5 text-[11px] font-medium rounded transition-none capitalize ${filterType === 'debtor' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
                 >
                   Customers
                 </button>
                 <button
                   onClick={() => setFilterType('creditor')}
-                  className={`flex-1 py-1.5 text-[11px] font-medium rounded transition-none capitalize ${filterType === 'creditor' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+                  className={`flex-1 py-1.5 text-[11px] font-medium rounded transition-none capitalize ${filterType === 'creditor' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
                 >
                   Vendors
                 </button>

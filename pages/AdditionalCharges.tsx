@@ -142,27 +142,27 @@ const AdditionalCharges = () => {
                     <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 bg-white custom-scrollbar">
                         <div className="border border-slate-200 rounded-md p-4 sm:p-8 space-y-6 bg-white">
                             <div className="space-y-1.5">
-                                <label className="text-[14px] font-medium text-slate-900 capitalize">Charge/Deduction Name</label>
-                                <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white" placeholder="Freight, Labour, Discount, etc..." />
+                                <label className="text-[14px] font-medium text-slate-900 dark:text-white capitalize">Charge/Deduction Name</label>
+                                <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 bg-white dark:bg-slate-800 dark:text-white" placeholder="Freight, Labour, Discount, etc..." />
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div className="space-y-1.5">
-                                    <label className="text-[14px] font-medium text-slate-900 capitalize">Type</label>
+                                    <label className="text-[14px] font-medium text-slate-900 dark:text-white capitalize">Type</label>
                                     <div className="relative">
-                                        <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full h-10 px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white appearance-none">
-                                            <option value="Charge">Charge (+)</option>
-                                            <option value="Deduction">Deduction (-)</option>
+                                        <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="w-full h-10 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 bg-white dark:bg-slate-800 dark:text-white appearance-none">
+                                            <option value="Charge" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Charge (+)</option>
+                                            <option value="Deduction" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Deduction (-)</option>
                                         </select>
                                         <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-[14px] font-medium text-slate-900 capitalize">Calculation At</label>
+                                    <label className="text-[14px] font-medium text-slate-900 dark:text-white capitalize">Calculation At</label>
                                     <div className="relative">
-                                        <select value={formData.calc_method} onChange={e => setFormData({...formData, calc_method: e.target.value})} className="w-full h-10 px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white appearance-none">
-                                            <option value="Percentage">Percentage</option>
-                                            <option value="Fixed">Fixed Amount</option>
+                                        <select value={formData.calc_method} onChange={e => setFormData({...formData, calc_method: e.target.value})} className="w-full h-10 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 bg-white dark:bg-slate-800 dark:text-white appearance-none">
+                                            <option value="Percentage" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Percentage</option>
+                                            <option value="Fixed" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Fixed Amount</option>
                                         </select>
                                         <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                     </div>
@@ -170,12 +170,12 @@ const AdditionalCharges = () => {
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-[14px] font-medium text-slate-900 capitalize">Applicable To</label>
+                                <label className="text-[14px] font-medium text-slate-900 dark:text-white capitalize">Applicable To</label>
                                 <div className="relative">
-                                    <select value={formData.applicable_to || 'Both'} onChange={e => setFormData({...formData, applicable_to: e.target.value})} className="w-full h-10 px-4 py-2 border border-slate-200 rounded outline-none text-[14px] focus:border-slate-400 bg-white appearance-none">
-                                        <option value="Both">Both (Sales & Purchase)</option>
-                                        <option value="Sales Invoices">Sales Invoices</option>
-                                        <option value="Purchase Bills">Purchase Bills</option>
+                                    <select value={formData.applicable_to || 'Both'} onChange={e => setFormData({...formData, applicable_to: e.target.value})} className="w-full h-10 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] focus:border-slate-400 bg-white dark:bg-slate-800 dark:text-white appearance-none">
+                                        <option value="Both" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Both (Sales & Purchase)</option>
+                                        <option value="Sales Invoices" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Sales Invoices</option>
+                                        <option value="Purchase Bills" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Purchase Bills</option>
                                     </select>
                                     <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                 </div>
