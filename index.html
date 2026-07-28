@@ -24,6 +24,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>ZenterPrime - Early Access</title>
     <meta name="description" content="Simple cloud-synced purchase and stock management system." />
+    <meta name="theme-color" content="#4338CA" />
+    <link rel="manifest" href="/manifest.json" />
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then((reg) => {
+            console.log('[PWA] ServiceWorker registered with scope:', reg.scope);
+          }).catch((err) => {
+            console.warn('[PWA] ServiceWorker registration failed:', err);
+          });
+        });
+      }
+    </script>
     
     <!-- Google Fonts: Geologica & Georama (Geometric Sans Fonts) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
