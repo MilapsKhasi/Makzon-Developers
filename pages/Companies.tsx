@@ -28,13 +28,23 @@ const Companies = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('is_deleted', false)
-        .order('name');
+      const user = await getAuthUser();
+      const isRealUser = user && user.id !== 'local-user-1';
+
+      let query = supabase.from('companies').select('*').eq('is_deleted', false);
+      if (isRealUser) {
+        query = query.or(`created_by.eq.${user.id},user_id.eq.${user.id}`);
+      }
+
+      const { data, error } = await query.order('name');
       if (error) throw error;
-      setCompanies(data || []);
+
+      const filtered = (data || []).filter((c: any) => {
+        if (isRealUser && c.id === 'local-company-1') return false;
+        return true;
+      });
+
+      setCompanies(filtered);
     } catch (err: any) {
       console.error(err.message);
     } finally {

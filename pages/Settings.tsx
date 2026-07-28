@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor, Percent, CheckCircle2, RotateCcw, Trash, Filter, ShieldCheck, BadgeCheck, HardDrive, Download, Cpu, FolderSymlink, Laptop } from 'lucide-react';
 import { getActiveCompanyId, safeSupabaseSave, getAppSettings, formatDate } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
+import { processOfflineSyncQueue } from '../lib/syncEngine';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { exportFullDatabaseToFolder, downloadStandaloneOfflineLauncher, downloadWindowsExePackage } from '../utils/offlineHelper';
 
@@ -347,8 +348,9 @@ const Settings = () => {
                 {localStorage.getItem('use_offline_mode') === 'true' ? (
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       localStorage.removeItem('use_offline_mode');
+                      await processOfflineSyncQueue();
                       window.location.reload();
                     }}
                     className="px-4 py-2.5 bg-primary hover:bg-primary-dark text-white text-xs font-bold rounded shadow-sm transition-colors uppercase tracking-wider"

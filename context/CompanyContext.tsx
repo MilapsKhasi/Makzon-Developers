@@ -50,6 +50,8 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
 
+      const isRealUser = session.user.id !== 'local-user-1';
+
       // 1. Check profiles table for active_company_id
       const { data: profile } = await supabase
         .from('profiles')
@@ -58,7 +60,13 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .maybeSingle();
 
       const storedId = localStorage.getItem('activeCompanyId');
-      const targetId = profile?.active_company_id || storedId;
+      let targetId = profile?.active_company_id || storedId;
+
+      if (isRealUser && targetId === 'local-company-1') {
+        targetId = null;
+        localStorage.removeItem('activeCompanyId');
+        localStorage.removeItem('activeCompanyName');
+      }
 
       if (targetId) {
         const { data: company } = await supabase
@@ -68,16 +76,38 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .eq('is_deleted', false)
           .maybeSingle();
 
-        if (company) {
+        if (company && (!isRealUser || company.id !== 'local-company-1')) {
           setActiveCompany(company);
           localStorage.setItem('activeCompanyId', company.id);
           localStorage.setItem('activeCompanyName', company.name);
-        } else {
-          setActiveCompany(null);
-          localStorage.removeItem('activeCompanyId');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // If no valid active company target found, load actual user workspaces
+      let query = supabase.from('companies').select('*').eq('is_deleted', false);
+      if (isRealUser) {
+        query = query.or(`created_by.eq.${session.user.id},user_id.eq.${session.user.id}`);
+      }
+      const { data: userCompanies } = await query.order('name');
+      const filtered = (userCompanies || []).filter((c: any) => {
+        if (isRealUser && c.id === 'local-company-1') return false;
+        return true;
+      });
+
+      if (filtered.length > 0) {
+        const firstComp = filtered[0];
+        setActiveCompany(firstComp);
+        localStorage.setItem('activeCompanyId', firstComp.id);
+        localStorage.setItem('activeCompanyName', firstComp.name);
+        if (isRealUser) {
+          await supabase.from('profiles').upsert({ id: session.user.id, active_company_id: firstComp.id });
         }
       } else {
         setActiveCompany(null);
+        localStorage.removeItem('activeCompanyId');
+        localStorage.removeItem('activeCompanyName');
       }
     } catch (err: any) {
       if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {

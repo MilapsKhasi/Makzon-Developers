@@ -19,6 +19,13 @@ const Auth = () => {
     setLoading(true);
     setError(null);
 
+    // Clear offline flag when attempting online account authentication
+    localStorage.removeItem('use_offline_mode');
+    if (localStorage.getItem('activeCompanyId') === 'local-company-1') {
+      localStorage.removeItem('activeCompanyId');
+      localStorage.removeItem('activeCompanyName');
+    }
+
     try {
       if (isLogin) {
         const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });

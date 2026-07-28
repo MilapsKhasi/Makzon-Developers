@@ -12,6 +12,7 @@ import CreateNewModal from './CreateNewModal';
 import GlobalSearchModal from './GlobalSearchModal';
 import ImportExcelModal from './ImportExcelModal';
 import { getUserActivity } from '../utils/activityTracker';
+import { processOfflineSyncQueue } from '../lib/syncEngine';
 
 const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
@@ -43,6 +44,9 @@ const Layout = () => {
     const fetchUser = async () => {
       const u = await getAuthUser();
       setUser(u);
+      if (u) {
+        processOfflineSyncQueue().catch((err) => console.warn('[Layout] Sync queue error:', err));
+      }
     };
     fetchUser();
   }, []);
@@ -150,13 +154,23 @@ const Layout = () => {
 
   const loadWorkspaces = async () => {
     try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('is_deleted', false)
-        .order('name');
+      const u = user || await getAuthUser();
+      const isRealUser = u && u.id !== 'local-user-1';
+
+      let query = supabase.from('companies').select('*').eq('is_deleted', false);
+      if (isRealUser) {
+        query = query.or(`created_by.eq.${u.id},user_id.eq.${u.id}`);
+      }
+
+      const { data, error } = await query.order('name');
       if (error) throw error;
-      setWorkspaces(data || []);
+
+      const filtered = (data || []).filter((c: any) => {
+        if (isRealUser && c.id === 'local-company-1') return false;
+        return true;
+      });
+
+      setWorkspaces(filtered);
     } catch (err: any) {
       if (err?.message?.includes('Failed to fetch') || err?.message?.includes('NetworkError') || err?.name === 'TypeError' || err?.status === 401 || err?.message?.includes('Auth') || err?.message?.includes('JWT')) {
         console.warn("Offline or unauthorized while loading workspaces:", err?.message || err);

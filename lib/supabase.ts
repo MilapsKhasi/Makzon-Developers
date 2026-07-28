@@ -1,4 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
+import { 
+  initIndexedDB, 
+  idbMemoryCache, 
+  saveAllToIDB, 
+  upsertToIDB, 
+  deleteFromIDB, 
+  IDBStoreName 
+} from './idb';
+import { enqueueOfflineOp } from './syncEngine';
+
+if (typeof window !== 'undefined') {
+  initIndexedDB().catch((err) => console.warn('[IndexedDB] Init warning:', err));
+}
 
 const rawUrl = import.meta.env.VITE_SUPABASE_URL || 'https://blbaolnlzohguwqiyflg.supabase.co';
 const rawKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsYmFvbG5sem9oZ3V3cWl5ZmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMjY2ODgsImV4cCI6MjA4MzcwMjY4OH0.nGCG_M3-m2hNnP8Nu0aftZ1Ug0OheU5GmbGNr-Iwxxg';
@@ -34,8 +47,101 @@ function isNetworkError(err: any): boolean {
 
 function enableOfflineMode() {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('use_offline_mode', 'true');
     seedLocalStorage();
+  }
+}
+
+let isSyncingWorkspaces = false;
+
+export async function syncUserWorkspaceDataToIndexedDB(userId: string) {
+  if (!userId || isSyncingWorkspaces || (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true')) {
+    return;
+  }
+  isSyncingWorkspaces = true;
+
+  try {
+    console.log(`[IndexedDB Sync] Syncing workspace data for user: ${userId}`);
+
+    // Fetch user's accessible companies
+    const { data: companies, error: compErr } = await realSupabase
+      .from('companies')
+      .select('*')
+      .or(`created_by.eq.${userId},user_id.eq.${userId}`)
+      .eq('is_deleted', false);
+
+    if (compErr || !companies) {
+      console.warn('[IndexedDB Sync] Could not fetch companies:', compErr);
+      isSyncingWorkspaces = false;
+      return;
+    }
+
+    // Save user's companies to IndexedDB
+    await upsertToIDB('companies', companies);
+
+    const companyIds = companies.map((c: any) => c.id).filter(Boolean);
+
+    // Fetch user profile
+    const { data: profile } = await realSupabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profile) {
+      await upsertToIDB('profiles', profile);
+    }
+
+    if (companyIds.length === 0) {
+      isSyncingWorkspaces = false;
+      return;
+    }
+
+    // Sync all workspace-specific data for these company IDs
+    const workspaceTables = [
+      'sales_invoices',
+      'purchase_bills',
+      'customers',
+      'vendors',
+      'stock_items',
+      'cashbook',
+      'cashbooks',
+      'duties_taxes',
+      'delivery_challans',
+      'payment_vouchers'
+    ] as const;
+
+    for (const table of workspaceTables) {
+      try {
+        const { data: rows } = await realSupabase
+          .from(table)
+          .select('*')
+          .in('company_id', companyIds);
+
+        if (rows && Array.isArray(rows) && rows.length > 0) {
+          await upsertToIDB(table as IDBStoreName, rows);
+        }
+      } catch (tableErr) {
+        console.warn(`[IndexedDB Sync] Error syncing table ${table}:`, tableErr);
+      }
+    }
+
+    console.log(`[IndexedDB Sync] Finished caching ${companyIds.length} workspace(s) for user ${userId}.`);
+  } catch (err) {
+    console.warn('[IndexedDB Sync] Unexpected error during sync:', err);
+  } finally {
+    isSyncingWorkspaces = false;
+  }
+}
+
+function autoCacheOnlineResult(table: string, result: any) {
+  if (!result || result.error || !result.data) return;
+  const data = result.data;
+  if (Array.isArray(data)) {
+    if (data.length > 0) {
+      upsertToIDB(table as IDBStoreName, data);
+    }
+  } else if (typeof data === 'object') {
+    upsertToIDB(table as IDBStoreName, data);
   }
 }
 
@@ -54,19 +160,31 @@ class MockBuilder {
   }
 
   getItems() {
+    if (idbMemoryCache[this.table] && Array.isArray(idbMemoryCache[this.table]) && idbMemoryCache[this.table].length > 0) {
+      return idbMemoryCache[this.table];
+    }
     const key = `local_db_${this.table}`;
     const raw = localStorage.getItem(key);
-    if (!raw) return [];
+    if (!raw) return idbMemoryCache[this.table] || [];
     try {
-      return JSON.parse(raw);
+      const items = JSON.parse(raw);
+      if (Array.isArray(items) && items.length > 0) {
+        idbMemoryCache[this.table] = items;
+        upsertToIDB(this.table as IDBStoreName, items);
+      }
+      return items;
     } catch {
-      return [];
+      return idbMemoryCache[this.table] || [];
     }
   }
 
   saveItems(items: any[]) {
+    idbMemoryCache[this.table] = items;
+    saveAllToIDB(this.table as IDBStoreName, items);
     const key = `local_db_${this.table}`;
-    localStorage.setItem(key, JSON.stringify(items));
+    try {
+      localStorage.setItem(key, JSON.stringify(items));
+    } catch {}
   }
 
   select(columns?: string, options?: { count?: string; head?: boolean }) {
@@ -213,12 +331,18 @@ class MockBuilder {
       const inserted: any[] = [];
       for (const row of newRows) {
         const newRow = {
-          id: row.id || Math.random().toString(36).substring(2, 15),
+          id: row.id || ('loc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9)),
           created_at: new Date().toISOString(),
           ...row
         };
         items.push(newRow);
         inserted.push(newRow);
+        enqueueOfflineOp({
+          table: this.table,
+          op: 'INSERT',
+          recordId: newRow.id,
+          payload: newRow
+        }).catch(() => {});
       }
       this.saveItems(items);
       return { data: inserted, error: null };
@@ -243,6 +367,12 @@ class MockBuilder {
           updatedCount++;
           const updated = { ...item, ...payload };
           updatedItems.push(updated);
+          enqueueOfflineOp({
+            table: this.table,
+            op: 'UPSERT',
+            recordId: updated.id,
+            payload: updated
+          }).catch(() => {});
           return updated;
         }
         return item;
@@ -260,18 +390,26 @@ class MockBuilder {
       const upserted: any[] = [];
       for (const p of payloads) {
         const index = items.findIndex((item: any) => item.id === p.id);
+        let itemToSave: any;
         if (index !== -1) {
           items[index] = { ...items[index], ...p };
+          itemToSave = items[index];
           upserted.push(items[index]);
         } else {
-          const newRow = {
-            id: p.id || Math.random().toString(36).substring(2, 15),
+          itemToSave = {
+            id: p.id || ('loc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9)),
             created_at: new Date().toISOString(),
             ...p
           };
-          items.push(newRow);
-          upserted.push(newRow);
+          items.push(itemToSave);
+          upserted.push(itemToSave);
         }
+        enqueueOfflineOp({
+          table: this.table,
+          op: 'UPSERT',
+          recordId: itemToSave.id,
+          payload: itemToSave
+        }).catch(() => {});
       }
       this.saveItems(items);
       return { data: upserted, error: null };
@@ -282,7 +420,8 @@ class MockBuilder {
   delete() {
     this.pendingOp = () => {
       const items = this.getItems();
-      const remaining = items.filter((item: any) => {
+      const remaining: any[] = [];
+      for (const item of items) {
         let match = true;
         for (const filter of this.filters) {
           if (!filter(item)) {
@@ -290,8 +429,16 @@ class MockBuilder {
             break;
           }
         }
-        return !match;
-      });
+        if (match) {
+          enqueueOfflineOp({
+            table: this.table,
+            op: 'DELETE',
+            recordId: item.id
+          }).catch(() => {});
+        } else {
+          remaining.push(item);
+        }
+      }
       this.saveItems(remaining);
       return { data: null, error: null };
     };
@@ -387,7 +534,7 @@ function seedLocalStorage() {
       }
     ]));
   }
-  if (!localStorage.getItem('activeCompanyId')) {
+  if (!localStorage.getItem('activeCompanyId') && localStorage.getItem('use_offline_mode') === 'true') {
     localStorage.setItem('activeCompanyId', 'local-company-1');
     localStorage.setItem('activeCompanyName', 'Local Demo Company');
   }
@@ -653,6 +800,9 @@ class ResilientQueryBuilder {
         enableOfflineMode();
         return this.mockQb.execute();
       }
+      if (res && !res.error) {
+        autoCacheOnlineResult(this.table, res);
+      }
       return res;
     } catch (err: any) {
       if (isNetworkError(err)) {
@@ -688,6 +838,9 @@ class ResilientQueryBuilder {
         enableOfflineMode();
         return await this.mockQb.single();
       }
+      if (res && !res.error) {
+        autoCacheOnlineResult(this.table, res);
+      }
       return res;
     } catch (err: any) {
       if (isNetworkError(err)) {
@@ -708,6 +861,9 @@ class ResilientQueryBuilder {
         enableOfflineMode();
         return await this.mockQb.maybeSingle();
       }
+      if (res && !res.error) {
+        autoCacheOnlineResult(this.table, res);
+      }
       return res;
     } catch (err: any) {
       if (isNetworkError(err)) {
@@ -721,93 +877,117 @@ class ResilientQueryBuilder {
 
 const resilientAuth = {
   async getSession() {
-    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true') {
+    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true' && typeof navigator !== 'undefined' && !navigator.onLine) {
       return await mockAuth.getSession();
     }
     try {
       const res = await realSupabase.auth.getSession();
-      if (res?.error && isNetworkError(res.error)) {
-        enableOfflineMode();
+      if (res?.error && isNetworkError(res.error) && typeof navigator !== 'undefined' && !navigator.onLine) {
         return await mockAuth.getSession();
       }
-      if (!res?.data?.session && typeof window !== 'undefined' && localStorage.getItem('local_session_user')) {
+      if (!res?.data?.session && typeof window !== 'undefined' && localStorage.getItem('local_session_user') && localStorage.getItem('use_offline_mode') === 'true') {
         return await mockAuth.getSession();
+      }
+      if (res?.data?.session?.user) {
+        if (res.data.session.user.id !== 'local-user-1') {
+          localStorage.removeItem('use_offline_mode');
+          if (localStorage.getItem('activeCompanyId') === 'local-company-1') {
+            localStorage.removeItem('activeCompanyId');
+            localStorage.removeItem('activeCompanyName');
+          }
+        }
+        syncUserWorkspaceDataToIndexedDB(res.data.session.user.id).catch(() => {});
       }
       return res;
     } catch (err: any) {
-      if (isNetworkError(err)) {
-        enableOfflineMode();
+      if (isNetworkError(err) && typeof navigator !== 'undefined' && !navigator.onLine) {
         return await mockAuth.getSession();
       }
       return { data: { session: null }, error: err };
     }
   },
   async getUser() {
-    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true') {
+    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true' && typeof navigator !== 'undefined' && !navigator.onLine) {
       return await mockAuth.getUser();
     }
     try {
       const res = await realSupabase.auth.getUser();
-      if (res?.error && isNetworkError(res.error)) {
-        enableOfflineMode();
+      if (res?.error && isNetworkError(res.error) && typeof navigator !== 'undefined' && !navigator.onLine) {
         return await mockAuth.getUser();
       }
-      if (!res?.data?.user && typeof window !== 'undefined' && localStorage.getItem('local_session_user')) {
+      if (!res?.data?.user && typeof window !== 'undefined' && localStorage.getItem('local_session_user') && localStorage.getItem('use_offline_mode') === 'true') {
         return await mockAuth.getUser();
+      }
+      if (res?.data?.user) {
+        if (res.data.user.id !== 'local-user-1') {
+          localStorage.removeItem('use_offline_mode');
+          if (localStorage.getItem('activeCompanyId') === 'local-company-1') {
+            localStorage.removeItem('activeCompanyId');
+            localStorage.removeItem('activeCompanyName');
+          }
+        }
+        syncUserWorkspaceDataToIndexedDB(res.data.user.id).catch(() => {});
       }
       return res;
     } catch (err: any) {
-      if (isNetworkError(err)) {
-        enableOfflineMode();
+      if (isNetworkError(err) && typeof navigator !== 'undefined' && !navigator.onLine) {
         return await mockAuth.getUser();
       }
       return { data: { user: null }, error: err };
     }
   },
   async signInWithPassword(params: any) {
-    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true') {
+    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true' && typeof navigator !== 'undefined' && !navigator.onLine) {
       return await mockAuth.signInWithPassword(params);
     }
     try {
       const res = await realSupabase.auth.signInWithPassword(params);
       if (res?.error) {
-        if (isNetworkError(res.error)) {
-          enableOfflineMode();
+        if (isNetworkError(res.error) && typeof navigator !== 'undefined' && !navigator.onLine) {
           return await mockAuth.signInWithPassword(params);
         }
         return res;
       }
       if (res?.data?.user) {
+        localStorage.removeItem('use_offline_mode');
+        if (localStorage.getItem('activeCompanyId') === 'local-company-1') {
+          localStorage.removeItem('activeCompanyId');
+          localStorage.removeItem('activeCompanyName');
+        }
         localStorage.setItem('local_session_user', JSON.stringify(res.data.user));
+        syncUserWorkspaceDataToIndexedDB(res.data.user.id).catch(() => {});
         notifyAuthListeners('SIGNED_IN', res.data.session);
       }
       return res;
     } catch (err: any) {
-      if (isNetworkError(err)) {
-        enableOfflineMode();
+      if (isNetworkError(err) && typeof navigator !== 'undefined' && !navigator.onLine) {
         return await mockAuth.signInWithPassword(params);
       }
       return { data: null, error: err };
     }
   },
   async signUp(params: any) {
-    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true') {
+    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true' && typeof navigator !== 'undefined' && !navigator.onLine) {
       return await mockAuth.signUp(params);
     }
     try {
       const res = await realSupabase.auth.signUp(params);
-      if (res?.error && isNetworkError(res.error)) {
-        enableOfflineMode();
+      if (res?.error && isNetworkError(res.error) && typeof navigator !== 'undefined' && !navigator.onLine) {
         return await mockAuth.signUp(params);
       }
       if (res?.data?.user) {
+        localStorage.removeItem('use_offline_mode');
+        if (localStorage.getItem('activeCompanyId') === 'local-company-1') {
+          localStorage.removeItem('activeCompanyId');
+          localStorage.removeItem('activeCompanyName');
+        }
         localStorage.setItem('local_session_user', JSON.stringify(res.data.user));
+        syncUserWorkspaceDataToIndexedDB(res.data.user.id).catch(() => {});
         notifyAuthListeners('SIGNED_IN', res.data.session);
       }
       return res;
     } catch (err: any) {
-      if (isNetworkError(err)) {
-        enableOfflineMode();
+      if (isNetworkError(err) && typeof navigator !== 'undefined' && !navigator.onLine) {
         return await mockAuth.signUp(params);
       }
       return { data: null, error: err };
@@ -827,6 +1007,7 @@ const resilientAuth = {
       const realSub = realSupabase.auth.onAuthStateChange((event, session) => {
         if (session?.user) {
           localStorage.setItem('local_session_user', JSON.stringify(session.user));
+          syncUserWorkspaceDataToIndexedDB(session.user.id).catch(() => {});
         }
         callback(event, session);
       });
