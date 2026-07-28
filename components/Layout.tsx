@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet, Truck } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet, Truck, Sun, Moon } from 'lucide-react';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import Logo from './Logo';
@@ -28,6 +28,31 @@ const Layout = () => {
 
   const [user, setUser] = useState<any>(null);
   const [isInactive, setIsInactive] = useState(false);
+
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return document.documentElement.classList.contains('dark') || localStorage.getItem('app_theme') === 'dark';
+  });
+
+  useEffect(() => {
+    const handleSettingsChange = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark') || localStorage.getItem('app_theme') === 'dark');
+    };
+    window.addEventListener('appSettingsChanged', handleSettingsChange);
+    return () => window.removeEventListener('appSettingsChanged', handleSettingsChange);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextMode = !isDarkMode;
+    setIsDarkMode(nextMode);
+    if (nextMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('app_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('app_theme', 'light');
+    }
+    window.dispatchEvent(new Event('appSettingsChanged'));
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -558,6 +583,14 @@ const Layout = () => {
             >
               <Plus className="w-3.5 h-3.5 text-primary stroke-[2.5]" />
               <span>Quick Create</span>
+            </button>
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              aria-label="Toggle Theme"
+            >
+              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
             </button>
           </div>
         </header>

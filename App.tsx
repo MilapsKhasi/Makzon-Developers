@@ -232,7 +232,13 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
     </div>
   );
 
-  if (dbError === "CONNECTION_ERROR" || (session && dbError === "SCHEMA_MISSING")) {
+  const isOfflineMode = typeof window !== 'undefined' && (
+    localStorage.getItem('use_offline_mode') === 'true' ||
+    localStorage.getItem('local_session_user') !== null ||
+    (typeof navigator !== 'undefined' && !navigator.onLine)
+  );
+
+  if ((dbError === "CONNECTION_ERROR" && !isOfflineMode) || (session && dbError === "SCHEMA_MISSING")) {
     const isConnectionError = dbError === "CONNECTION_ERROR";
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
