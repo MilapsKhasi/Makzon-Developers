@@ -17,7 +17,7 @@ export const getAppSettings = () => {
     currency: 'INR', 
     borderStyle: 'rounded', 
     dateFormat: 'DD/MM/YY',
-    gstEnabled: false,
+    gstEnabled: true,
     gstType: 'CGST - SGST'
   };
   
@@ -30,8 +30,8 @@ export const getAppSettings = () => {
     return {
       ...defaultSettings,
       ...parsed,
-      // Ensure boolean type for gstEnabled
-      gstEnabled: parsed.gstEnabled === true || parsed.gstEnabled === 'true'
+      // Default to true unless explicitly disabled (false or 'false') for this workspace
+      gstEnabled: parsed.gstEnabled !== undefined ? (parsed.gstEnabled !== false && parsed.gstEnabled !== 'false') : true
     };
   } catch (e) {
     return defaultSettings;

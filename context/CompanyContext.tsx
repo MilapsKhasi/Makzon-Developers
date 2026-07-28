@@ -34,7 +34,10 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
           console.error("Context refresh session error:", error);
         }
         if (!error.message?.includes('Failed to fetch') && !error.message?.includes('NetworkError')) {
-          localStorage.clear();
+          localStorage.removeItem('local_session_user');
+          localStorage.removeItem('use_offline_mode');
+          localStorage.removeItem('activeCompanyId');
+          localStorage.removeItem('activeCompanyName');
           try {
             await supabase.auth.signOut({ scope: 'local' });
           } catch (signOutError) {

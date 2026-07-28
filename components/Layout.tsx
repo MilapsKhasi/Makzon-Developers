@@ -221,7 +221,10 @@ const Layout = () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      localStorage.clear();
+      localStorage.removeItem('local_session_user');
+      localStorage.removeItem('use_offline_mode');
+      localStorage.removeItem('activeCompanyId');
+      localStorage.removeItem('activeCompanyName');
       navigate('/setup', { replace: true });
     } catch (err) {
       console.error("Error signing out:", err);
