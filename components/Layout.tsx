@@ -485,7 +485,7 @@ const Layout = () => {
       </aside>
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-12 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 shrink-0 z-40">
+        <header className="h-12 liquid-glass-header flex items-center justify-between px-4 shrink-0 z-40">
           <div className="flex items-center space-x-4">
             {/* Desktop toggle sidebar */}
             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="hidden lg:block p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 dark:text-slate-400">

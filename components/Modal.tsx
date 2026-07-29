@@ -104,7 +104,7 @@ const Modal: React.FC<ModalProps> = ({
         ref={modalRef}
         className={`relative bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 w-full ${maxWidth} flex flex-col overflow-hidden rounded-md max-h-[90vh]`}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-[0_2px_12px_-3px_rgba(0,0,0,0.03)] shrink-0 sticky top-0 z-10">
+        <div className="flex items-center justify-between px-6 py-4 liquid-glass-header shrink-0 sticky top-0 z-10">
           <h3 className="text-[18px] font-medium text-slate-900 dark:text-slate-100 capitalize">{title}</h3>
           <button 
             type="button" 

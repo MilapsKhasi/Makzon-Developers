@@ -256,7 +256,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
   return (
     <div className="bg-white dark:bg-slate-900 w-full border border-slate-300 dark:border-slate-800 rounded-md flex flex-col h-full animate-in fade-in duration-300 overflow-hidden">
       {/* Utility Header */}
-      <div className="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-2 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-[0_2px_12px_-3px_rgba(0,0,0,0.03)] shrink-0 gap-4 sticky top-0 z-10">
+      <div className="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-2 liquid-glass-header shrink-0 gap-4 sticky top-0 z-10">
         <div className="flex items-center space-x-4 w-full sm:w-auto">
           <button onClick={onCancel} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500">
             <ArrowLeft className="w-5 h-5" />

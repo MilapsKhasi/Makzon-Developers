@@ -875,7 +875,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
       <div className="flex flex-col h-[82vh] bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 overflow-hidden">
         
         {/* Navigation Tabs Header */}
-        <div className="flex border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 pt-3 shrink-0 gap-2 overflow-x-auto custom-scrollbar sticky top-0 z-10">
+        <div className="flex liquid-glass-header px-4 pt-3 shrink-0 gap-2 overflow-x-auto custom-scrollbar sticky top-0 z-10">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

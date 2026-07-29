@@ -144,7 +144,7 @@ const BulkEntryModal: React.FC<BulkEntryModalProps> = ({ isOpen, onClose, title,
     <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-[95vw]">
       <div className="flex flex-col h-[80vh]">
         {/* Toolbar */}
-        <div className="flex items-center space-x-2 border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-2.5 rounded-lg mb-3 shrink-0 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.03)]">
+        <div className="flex items-center space-x-2 liquid-glass-box p-2.5 rounded-lg mb-3 shrink-0">
             <div className="flex items-center border-r border-slate-200 dark:border-slate-800 pr-2 mr-2 space-x-1">
                 <TooltipButton icon={Undo} onClick={handleUndo} tip="Undo" disabled={historyIndex === 0} />
                 <TooltipButton icon={Redo} onClick={handleRedo} tip="Redo" disabled={historyIndex === history.length - 1} />

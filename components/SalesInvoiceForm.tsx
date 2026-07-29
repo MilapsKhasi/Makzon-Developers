@@ -495,7 +495,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       />
 
       <form ref={formRef} onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6">
-        <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-[0_2px_12px_-3px_rgba(0,0,0,0.03)] sticky top-0 z-20">
+        <div className="flex items-center justify-between p-3 rounded-lg liquid-glass-box sticky top-0 z-20">
           <div className="flex items-center space-x-4">
             {appSettings.gstEnabled && (
               <>
