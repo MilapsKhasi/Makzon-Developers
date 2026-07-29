@@ -18,7 +18,8 @@ export const getAppSettings = () => {
     borderStyle: 'rounded', 
     dateFormat: 'DD/MM/YY',
     gstEnabled: true,
-    gstType: 'CGST - SGST'
+    gstType: 'CGST - SGST',
+    invoicePrefix: '2026-27-000'
   };
   
   if (!cid) return defaultSettings;
@@ -31,11 +32,39 @@ export const getAppSettings = () => {
       ...defaultSettings,
       ...parsed,
       // Default to true unless explicitly disabled (false or 'false') for this workspace
-      gstEnabled: parsed.gstEnabled !== undefined ? (parsed.gstEnabled !== false && parsed.gstEnabled !== 'false') : true
+      gstEnabled: parsed.gstEnabled !== undefined ? (parsed.gstEnabled !== false && parsed.gstEnabled !== 'false') : true,
+      invoicePrefix: parsed.invoicePrefix || '2026-27-000'
     };
   } catch (e) {
     return defaultSettings;
   }
+};
+
+export const calculateNextInvoiceNumber = (prefix: string = '2026-27-000', latestInvoiceNumber?: string) => {
+  const cleanPrefix = (prefix || '2026-27-000').trim();
+
+  if (latestInvoiceNumber && latestInvoiceNumber.trim()) {
+    const match = latestInvoiceNumber.trim().match(/^(.*?)(\d+)$/);
+    if (match) {
+      const basePrefix = match[1];
+      const numStr = match[2];
+      const nextVal = parseInt(numStr, 10) + 1;
+      const paddedVal = String(nextVal).padStart(numStr.length, '0');
+      return `${basePrefix}${paddedVal}`;
+    }
+  }
+
+  const matchPrefix = cleanPrefix.match(/^(.*?)(\d+)$/);
+  if (matchPrefix) {
+    const basePrefix = matchPrefix[1];
+    const numStr = matchPrefix[2];
+    const numVal = parseInt(numStr, 10);
+    const startVal = numVal === 0 ? 1 : numVal + 1;
+    const paddedVal = String(startVal).padStart(numStr.length, '0');
+    return `${basePrefix}${paddedVal}`;
+  }
+
+  return `${cleanPrefix}001`;
 };
 
 export const formatCurrency = (amount: number | undefined | null, includeSymbol: boolean = true) => {

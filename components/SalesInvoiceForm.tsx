@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, ToggleLeft, ToggleRight, Printer } from 'lucide-react';
-import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS, fetchStockItemsWithBalance } from '../utils/helpers';
+import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS, fetchStockItemsWithBalance, calculateNextInvoiceNumber } from '../utils/helpers';
 import { supabase, getAuthUser } from '../lib/supabase';
 import Modal from './Modal';
 import PartyForm from './PartyForm';
@@ -305,6 +305,26 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         if (prev.duties_and_taxes.length > 0) return prev;
         return recalculate({ ...prev, duties_and_taxes: activeDuties.map(d => ({ ...d, amount: 0 }))});
       });
+
+      if (cid) {
+        supabase
+          .from('sales_invoices')
+          .select('invoice_number, date, created_at')
+          .eq('company_id', cid)
+          .eq('is_deleted', false)
+          .order('date', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(10)
+          .then(({ data: latestInvoices }: any) => {
+            const latestNo = latestInvoices?.find((inv: any) => inv.invoice_number && inv.invoice_number.trim())?.invoice_number;
+            const nextNo = calculateNextInvoiceNumber(appSettings.invoicePrefix || '2026-27-000', latestNo);
+            setFormData((prev: any) => ({
+              ...prev,
+              invoice_number: prev.invoice_number || nextNo
+            }));
+          })
+          .catch((err: any) => console.warn('Auto invoice number fetch warning:', err));
+      }
     } else {
         const normalized = normalizeBill(initialData);
         normalized?.items_raw?.duties_and_taxes?.forEach((d:any) => { if(d.amount !== 0) manualOverrides.current.add(d.id); });

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor, Percent, CheckCircle2, RotateCcw, Trash, Filter, ShieldCheck, BadgeCheck, HardDrive, Download, Cpu, FolderSymlink, Laptop } from 'lucide-react';
-import { getActiveCompanyId, safeSupabaseSave, getAppSettings, formatDate } from '../utils/helpers';
+import { getActiveCompanyId, safeSupabaseSave, getAppSettings, formatDate, calculateNextInvoiceNumber } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import { processOfflineSyncQueue } from '../lib/syncEngine';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -22,6 +22,56 @@ const Settings = () => {
     const s = getAppSettings();
     return { enabled: s.gstEnabled, type: s.gstType || 'CGST - SGST' };
   });
+
+  const [invoicePrefix, setInvoicePrefix] = useState(() => {
+    const s = getAppSettings();
+    return s.invoicePrefix || '2026-27-000';
+  });
+  const [nextInvoiceNo, setNextInvoiceNo] = useState('');
+  const [loadingNextNo, setLoadingNextNo] = useState(false);
+
+  const fetchNextInvoiceNumber = async (prefix: string) => {
+    if (!cid) return;
+    setLoadingNextNo(true);
+    try {
+      const { data: latestInvoices } = await supabase
+        .from('sales_invoices')
+        .select('invoice_number, date, created_at')
+        .eq('company_id', cid)
+        .eq('is_deleted', false)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      const latestNo = latestInvoices?.find((inv: any) => inv.invoice_number && inv.invoice_number.trim())?.invoice_number;
+      const computedNext = calculateNextInvoiceNumber(prefix, latestNo);
+      setNextInvoiceNo(computedNext);
+    } catch (err) {
+      console.error('Error fetching next invoice number:', err);
+      setNextInvoiceNo(calculateNextInvoiceNumber(prefix));
+    } finally {
+      setLoadingNextNo(false);
+    }
+  };
+
+  useEffect(() => {
+    if (cid) {
+      fetchNextInvoiceNumber(invoicePrefix);
+    }
+  }, [cid, invoicePrefix]);
+
+  const handlePrefixChange = (val: string) => {
+    setInvoicePrefix(val);
+    if (cid) {
+      const currentSettings = getAppSettings();
+      const updatedSettings = {
+        ...currentSettings,
+        invoicePrefix: val
+      };
+      localStorage.setItem(`appSettings_${cid}`, JSON.stringify(updatedSettings));
+      window.dispatchEvent(new Event('appSettingsChanged'));
+    }
+  };
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [licenseId, setLicenseId] = useState('26401');
@@ -226,12 +276,13 @@ const Settings = () => {
       await safeSupabaseSave('companies', workspaceInfo, cid);
       localStorage.setItem('activeCompanyName', workspaceInfo.name);
 
-      // Save GST Type to localStorage
+      // Save GST Type & Invoice Prefix to localStorage
       const currentSettings = getAppSettings();
       const updatedSettings = { 
         ...currentSettings, 
         gstEnabled: gstConfig.enabled, 
-        gstType: gstConfig.type 
+        gstType: gstConfig.type,
+        invoicePrefix: invoicePrefix.trim() || '2026-27-000'
       };
       localStorage.setItem(`appSettings_${cid}`, JSON.stringify(updatedSettings));
 
@@ -313,7 +364,7 @@ const Settings = () => {
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">
             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Appearance</h3>
           </div>
-          <div className="p-8">
+          <div className="p-8 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
               <div>
                 <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Visual Theme</h4>
@@ -322,6 +373,39 @@ const Settings = () => {
               <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg w-fit ml-auto">
                 <button type="button" onClick={() => applyTheme('light')} className={`flex items-center px-4 py-2 rounded-md text-xs font-bold transition-all ${theme === 'light' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Sun className="w-3.5 h-3.5 mr-2" /> Light</button>
                 <button type="button" onClick={() => applyTheme('dark')} className={`flex items-center px-4 py-2 rounded-md text-xs font-bold transition-all ${theme === 'dark' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}><Moon className="w-3.5 h-3.5 mr-2" /> Dark</button>
+              </div>
+            </div>
+
+            {/* Invoice Number Prefix */}
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Invoice Number Prefix</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Set default prefix for sales invoice numbers (e.g. 2026-27-000).</p>
+              </div>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  value={invoicePrefix} 
+                  onChange={(e) => handlePrefixChange(e.target.value)} 
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded text-sm font-mono font-bold outline-none focus:border-slate-400 dark:focus:border-slate-500 uppercase"
+                  placeholder="2026-27-000"
+                />
+              </div>
+            </div>
+
+            {/* Next Invoice Number */}
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Next Invoice Number</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Calculated (+1) from the latest sales invoice based on date.</p>
+              </div>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={loadingNextNo ? 'Calculating...' : nextInvoiceNo} 
+                  className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-emerald-600 dark:text-emerald-400 rounded text-sm font-mono font-bold outline-none cursor-not-allowed uppercase"
+                />
               </div>
             </div>
           </div>
