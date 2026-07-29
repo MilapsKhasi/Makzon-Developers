@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor, Percent, CheckCircle2, RotateCcw, Trash, Filter, ShieldCheck, BadgeCheck, HardDrive, Download, Cpu, FolderSymlink, Laptop } from 'lucide-react';
-import { getActiveCompanyId, safeSupabaseSave, getAppSettings, formatDate, calculateNextInvoiceNumber } from '../utils/helpers';
+import { getActiveCompanyId, safeSupabaseSave, getAppSettings, formatDate, calculateNextInvoiceNumber, filterActualSalesInvoices } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import { processOfflineSyncQueue } from '../lib/syncEngine';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -34,16 +34,17 @@ const Settings = () => {
     if (!cid) return;
     setLoadingNextNo(true);
     try {
-      const { data: latestInvoices } = await supabase
+      const { data: rawInvoices } = await supabase
         .from('sales_invoices')
-        .select('invoice_number, date, created_at')
+        .select('invoice_number, date, created_at, items')
         .eq('company_id', cid)
         .eq('is_deleted', false)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(50);
 
-      const latestNo = latestInvoices?.find((inv: any) => inv.invoice_number && inv.invoice_number.trim())?.invoice_number;
+      const actualInvoices = filterActualSalesInvoices(rawInvoices || []);
+      const latestNo = actualInvoices.find((inv: any) => inv.invoice_number && inv.invoice_number.trim())?.invoice_number;
       const computedNext = calculateNextInvoiceNumber(prefix, latestNo);
       setNextInvoiceNo(computedNext);
     } catch (err) {

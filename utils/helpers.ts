@@ -40,6 +40,22 @@ export const getAppSettings = () => {
   }
 };
 
+export const filterActualSalesInvoices = (invoices: any[]) => {
+  return (invoices || []).filter((inv: any) => {
+    if (!inv) return false;
+    let itemsObj = inv.items;
+    if (typeof itemsObj === 'string') {
+      try { itemsObj = JSON.parse(itemsObj); } catch { itemsObj = {}; }
+    }
+    if (!itemsObj) itemsObj = {};
+    const isPaymentVoucher = itemsObj.is_payment_voucher === true;
+    const isDeliveryChallan = itemsObj.is_delivery_challan === true;
+    const invNo = (inv.invoice_number || inv.bill_number || '').trim().toUpperCase();
+    const isVoucherNo = invNo.startsWith('REC-') || invNo.startsWith('PAY-') || invNo.startsWith('VCH-') || invNo.startsWith('DC-');
+    return !isPaymentVoucher && !isDeliveryChallan && !isVoucherNo;
+  });
+};
+
 export const calculateNextInvoiceNumber = (prefix: string = '2026-27-000', latestInvoiceNumber?: string) => {
   const cleanPrefix = (prefix || '2026-27-000').trim();
 

@@ -719,7 +719,7 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
 
       {/* Dispatched Stock Items Table */}
       <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900">
-        <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div className="p-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between shadow-[0_2px_10px_-3px_rgba(0,0,0,0.03)]">
           <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
             Dispatched Items & Quantities
           </span>

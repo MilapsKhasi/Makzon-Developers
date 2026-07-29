@@ -120,7 +120,7 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
   return (
     <div className="bg-white dark:bg-slate-900 w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden rounded-md border border-slate-300 dark:border-slate-800">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-[0_2px_12px_-3px_rgba(0,0,0,0.03)] shrink-0 sticky top-0 z-10">
         <h2 className="text-[18px] font-normal text-slate-900 dark:text-white">Party Master</h2>
         <button type="button" onClick={onCancel} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-none">
           <X className="w-5 h-5" />

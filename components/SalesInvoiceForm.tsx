@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, ToggleLeft, ToggleRight, Printer } from 'lucide-react';
-import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS, fetchStockItemsWithBalance, calculateNextInvoiceNumber } from '../utils/helpers';
+import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS, fetchStockItemsWithBalance, calculateNextInvoiceNumber, filterActualSalesInvoices } from '../utils/helpers';
 import { supabase, getAuthUser } from '../lib/supabase';
 import Modal from './Modal';
 import PartyForm from './PartyForm';
@@ -309,14 +309,15 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       if (cid) {
         supabase
           .from('sales_invoices')
-          .select('invoice_number, date, created_at')
+          .select('invoice_number, date, created_at, items')
           .eq('company_id', cid)
           .eq('is_deleted', false)
           .order('date', { ascending: false })
           .order('created_at', { ascending: false })
-          .limit(10)
-          .then(({ data: latestInvoices }: any) => {
-            const latestNo = latestInvoices?.find((inv: any) => inv.invoice_number && inv.invoice_number.trim())?.invoice_number;
+          .limit(50)
+          .then(({ data: rawInvoices }: any) => {
+            const actualInvoices = filterActualSalesInvoices(rawInvoices || []);
+            const latestNo = actualInvoices.find((inv: any) => inv.invoice_number && inv.invoice_number.trim())?.invoice_number;
             const nextNo = calculateNextInvoiceNumber(appSettings.invoicePrefix || '2026-27-000', latestNo);
             setFormData((prev: any) => ({
               ...prev,
@@ -494,7 +495,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       />
 
       <form ref={formRef} onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-[0_2px_12px_-3px_rgba(0,0,0,0.03)] sticky top-0 z-20">
           <div className="flex items-center space-x-4">
             {appSettings.gstEnabled && (
               <>
