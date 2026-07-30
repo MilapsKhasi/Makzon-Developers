@@ -103,6 +103,9 @@
       } else {
         document.documentElement.classList.remove('dark');
       }
+
+      const themeStyle = localStorage.getItem('app_theme_style') || 'modern';
+      document.documentElement.setAttribute('data-theme', themeStyle);
     </script>
 
     <style>
@@ -161,6 +164,296 @@
         backdrop-filter: blur(16px) saturate(180%) !important;
         border: 1px solid rgba(30, 41, 59, 0.9) !important;
         box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+      }
+
+      /* ==========================================
+         ZENTERPRIME CLASSIC THEME (GLOBAL SYSTEM)
+         ========================================== */
+      [data-theme="classic"] body {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+        font-size: 13px !important;
+      }
+
+      [data-theme="classic"].dark body {
+        background-color: #080d1a !important;
+        color: #f8fafc !important;
+      }
+
+      /* 1. Eliminate Shadows, Gradients, and Glassmorphism */
+      [data-theme="classic"] *,
+      [data-theme="classic"] *::before,
+      [data-theme="classic"] *::after {
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        text-shadow: none !important;
+      }
+
+      /* 2. Flat Sharp Border Radius */
+      [data-theme="classic"] .rounded-2xl,
+      [data-theme="classic"] .rounded-xl,
+      [data-theme="classic"] .rounded-lg,
+      [data-theme="classic"] .rounded-md,
+      [data-theme="classic"] .rounded-sm,
+      [data-theme="classic"] .rounded-[10px],
+      [data-theme="classic"] .rounded-[12px],
+      [data-theme="classic"] .rounded-[16px],
+      [data-theme="classic"] .rounded-full {
+        border-radius: 1px !important;
+      }
+
+      /* 3. Solid Headers & Containers (No Glass) */
+      [data-theme="classic"] .liquid-glass-header {
+        background: #e2e8f0 !important;
+        border-bottom: 1px solid #94a3b8 !important;
+        box-shadow: none !important;
+      }
+
+      [data-theme="classic"].dark .liquid-glass-header {
+        background: #1e293b !important;
+        border-bottom: 1px solid #475569 !important;
+        box-shadow: none !important;
+      }
+
+      [data-theme="classic"] .liquid-glass-box {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: none !important;
+      }
+
+      [data-theme="classic"].dark .liquid-glass-box {
+        background: #0f172a !important;
+        border: 1px solid #334155 !important;
+        box-shadow: none !important;
+      }
+
+      /* 4. Desktop ERP Top Header Bar & Sidebar */
+      [data-theme="classic"] header {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border-bottom: 1px solid #cbd5e1 !important;
+      }
+
+      [data-theme="classic"] header h1,
+      [data-theme="classic"] header h2,
+      [data-theme="classic"] header span,
+      [data-theme="classic"] header button,
+      [data-theme="classic"] header div,
+      [data-theme="classic"] header p,
+      [data-theme="classic"] header input,
+      [data-theme="classic"] header select,
+      [data-theme="classic"] header svg {
+        color: #0f172a !important;
+      }
+
+      [data-theme="classic"].dark header {
+        background-color: #0f172a !important;
+        color: #ffffff !important;
+        border-bottom: 1px solid #334155 !important;
+      }
+
+      [data-theme="classic"].dark header h1,
+      [data-theme="classic"].dark header h2,
+      [data-theme="classic"].dark header span,
+      [data-theme="classic"].dark header button,
+      [data-theme="classic"].dark header div,
+      [data-theme="classic"].dark header p,
+      [data-theme="classic"].dark header input,
+      [data-theme="classic"].dark header select,
+      [data-theme="classic"].dark header svg {
+        color: #f8fafc !important;
+      }
+
+      [data-theme="classic"] header .bg-\[\#00b050\],
+      [data-theme="classic"] header .bg-\[\#00b050\] *,
+      [data-theme="classic"] header .bg-emerald-600,
+      [data-theme="classic"] header .bg-emerald-600 * {
+        color: #ffffff !important;
+      }
+
+      [data-theme="classic"] aside {
+        background-color: #ffffff !important;
+        border-right: 1px solid #cbd5e1 !important;
+      }
+
+      [data-theme="classic"].dark aside {
+        background-color: #0f172a !important;
+        border-right: 1px solid #334155 !important;
+      }
+
+      /* 5. Cards & Flat Containers */
+      [data-theme="classic"] .bg-white {
+        background-color: #ffffff !important;
+        border-color: #cbd5e1 !important;
+      }
+
+      [data-theme="classic"].dark .bg-slate-900,
+      [data-theme="classic"].dark .bg-slate-950 {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+      }
+
+      [data-theme="classic"] .border,
+      [data-theme="classic"] .border-b,
+      [data-theme="classic"] .border-t,
+      [data-theme="classic"] .border-l,
+      [data-theme="classic"] .border-r {
+        border-color: #cbd5e1 !important;
+      }
+
+      [data-theme="classic"].dark .border,
+      [data-theme="classic"].dark .border-b,
+      [data-theme="classic"].dark .border-t,
+      [data-theme="classic"].dark .border-l,
+      [data-theme="classic"].dark .border-r {
+        border-color: #334155 !important;
+      }
+
+      /* 6. Accounting Data Tables */
+      [data-theme="classic"] table {
+        border-collapse: collapse !important;
+        border: 1px solid #cbd5e1 !important;
+        width: 100% !important;
+      }
+
+      [data-theme="classic"].dark table {
+        border: 1px solid #334155 !important;
+      }
+
+      [data-theme="classic"] thead,
+      [data-theme="classic"] thead tr,
+      [data-theme="classic"] thead th {
+        background-color: #e2e8f0 !important;
+        color: #0f172a !important;
+        font-weight: 700 !important;
+        border-bottom: 2px solid #94a3b8 !important;
+        border-right: 1px solid #cbd5e1 !important;
+      }
+
+      [data-theme="classic"].dark thead,
+      [data-theme="classic"].dark thead tr,
+      [data-theme="classic"].dark thead th {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+        border-bottom: 2px solid #475569 !important;
+        border-right: 1px solid #334155 !important;
+      }
+
+      [data-theme="classic"] th, 
+      [data-theme="classic"] td {
+        border: 1px solid #cbd5e1 !important;
+        padding: 5px 8px !important;
+        font-size: 13px !important;
+      }
+
+      [data-theme="classic"].dark th, 
+      [data-theme="classic"].dark td {
+        border: 1px solid #334155 !important;
+      }
+
+      [data-theme="classic"] tbody tr:nth-child(even) {
+        background-color: #f8fafc !important;
+      }
+
+      [data-theme="classic"].dark tbody tr:nth-child(even) {
+        background-color: #0b0f19 !important;
+      }
+
+      [data-theme="classic"] tbody tr:hover {
+        background-color: #e0f2fe !important; /* Classic light blue row highlight */
+      }
+
+      [data-theme="classic"].dark tbody tr:hover {
+        background-color: #1e3a8a !important;
+      }
+
+      /* 7. Classic Form Controls & Inputs */
+      [data-theme="classic"] input,
+      [data-theme="classic"] select,
+      [data-theme="classic"] textarea {
+        border-radius: 1px !important;
+        border: 1px solid #94a3b8 !important;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        padding: 4px 8px !important;
+        font-size: 13px !important;
+      }
+
+      [data-theme="classic"].dark input,
+      [data-theme="classic"].dark select,
+      [data-theme="classic"].dark textarea {
+        border: 1px solid #475569 !important;
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+      }
+
+      [data-theme="classic"] input:focus,
+      [data-theme="classic"] select:focus,
+      [data-theme="classic"] textarea:focus {
+        border-color: #0284c7 !important;
+        outline: 1px solid #0284c7 !important;
+        background-color: #f0f9ff !important;
+      }
+
+      [data-theme="classic"].dark input:focus,
+      [data-theme="classic"].dark select:focus,
+      [data-theme="classic"].dark textarea:focus {
+        background-color: #1e3a8a !important;
+      }
+
+      /* 8. Classic Buttons */
+      [data-theme="classic"] button {
+        border-radius: 1px !important;
+        box-shadow: none !important;
+        font-weight: 600 !important;
+      }
+
+      [data-theme="classic"] .bg-primary,
+      [data-theme="classic"] .bg-indigo-600,
+      [data-theme="classic"] .bg-blue-600 {
+        background-color: #0284c7 !important;
+        border: 1px solid #0369a1 !important;
+        color: #ffffff !important;
+      }
+
+      [data-theme="classic"] .hover\:bg-primary-dark:hover,
+      [data-theme="classic"] .hover\:bg-primary\/90:hover,
+      [data-theme="classic"] .hover\:bg-indigo-700:hover,
+      [data-theme="classic"] .hover\:bg-blue-700:hover {
+        background-color: #0369a1 !important;
+      }
+
+      /* 9. Light Blue Highlights & Classic Accents */
+      [data-theme="classic"] .bg-primary\/10,
+      [data-theme="classic"] .bg-blue-50,
+      [data-theme="classic"] .bg-indigo-50,
+      [data-theme="classic"] .bg-amber-50 {
+        background-color: #e0f2fe !important;
+        color: #0369a1 !important;
+        border: 1px solid #bae6fd !important;
+      }
+
+      [data-theme="classic"].dark .bg-primary\/10,
+      [data-theme="classic"].dark .bg-blue-50,
+      [data-theme="classic"].dark .bg-indigo-50,
+      [data-theme="classic"].dark .bg-amber-50 {
+        background-color: #1e3a8a !important;
+        color: #93c5fd !important;
+        border: 1px solid #1e40af !important;
+      }
+
+      /* 10. Modals & Dialog Popups */
+      [data-theme="classic"] .fixed.inset-0 {
+        background-color: rgba(15, 23, 42, 0.45) !important;
+      }
+
+      [data-theme="classic"] [role="dialog"],
+      [data-theme="classic"] .modal-content,
+      [data-theme="classic"] .fixed .bg-white,
+      [data-theme="classic"] .fixed .bg-slate-900 {
+        border: 1px solid #475569 !important;
+        border-radius: 1px !important;
       }
 
       /* Global Minimum Font Size Rule: Enforce at least 13px - 14px */

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Plus, Printer, Edit, Trash2, Truck, Loader2 } from 'lucide-react';
+import { Search, Plus, Printer, Edit, Trash2, Truck, Loader2, Receipt, FileCheck } from 'lucide-react';
 import { formatDate, formatCurrency, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import DeliveryChallanForm from '../components/DeliveryChallanForm';
+import SalesInvoiceForm from '../components/SalesInvoiceForm';
 import ConfirmDialog from '../components/ConfirmDialog';
 import DateFilter, { DateFilterHandle } from '../components/DateFilter';
 import EmptyState from '../components/EmptyState';
@@ -16,6 +17,8 @@ export const DeliveryChallans = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingChallan, setEditingChallan] = useState<any | null>(null);
+  const [isCreateInvoiceModalOpen, setIsCreateInvoiceModalOpen] = useState(false);
+  const [createInvoiceChallan, setCreateInvoiceChallan] = useState<any | null>(null);
   const [printModalChallan, setPrintModalChallan] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<{ startDate: string | null; endDate: string | null }>({
@@ -171,6 +174,30 @@ export const DeliveryChallans = () => {
         />
       </Modal>
 
+      {/* Convert to Sales Invoice Modal */}
+      <Modal
+        isOpen={isCreateInvoiceModalOpen}
+        onClose={() => {
+          setIsCreateInvoiceModalOpen(false);
+          setCreateInvoiceChallan(null);
+        }}
+        title="Create Sales Invoice from Delivery Challan"
+        maxWidth="max-w-5xl"
+      >
+        <SalesInvoiceForm
+          initialData={createInvoiceChallan}
+          onSubmit={() => {
+            setIsCreateInvoiceModalOpen(false);
+            setCreateInvoiceChallan(null);
+            loadData();
+          }}
+          onCancel={() => {
+            setIsCreateInvoiceModalOpen(false);
+            setCreateInvoiceChallan(null);
+          }}
+        />
+      </Modal>
+
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={deleteDialog.isOpen}
@@ -273,6 +300,18 @@ export const DeliveryChallans = () => {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[12px] text-slate-700 dark:text-slate-300">
                 {filtered.map((c, i) => {
                   const veh = c.items_raw?.vehicle_no || '—';
+                  const isConverted = c.status === 'Converted to Invoice' ||
+                    c.items_raw?.converted_to_invoice === true ||
+                    c.converted_to_invoice === true ||
+                    Boolean(c.items_raw?.linked_invoice_id || c.linked_invoice_id);
+
+                  const isSupplementary = c.status === 'Supplementary' ||
+                    c.items_raw?.is_supplementary === true ||
+                    c.is_supplementary === true;
+
+                  const linkedInvoiceNo = c.items_raw?.linked_invoice_number || c.linked_invoice_number;
+                  const parentChallanNo = c.items_raw?.parent_challan_number || c.parent_challan_number;
+
                   return (
                     <tr
                       key={c.id}
@@ -296,12 +335,57 @@ export const DeliveryChallans = () => {
                         {formatCurrency(c.grand_total)}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
-                          {c.status || 'Dispatched'}
-                        </span>
+                        {isConverted ? (
+                          <div className="inline-flex flex-col items-center">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              Converted to Invoice
+                            </span>
+                            {linkedInvoiceNo && (
+                              <span className="text-[9px] text-slate-400 font-mono mt-0.5">
+                                {linkedInvoiceNo}
+                              </span>
+                            )}
+                          </div>
+                        ) : isSupplementary ? (
+                          <div className="inline-flex flex-col items-center">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              Supplementary
+                            </span>
+                            {parentChallanNo && (
+                              <span className="text-[9px] text-slate-400 font-mono mt-0.5">
+                                Ref: {parentChallanNo}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
+                            {c.status || 'Dispatched'}
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center space-x-1">
+                          {/* Create Sales Invoice Icon Button */}
+                          <button
+                            onClick={() => {
+                              if (isConverted) return;
+                              setCreateInvoiceChallan({
+                                ...c,
+                                convert_from_challan: true,
+                                original_challan_id: c.id
+                              });
+                              setIsCreateInvoiceModalOpen(true);
+                            }}
+                            disabled={isConverted}
+                            className={`p-1 rounded transition-colors ${
+                              isConverted
+                                ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
+                                : 'text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer'
+                            }`}
+                            title={isConverted ? "Invoice Already Created" : "Create Sales Invoice"}
+                          >
+                            <Receipt className="w-3.5 h-3.5" />
+                          </button>
                           <button
                             onClick={() => setPrintModalChallan(c)}
                             className="p-1 text-slate-400 hover:text-emerald-600 rounded transition-colors"

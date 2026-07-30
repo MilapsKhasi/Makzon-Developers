@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor, Percent, CheckCircle2, RotateCcw, Trash, Filter, ShieldCheck, BadgeCheck, HardDrive, Download, Cpu, FolderSymlink, Laptop } from 'lucide-react';
+import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor, Percent, CheckCircle2, RotateCcw, Trash, Filter, ShieldCheck, BadgeCheck, HardDrive, Download, Cpu, FolderSymlink, Laptop, Sparkles, LayoutGrid } from 'lucide-react';
 import { getActiveCompanyId, safeSupabaseSave, getAppSettings, formatDate, calculateNextInvoiceNumber, filterActualSalesInvoices } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import { processOfflineSyncQueue } from '../lib/syncEngine';
@@ -17,6 +17,7 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [workspaceInfo, setWorkspaceInfo] = useState({ name: '', gstin: '', address: '' });
   const [theme, setTheme] = useState(() => localStorage.getItem('app_theme') || 'light');
+  const [themeStyle, setThemeStyle] = useState(() => localStorage.getItem('app_theme_style') || 'modern');
   
   const [gstConfig, setGstConfig] = useState(() => {
     const s = getAppSettings();
@@ -245,6 +246,13 @@ const Settings = () => {
     window.dispatchEvent(new Event('appSettingsChanged'));
   };
 
+  const applyThemeStyle = (newStyle: string) => {
+    setThemeStyle(newStyle);
+    localStorage.setItem('app_theme_style', newStyle);
+    document.documentElement.setAttribute('data-theme', newStyle);
+    window.dispatchEvent(new Event('appSettingsChanged'));
+  };
+
   /**
    * FIX: Toggle function now saves state IMMEDIATELY to localStorage
    * to prevent it from resetting on reload.
@@ -368,12 +376,36 @@ const Settings = () => {
           <div className="p-8 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
               <div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Visual Theme</h4>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Visual Color Mode</h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Choose between light, dark, or system-default appearance.</p>
               </div>
               <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg w-fit ml-auto">
                 <button type="button" onClick={() => applyTheme('light')} className={`flex items-center px-4 py-2 rounded-md text-xs font-bold transition-all ${theme === 'light' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Sun className="w-3.5 h-3.5 mr-2" /> Light</button>
                 <button type="button" onClick={() => applyTheme('dark')} className={`flex items-center px-4 py-2 rounded-md text-xs font-bold transition-all ${theme === 'dark' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}><Moon className="w-3.5 h-3.5 mr-2" /> Dark</button>
+              </div>
+            </div>
+
+            {/* Interface Theme Architecture (Modern vs Classic) */}
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Application Theme</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Switch between Modern UI and Classic Desktop Accounting Software interface.</p>
+              </div>
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg w-fit ml-auto space-x-1">
+                <button 
+                  type="button" 
+                  onClick={() => applyThemeStyle('modern')} 
+                  className={`flex items-center px-4 py-2 rounded-md text-xs font-bold transition-all ${themeStyle === 'modern' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 mr-2" /> Modern
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => applyThemeStyle('classic')} 
+                  className={`flex items-center px-4 py-2 rounded-md text-xs font-bold transition-all ${themeStyle === 'classic' ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5 mr-2" /> Classic
+                </button>
               </div>
             </div>
 

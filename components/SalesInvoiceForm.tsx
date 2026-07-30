@@ -9,6 +9,12 @@ import ItemSelectDropdown from './ItemSelectDropdown';
 import PaymentModal from './PaymentModal';
 import { recordActivity } from '../utils/activityTracker';
 import { InvoicePrintModal } from './InvoicePrintModal';
+import {
+  hasDispatchInfoChanged,
+  calculateSupplementaryItems,
+  createSupplementaryDeliveryChallan,
+  markChallanAsConverted
+} from '../utils/deliveryChallanWorkflow';
 
 interface SalesInvoiceFormProps {
   initialData?: any;
@@ -327,6 +333,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
           .catch((err: any) => console.warn('Auto invoice number fetch warning:', err));
       }
     } else {
+        const isFromChallan = Boolean(initialData.convert_from_challan || initialData.is_delivery_challan || initialData.items_raw?.is_delivery_challan);
         const normalized = normalizeBill(initialData);
         normalized?.items_raw?.duties_and_taxes?.forEach((d:any) => { if(d.amount !== 0) manualOverrides.current.add(d.id); });
         
@@ -334,23 +341,56 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         const isGst = appSettings.gstEnabled && (hasGstInSavedItems || normalized.total_gst > 0);
         setIsGstEnabled(isGst);
 
-        // Map old or saved gst_type if they are in older formats like 'CGST - SGST' or 'IGST' to the new 'Intra-State' / 'Inter-State' modes
+        // Map old or saved gst_type
         let savedGstType = normalized?.items_raw?.gst_type || normalized?.gst_type;
         if (savedGstType === 'CGST - SGST') savedGstType = 'Intra-State';
         else if (savedGstType === 'IGST') savedGstType = 'Inter-State';
         if (!savedGstType) savedGstType = appSettings.gstType === 'IGST' ? 'Inter-State' : 'Intra-State';
 
-        setFormData(recalculate({ 
-          ...getInitialState(), 
-          ...normalized, 
-          customer_name: normalized?.customer_name || '',
-          invoice_number: normalized?.invoice_number || '',
-          description: normalized?.description || '', 
-          displayDate: formatDate(normalized?.date), 
+        const baseState = {
+          ...getInitialState(),
+          ...normalized,
+          customer_name: normalized?.customer_name || initialData?.customer_name || initialData?.vendor_name || '',
+          description: normalized?.description || initialData?.description || '',
           gst_type: savedGstType,
           duties_and_taxes: (normalized?.items_raw?.duties_and_taxes || []),
           payment_details: normalized?.items_raw?.payment_details || null
-        }, undefined, undefined, undefined, isGst));
+        };
+
+        if (isFromChallan) {
+          // Creating Sales Invoice from Delivery Challan: auto-generate invoice number, date = today
+          baseState.invoice_number = '';
+          baseState.date = today;
+          baseState.displayDate = formatDate(today);
+          baseState.original_challan_id = initialData.id || normalized.id;
+          baseState.challan_number = initialData.challan_number || initialData.invoice_number || initialData.bill_number;
+
+          if (cid) {
+            supabase
+              .from('sales_invoices')
+              .select('invoice_number, date, created_at, items')
+              .eq('company_id', cid)
+              .eq('is_deleted', false)
+              .order('date', { ascending: false })
+              .order('created_at', { ascending: false })
+              .limit(50)
+              .then(({ data: rawInvoices }: any) => {
+                const actualInvoices = filterActualSalesInvoices(rawInvoices || []);
+                const latestNo = actualInvoices.find((inv: any) => inv.invoice_number && inv.invoice_number.trim())?.invoice_number;
+                const nextNo = calculateNextInvoiceNumber(appSettings.invoicePrefix || '2026-27-000', latestNo);
+                setFormData((prev: any) => ({
+                  ...prev,
+                  invoice_number: nextNo
+                }));
+              })
+              .catch((err: any) => console.warn('Auto invoice number fetch warning:', err));
+          }
+        } else {
+          baseState.invoice_number = normalized?.invoice_number || '';
+          baseState.displayDate = formatDate(normalized?.date);
+        }
+
+        setFormData(recalculate(baseState, undefined, undefined, undefined, isGst));
     }
   };
 
@@ -434,6 +474,17 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       const user = await getAuthUser();
       if (user) recordActivity(user.id, user.email || '');
 
+      const isConvertingFromChallan = Boolean(
+        initialData?.convert_from_challan ||
+        initialData?.is_delivery_challan ||
+        initialData?.items_raw?.is_delivery_challan
+      );
+
+      const origChallanId =
+        formData.original_challan_id ||
+        initialData?.original_challan_id ||
+        (isConvertingFromChallan ? initialData?.id : initialData?.items_raw?.original_challan_id);
+
       const payload: any = {
           customer_name: (formData.customer_name || '').trim().toUpperCase(),
           invoice_number: formData.invoice_number,
@@ -449,16 +500,62 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
               line_items: formData.items,
               duties_and_taxes: formData.duties_and_taxes,
               gst_type: formData.gst_type,
-              payment_details: formData.payment_details
+              payment_details: formData.payment_details,
+              original_challan_id: origChallanId || null,
+              challan_number: formData.challan_number || initialData?.challan_number || initialData?.invoice_number || null,
+              supplementary_challan_ids: initialData?.items_raw?.supplementary_challan_ids || []
           }
       };
       
-      const savedRes = await safeSupabaseSave('sales_invoices', payload, initialData?.id);
+      const targetSaveId = isConvertingFromChallan ? undefined : initialData?.id;
+      const savedRes = await safeSupabaseSave('sales_invoices', payload, targetSaveId);
       await ensureStockItems(formData.items, cid);
       await ensureParty(formData.customer_name, 'customer', cid);
       if (payload.status === 'Paid' && savedRes.data) await syncTransactionToCashbook(savedRes.data[0]);
+
+      const savedInv = (savedRes.data && savedRes.data[0]) ? savedRes.data[0] : { ...payload, id: 'new-inv' };
+
+      // 1. If converting from Delivery Challan, mark original challan as converted without altering its contents
+      if (isConvertingFromChallan && origChallanId) {
+        await markChallanAsConverted(origChallanId, savedInv.id, savedInv.invoice_number);
+      }
+
+      // 2. If editing an existing invoice originating from a Delivery Challan, check for dispatch changes & auto-create Supplementary Challan
+      if (!isConvertingFromChallan && origChallanId && cid) {
+        try {
+          const { data: origChallan } = await supabase
+            .from('delivery_challans')
+            .select('*')
+            .eq('id', origChallanId)
+            .maybeSingle();
+
+          if (origChallan) {
+            const { data: suppChallans } = await supabase
+              .from('delivery_challans')
+              .select('*')
+              .eq('company_id', cid)
+              .eq('is_deleted', false)
+              .filter('items->>parent_challan_id', 'eq', origChallanId);
+
+            if (hasDispatchInfoChanged(origChallan, suppChallans || [], formData)) {
+              const diffItems = calculateSupplementaryItems(origChallan, suppChallans || [], formData);
+              if (diffItems.length > 0 || (formData.customer_name || '').trim().toUpperCase() !== (origChallan.customer_name || origChallan.vendor_name || '').trim().toUpperCase()) {
+                const newSupp = await createSupplementaryDeliveryChallan(cid, origChallan, savedInv, diffItems);
+                if (newSupp) {
+                  const updatedSuppIds = [...(payload.items.supplementary_challan_ids || []), newSupp.id];
+                  payload.items.supplementary_challan_ids = updatedSuppIds;
+                  await supabase.from('sales_invoices').update({ items: payload.items }).eq('id', savedInv.id);
+                }
+              }
+            }
+          }
+        } catch (suppErr) {
+          console.warn('Supplementary Delivery Challan processing warning:', suppErr);
+        }
+      }
+
       window.dispatchEvent(new Event('appSettingsChanged'));
-      const finalInv = (savedRes.data && savedRes.data[0]) ? savedRes.data[0] : { ...payload, bill_number: payload.invoice_number };
+      const finalInv = savedInv.bill_number ? savedInv : { ...savedInv, bill_number: savedInv.invoice_number };
       onSubmit(finalInv, shouldPrintRef.current, isSaveAndNew);
       if (isSaveAndNew) {
         setFormData(getInitialState());
