@@ -29,16 +29,6 @@ const Dashboard = () => {
   const [dateRange, setDateRange] = useState<{ startDate: string | null, endDate: string | null }>({ startDate: null, endDate: null });
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [isClassicTheme, setIsClassicTheme] = useState(() => localStorage.getItem('app_theme_style') === 'classic');
-
-  useEffect(() => {
-    const handleSettings = () => {
-      setIsClassicTheme(localStorage.getItem('app_theme_style') === 'classic');
-    };
-    window.addEventListener('appSettingsChanged', handleSettings);
-    return () => window.removeEventListener('appSettingsChanged', handleSettings);
-  }, []);
-
   const loadData = async () => {
     setLoading(true);
     const cid = getActiveCompanyId();
@@ -180,183 +170,77 @@ const Dashboard = () => {
         onSuccess={loadData}
       />
 
-      {/* Classic Theme Stat Grid & Main Container */}
-      {isClassicTheme ? (
-        <div className="space-y-4">
-          {/* Stat Grid (6 Columns x 2 Rows like the reference image) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {/* Row 1 */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 p-3 rounded-none">
-              <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">SALES</div>
-              <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1">
-                {stats.totalSales.toFixed(2)}
-              </div>
-            </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 p-3 rounded-none">
-              <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">PURCHASES</div>
-              <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1">
-                {stats.totalPurchases.toFixed(2)}
-              </div>
-            </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 p-3 rounded-none">
-              <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">ACTIVE PARTNERS</div>
-              <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1">
-                {stats.totalVendors + stats.totalCustomers}
-              </div>
-            </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 p-3 rounded-none">
-              <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">STOCK ITEMS</div>
-              <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1">
-                {stats.stockItems}
-              </div>
-            </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 p-3 rounded-none hidden lg:block"></div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 p-3 rounded-none hidden lg:block"></div>
-
-            {/* Row 2 */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 p-3 rounded-none">
-              <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">TOTAL RECEIVABLES</div>
-              <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1">
-                {stats.receivables.toFixed(2)}
-              </div>
-            </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 p-3 rounded-none">
-              <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">TOTAL PAYABLES</div>
-              <div className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-1">
-                {stats.payables.toFixed(2)}
-              </div>
-            </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 p-3 rounded-none">
-              <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">LOW STOCKS</div>
-              <div className="text-base sm:text-lg font-bold text-red-600 dark:text-red-400 mt-1">
-                0.00
-              </div>
-            </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 p-3 rounded-none">
-              <div className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">GSTR STATUS</div>
-              <div className="text-base sm:text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                Filed
-              </div>
-            </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 p-3 rounded-none hidden lg:block"></div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 p-3 rounded-none hidden lg:block"></div>
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <LayoutDashboard className="w-5 h-5" />
           </div>
-
-          {/* Large Main View Container */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-none min-h-[480px] flex flex-col overflow-hidden">
-            {filteredVouchers.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="clean-table w-full border-collapse">
-                  <thead>
-                    <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-700">
-                      <th className="font-bold text-left p-2 text-xs">DATE</th>
-                      <th className="font-bold text-left p-2 text-xs">TYPE</th>
-                      <th className="font-bold text-left p-2 text-xs">DOCUMENT #</th>
-                      <th className="font-bold text-left p-2 text-xs">PARTY NAME</th>
-                      <th className="font-bold text-right p-2 text-xs">TOTAL AMOUNT</th>
-                      <th className="font-bold text-center p-2 text-xs">STATUS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredVouchers.map((v) => (
-                      <tr key={v.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-sky-50 dark:hover:bg-slate-800">
-                        <td className="p-2 text-xs">{formatDate(v.date)}</td>
-                        <td className={`p-2 text-xs font-bold ${v.type === 'Sale' ? 'text-blue-600' : 'text-rose-600'}`}>{v.type}</td>
-                        <td className="p-2 text-xs font-mono">{v.bill_number}</td>
-                        <td className="p-2 text-xs">{v.vendor_name || v.customer_name}</td>
-                        <td className="p-2 text-xs text-right font-mono font-bold">{formatCurrency(v.grand_total, false)}</td>
-                        <td className="p-2 text-xs text-center font-bold">
-                          <span className={v.status === 'Paid' ? 'text-emerald-600' : 'text-amber-600'}>{v.status}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center p-12">
-                <span className="text-slate-300 dark:text-slate-600 text-xs font-bold tracking-widest uppercase select-none">
-                  NO RECENT TRANSACTIONS
-                </span>
-              </div>
-            )}
+          <div>
+            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Executive Summary</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Real-time overview of sales, purchases, payables, receivables, and recent activity</p>
           </div>
         </div>
-      ) : (
-        <>
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                <LayoutDashboard className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Executive Summary</h1>
-                <p className="text-xs text-slate-400 dark:text-slate-500">Real-time overview of sales, purchases, payables, receivables, and recent activity</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-              <DateFilter onFilterChange={setDateRange} />
-              <NewVoucherDropdown
-                onSelectSalesInvoice={() => setIsSalesModalOpen(true)}
-                onSelectPurchaseBill={() => setIsPurchaseModalOpen(true)}
-                onSelectReceivePayment={() => { setPaymentVoucherType('Receipt'); setIsPaymentModalOpen(true); }}
-                onSelectMakePayment={() => { setPaymentVoucherType('Payment'); setIsPaymentModalOpen(true); }}
-              />
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+          <DateFilter onFilterChange={setDateRange} />
+          <NewVoucherDropdown
+            onSelectSalesInvoice={() => setIsSalesModalOpen(true)}
+            onSelectPurchaseBill={() => setIsPurchaseModalOpen(true)}
+            onSelectReceivePayment={() => { setPaymentVoucherType('Receipt'); setIsPaymentModalOpen(true); }}
+            onSelectMakePayment={() => { setPaymentVoucherType('Payment'); setIsPaymentModalOpen(true); }}
+          />
+        </div>
+      </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatBox label="Sales (Gross)" value={formatCurrency(stats.totalSales)} subLabel={`Net Recv: ${formatCurrency(stats.receivables)}`} icon={BadgeIndianRupee} />
-            <StatBox label="Purchases" value={formatCurrency(stats.totalPurchases)} subLabel={`Net Payable: ${formatCurrency(stats.payables)}`} icon={ShoppingCart} />
-            <StatBox label="Active Partners" value={stats.totalVendors + stats.totalCustomers} subLabel={`${stats.totalVendors} Vendors / ${stats.totalCustomers} Customers`} icon={Users} />
-            <StatBox label="Inventory" value={stats.stockItems} subLabel="Registered SKU Items" icon={Package} />
-          </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatBox label="Sales (Gross)" value={formatCurrency(stats.totalSales)} subLabel={`Net Recv: ${formatCurrency(stats.receivables)}`} icon={BadgeIndianRupee} />
+        <StatBox label="Purchases" value={formatCurrency(stats.totalPurchases)} subLabel={`Net Payable: ${formatCurrency(stats.payables)}`} icon={ShoppingCart} />
+        <StatBox label="Active Partners" value={stats.totalVendors + stats.totalCustomers} subLabel={`${stats.totalVendors} Vendors / ${stats.totalCustomers} Customers`} icon={Users} />
+        <StatBox label="Inventory" value={stats.stockItems} subLabel="Registered SKU Items" icon={Package} />
+      </div>
 
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded overflow-hidden">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/50">
-              <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">Recent Transactions</h2>
-              <div className="relative w-full sm:w-48">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-3.5 h-3.5" />
-                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filter list..." className="pl-7 pr-3 py-1 border border-slate-200 dark:border-slate-700 rounded text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
-              </div>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="clean-table min-w-[800px] sm:min-w-full">
-                <thead>
-                  <tr>
-                    <th className="font-medium capitalize">Date</th>
-                    <th className="font-medium capitalize">Type</th>
-                    <th className="font-medium capitalize">Document #</th>
-                    <th className="font-medium capitalize">Party Name</th>
-                    <th className="text-right font-medium capitalize">Total Amount</th>
-                    <th className="text-center font-medium capitalize">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr><td colSpan={6} className="text-center py-20 text-slate-400 capitalize text-[10px] font-medium tracking-widest">Refreshing Data...</td></tr>
-                  ) : filteredVouchers.map((v) => (
-                    <tr key={v.id}>
-                      <td className="text-slate-500 dark:text-slate-400">{formatDate(v.date)}</td>
-                      <td className={`text-[10px] font-medium capitalize ${v.type === 'Sale' ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}>{v.type}</td>
-                      <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{v.bill_number}</td>
-                      <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{v.vendor_name || v.customer_name}</td>
-                      <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{formatCurrency(v.grand_total, false)}</td>
-                      <td className="text-center">
-                        <span className={`text-[9px] px-2 py-0.5 rounded-sm font-medium capitalize ${v.status === 'Paid' ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>{v.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-                  {!loading && filteredVouchers.length === 0 && (
-                    <tr><td colSpan={6} className="py-20 text-center text-slate-300 italic">No transactions found for the selected period.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded overflow-hidden">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/50">
+          <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">Recent Transactions</h2>
+          <div className="relative w-full sm:w-48">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-3.5 h-3.5" />
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filter list..." className="pl-7 pr-3 py-1 border border-slate-200 dark:border-slate-700 rounded text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
           </div>
-        </>
-      )}
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="clean-table min-w-[800px] sm:min-w-full">
+            <thead>
+              <tr>
+                <th className="font-medium capitalize">Date</th>
+                <th className="font-medium capitalize">Type</th>
+                <th className="font-medium capitalize">Document #</th>
+                <th className="font-medium capitalize">Party Name</th>
+                <th className="text-right font-medium capitalize">Total Amount</th>
+                <th className="text-center font-medium capitalize">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={6} className="text-center py-20 text-slate-400 capitalize text-[10px] font-medium tracking-widest">Refreshing Data...</td></tr>
+              ) : filteredVouchers.map((v) => (
+                <tr key={v.id}>
+                  <td className="text-slate-500 dark:text-slate-400">{formatDate(v.date)}</td>
+                  <td className={`text-[10px] font-medium capitalize ${v.type === 'Sale' ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}>{v.type}</td>
+                  <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{v.bill_number}</td>
+                  <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{v.vendor_name || v.customer_name}</td>
+                  <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{formatCurrency(v.grand_total, false)}</td>
+                  <td className="text-center">
+                    <span className={`text-[9px] px-2 py-0.5 rounded-sm font-medium capitalize ${v.status === 'Paid' ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>{v.status}</span>
+                  </td>
+                </tr>
+              ))}
+              {!loading && filteredVouchers.length === 0 && (
+                <tr><td colSpan={6} className="py-20 text-center text-slate-300 italic">No transactions found for the selected period.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

@@ -33,18 +33,10 @@ const Layout = () => {
     return document.documentElement.classList.contains('dark') || localStorage.getItem('app_theme') === 'dark';
   });
 
-  const [themeStyle, setThemeStyle] = useState(() => {
-    return localStorage.getItem('app_theme_style') || 'modern';
-  });
-
   useEffect(() => {
     const handleSettingsChange = () => {
       setIsDarkMode(document.documentElement.classList.contains('dark') || localStorage.getItem('app_theme') === 'dark');
-      const currentStyle = localStorage.getItem('app_theme_style') || 'modern';
-      setThemeStyle(currentStyle);
-      document.documentElement.setAttribute('data-theme', currentStyle);
     };
-    handleSettingsChange();
     window.addEventListener('appSettingsChanged', handleSettingsChange);
     return () => window.removeEventListener('appSettingsChanged', handleSettingsChange);
   }, []);
@@ -475,9 +467,9 @@ const Layout = () => {
                   <Link
                     key={item.path || iIdx}
                     to={item.path || '/'}
-                    className={`flex items-center px-3 py-2 transition-colors ${themeStyle === 'classic' ? 'rounded-none' : 'rounded'} ${isActive
-                      ? (themeStyle === 'classic' ? 'bg-[#0078d4] text-white font-medium' : 'bg-primary text-white font-bold')
-                      : (themeStyle === 'classic' ? 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50')
+                    className={`flex items-center px-3 py-2 rounded transition-colors ${isActive
+                      ? 'bg-primary text-white font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
                       }`}
                   >
                     <IconComponent className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
@@ -569,22 +561,9 @@ const Layout = () => {
                 </span>
               </div>
             )}
-            {themeStyle === 'classic' && (
-              <div className="hidden md:flex items-center space-x-2 flex-1 max-w-md mx-4">
-                <div className="relative w-full">
-                  <input
-                    type="text"
-                    placeholder="Search"
-                    onClick={() => setIsGlobalSearchOpen(true)}
-                    readOnly
-                    className="w-full px-3 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-none text-xs outline-none cursor-pointer text-slate-700 dark:text-slate-200"
-                  />
-                </div>
-              </div>
-            )}
             <button
               onClick={() => setIsGlobalSearchOpen(true)}
-              className={`flex items-center space-x-2 px-3 py-1.5 ${themeStyle === 'classic' ? 'hidden' : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg'} text-xs transition-all border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs`}
+              className="flex items-center space-x-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg text-xs transition-all border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs"
               title="Global Search (Ctrl + K)"
             >
               <Search className="w-3.5 h-3.5 text-slate-400" />
@@ -593,23 +572,9 @@ const Layout = () => {
                 Ctrl K
               </kbd>
             </button>
-            {themeStyle === 'classic' && (
-              <>
-                <select className="hidden lg:block bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 rounded-none outline-none">
-                  <option>This Year</option>
-                  <option>Previous Year</option>
-                  <option>All Time</option>
-                </select>
-                <select className="hidden lg:block bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200 rounded-none outline-none">
-                  <option>This Month</option>
-                  <option>Last Month</option>
-                  <option>Today</option>
-                </select>
-              </>
-            )}
             <button
               onClick={() => setIsImportExcelOpen(true)}
-              className={`px-3.5 py-1.5 ${themeStyle === 'classic' ? 'bg-[#00b050] hover:bg-[#009040] border-[#00b050] rounded-none' : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600 rounded'} border text-white font-medium text-xs capitalize flex items-center gap-1.5 shadow-sm transition-all cursor-pointer`}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 border border-emerald-600 hover:border-emerald-700 text-white font-medium text-xs rounded capitalize flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
               title="Import Excel / CSV Data"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -617,7 +582,7 @@ const Layout = () => {
             </button>
             <button
               onClick={() => setIsCreateNewModalOpen(true)}
-              className={`px-3.5 py-1.5 bg-white dark:bg-slate-900 text-black dark:text-white border ${themeStyle === 'classic' ? 'border-slate-300 dark:border-slate-700 rounded-none font-normal' : 'border-primary rounded-md font-semibold'} text-xs capitalize hover:bg-slate-50 dark:hover:bg-slate-800/80 flex items-center gap-1.5 shadow-xs transition-all cursor-pointer`}
+              className="px-3.5 py-1.5 bg-white dark:bg-slate-900 text-black dark:text-white border border-primary font-semibold text-xs rounded-md capitalize hover:bg-slate-50 dark:hover:bg-slate-800/80 flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 text-primary stroke-[2.5]" />
               <span>Quick Create</span>
