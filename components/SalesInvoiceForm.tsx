@@ -347,11 +347,26 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         else if (savedGstType === 'IGST') savedGstType = 'Inter-State';
         if (!savedGstType) savedGstType = appSettings.gstType === 'IGST' ? 'Inter-State' : 'Intra-State';
 
+        const mappedItems = (normalized?.items || []).map((it: any, idx: number) => ({
+          id: it.id || `item_${Date.now()}_${idx}`,
+          itemName: it.itemName || it.item_name || it.name || '',
+          hsnCode: it.hsnCode || it.hsn || it.hsn_sac || '',
+          qty: it.qty !== undefined && it.qty !== null && it.qty !== '' ? it.qty : (it.quantity !== undefined && it.quantity !== null ? it.quantity : ''),
+          unit: it.unit || 'Pcs',
+          rate: it.rate !== undefined && it.rate !== null ? it.rate : '',
+          discount: it.discount !== undefined && it.discount !== null ? it.discount : 0,
+          discount_type: it.discount_type || 'Percentage',
+          tax_rate: it.tax_rate !== undefined && it.tax_rate !== null ? it.tax_rate : (it.gstRate || 0),
+          taxableAmount: it.taxableAmount || 0,
+          itemTotal: it.itemTotal || it.amount || 0
+        }));
+
         const baseState = {
           ...getInitialState(),
           ...normalized,
-          customer_name: normalized?.customer_name || initialData?.customer_name || initialData?.vendor_name || '',
-          description: normalized?.description || initialData?.description || '',
+          customer_name: normalized?.customer_name || initialData?.customer_name || initialData?.vendor_name || initialData?.party_name || '',
+          description: normalized?.description || initialData?.description || initialData?.notes || '',
+          items: mappedItems.length > 0 ? mappedItems : getInitialState().items,
           gst_type: savedGstType,
           duties_and_taxes: (normalized?.items_raw?.duties_and_taxes || []),
           payment_details: normalized?.items_raw?.payment_details || null
