@@ -20,6 +20,7 @@ import UserActivity from './pages/UserActivity';
 import DeliveryChallans from './pages/DeliveryChallans';
 import SplashScreen from './components/SplashScreen';
 import { CompanyProvider, useCompany } from './context/CompanyContext';
+import { LicenseProvider } from './context/LicenseContext';
 import { supabase } from './lib/supabase';
 import { Database, AlertCircle, Copy, Check } from 'lucide-react';
 import { processInactivity, recordActivity } from './utils/activityTracker';
@@ -322,9 +323,11 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
 
 const App = () => (
   <Router>
-    <CompanyProvider>
-      <AppContent />
-    </CompanyProvider>
+    <LicenseProvider>
+      <CompanyProvider>
+        <AppContent />
+      </CompanyProvider>
+    </LicenseProvider>
   </Router>
 );
 

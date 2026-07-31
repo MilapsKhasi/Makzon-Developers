@@ -5,16 +5,18 @@ import { getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import { 
   Plus, Search, Landmark, ArrowLeft, Maximize2, Minimize2, 
   Trash2, Edit, Eye, FileText, User, Filter, AlertCircle, Phone, 
-  Mail, MapPin
+  Mail, MapPin, Lock
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import PartyForm from '../components/PartyForm';
 import LedgerModal from '../components/LedgerModal';
 import EmptyState from '../components/EmptyState';
+import { useLicense } from '../context/LicenseContext';
 
 const Parties = () => {
   const location = useLocation();
+  const { isReadOnly } = useLicense();
   const cid = getActiveCompanyId();
   const [loading, setLoading] = useState(true);
   const [parties, setParties] = useState<any[]>([]);
@@ -367,10 +369,16 @@ const Parties = () => {
           </div>
         </div>
         <button 
-          onClick={() => { setEditingParty(null); setIsFormOpen(true); }} 
-          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
+          disabled={isReadOnly}
+          onClick={() => { if (!isReadOnly) { setEditingParty(null); setIsFormOpen(true); } }} 
+          className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
+            isReadOnly
+              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+              : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+          }`}
+          title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Party Account'}
         >
-          <Plus className="w-4 h-4 mr-2" /> New Party Account
+          {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Party Account
         </button>
       </div>
 
@@ -501,13 +509,15 @@ const Parties = () => {
                   </div>
                   
                   <div className="flex items-center space-x-2 shrink-0">
-                    <button 
-                      onClick={() => { setEditingParty(selectedParty); setIsFormOpen(true); }} 
-                      title="Edit Profile"
-                      className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md transition-none shadow-xs"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
+                    {!isReadOnly && (
+                      <button 
+                        onClick={() => { setEditingParty(selectedParty); setIsFormOpen(true); }} 
+                        title="Edit Profile"
+                        className="p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md transition-none shadow-xs"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                    )}
                     <button 
                       onClick={() => setIsLedgerOpen(true)} 
                       title="Opening Statement / Ledger"
@@ -522,13 +532,15 @@ const Parties = () => {
                     >
                       {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                     </button>
-                    <button 
-                      onClick={() => handleDeleteParty(selectedParty)} 
-                      title="Delete Account"
-                      className="p-2 border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-md transition-none shadow-xs"
-                    >
-                      <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                    </button>
+                    {!isReadOnly && (
+                      <button 
+                        onClick={() => handleDeleteParty(selectedParty)} 
+                        title="Delete Account"
+                        className="p-2 border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-md transition-none shadow-xs"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                      </button>
+                    )}
                   </div>
                 </div>
 

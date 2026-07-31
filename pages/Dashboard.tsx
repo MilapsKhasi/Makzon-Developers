@@ -8,8 +8,10 @@ import SalesInvoiceForm from '../components/SalesInvoiceForm';
 import PaymentVoucherModal from '../components/PaymentVoucherModal';
 import NewVoucherDropdown from '../components/NewVoucherDropdown';
 import { supabase } from '../lib/supabase';
+import { useLicense } from '../context/LicenseContext';
 
 const Dashboard = () => {
+  const { isReadOnly } = useLicense();
   const [stats, setStats] = useState({ 
     totalSales: 0,
     totalPurchases: 0, 
@@ -183,10 +185,10 @@ const Dashboard = () => {
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
           <DateFilter onFilterChange={setDateRange} />
           <NewVoucherDropdown
-            onSelectSalesInvoice={() => setIsSalesModalOpen(true)}
-            onSelectPurchaseBill={() => setIsPurchaseModalOpen(true)}
-            onSelectReceivePayment={() => { setPaymentVoucherType('Receipt'); setIsPaymentModalOpen(true); }}
-            onSelectMakePayment={() => { setPaymentVoucherType('Payment'); setIsPaymentModalOpen(true); }}
+            onSelectSalesInvoice={() => { if (!isReadOnly) setIsSalesModalOpen(true); }}
+            onSelectPurchaseBill={() => { if (!isReadOnly) setIsPurchaseModalOpen(true); }}
+            onSelectReceivePayment={() => { if (!isReadOnly) { setPaymentVoucherType('Receipt'); setIsPaymentModalOpen(true); } }}
+            onSelectMakePayment={() => { if (!isReadOnly) { setPaymentVoucherType('Payment'); setIsPaymentModalOpen(true); } }}
           />
         </div>
       </div>

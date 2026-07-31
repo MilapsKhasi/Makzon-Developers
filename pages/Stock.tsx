@@ -1,16 +1,18 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, History, Trash2, Edit, Eye, Package, Maximize2, Minimize2, Plus, TrendingUp, TrendingDown, Layers, ArrowDownLeft, ArrowUpRight, ArrowLeft } from 'lucide-react';
+import { Search, History, Trash2, Edit, Eye, Package, Maximize2, Minimize2, Plus, TrendingUp, TrendingDown, Layers, ArrowDownLeft, ArrowUpRight, ArrowLeft, Lock } from 'lucide-react';
 import { getActiveCompanyId, formatDate, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import StockForm from '../components/StockForm';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import { supabase } from '../lib/supabase';
+import { useLicense } from '../context/LicenseContext';
 
 const Stock = () => {
   const location = useLocation();
+  const { isReadOnly } = useLicense();
   const cid = getActiveCompanyId();
   const [items, setItems] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
@@ -190,10 +192,16 @@ const Stock = () => {
           </div>
         </div>
         <button
-          onClick={() => { setEditingItem(null); setIsModalOpen(true); }}
-          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
+          disabled={isReadOnly}
+          onClick={() => { if (!isReadOnly) { setEditingItem(null); setIsModalOpen(true); } }}
+          className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
+            isReadOnly
+              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+              : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+          }`}
+          title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New SKU Item'}
         >
-          <Plus className="w-4 h-4 mr-2" /> New SKU Item
+          {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New SKU Item
         </button>
       </div>
 
@@ -279,13 +287,15 @@ const Stock = () => {
                     </div>
                     </div>
                     <div className="flex items-center space-x-1 sm:space-x-2">
-                      <button 
-                        onClick={() => { setEditingItem(selectedItem); setIsModalOpen(true); }} 
-                        title="Edit Stock Master"
-                        className="p-2.5 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-slate-900 dark:hover:text-white shadow-xs"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
+                      {!isReadOnly && (
+                        <button 
+                          onClick={() => { setEditingItem(selectedItem); setIsModalOpen(true); }} 
+                          title="Edit Stock Master"
+                          className="p-2.5 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:text-slate-900 dark:hover:text-white shadow-xs"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
                       <button 
                         onClick={() => document.getElementById('stock-movement-log')?.scrollIntoView({ behavior: 'smooth' })} 
                         title="View Stock Movement Statement"
@@ -300,13 +310,15 @@ const Stock = () => {
                       >
                         {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                       </button>
-                      <button 
-                        onClick={() => setDeleteDialog({ isOpen: true, item: selectedItem })} 
-                        title="Delete Stock Item"
-                        className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-lg shadow-xs"
-                      >
-                        <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                      </button>
+                      {!isReadOnly && (
+                        <button 
+                          onClick={() => setDeleteDialog({ isOpen: true, item: selectedItem })} 
+                          title="Delete Stock Item"
+                          className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-lg shadow-xs"
+                        >
+                          <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                        </button>
+                      )}
                     </div>
                 </div>
                 

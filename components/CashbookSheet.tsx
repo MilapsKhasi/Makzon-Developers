@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronDown, Loader2, Save, ArrowLeft, Trash2, FileSpreadsheet, FileText, Calendar, RotateCcw, RotateCw } from 'lucide-react';
+import { ChevronDown, Loader2, Save, ArrowLeft, Trash2, FileSpreadsheet, FileText, Calendar, RotateCcw, RotateCw, Lock } from 'lucide-react';
 import { exportCashbookEntryToExcel, exportCashbookEntryToPDF } from '../utils/exportHelper';
 import { formatDate, parseDateFromInput, formatCurrency } from '../utils/helpers';
+import { useLicense } from '../context/LicenseContext';
 
 interface CashbookRow {
   id: string;
@@ -118,8 +119,10 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     return () => clearTimeout(timer);
   }, []);
 
+  const { isReadOnly } = useLicense();
+
   const executeSave = () => {
-    if (loading) return;
+    if (loading || isReadOnly) return;
     setLoading(true);
     onSave({ 
       id: initialData?.id, 
@@ -279,12 +282,27 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
           </button>
           <button 
             onClick={executeSave}
-            disabled={loading}
-            className="bg-primary text-white px-4 sm:px-8 py-2 sm:py-1.5 rounded font-bold text-[12px] hover:bg-primary-dark transition-all flex items-center ml-2 uppercase shadow-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading || isReadOnly}
+            title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : ''}
+            className={`px-4 sm:px-8 py-2 sm:py-1.5 rounded font-bold text-[12px] transition-all flex items-center ml-2 uppercase shadow-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
+              isReadOnly
+                ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed'
+                : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+            }`}
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 sm:mr-2" />}
-            <span className="hidden sm:inline">{initialData ? 'Update Entry' : 'Save Statement'}</span>
-            <span className="sm:hidden">{initialData ? 'Update' : 'Save'}</span>
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : isReadOnly ? (
+              <Lock className="w-4 h-4 sm:mr-2" />
+            ) : (
+              <Save className="w-4 h-4 sm:mr-2" />
+            )}
+            <span className="hidden sm:inline">
+              {isReadOnly ? 'Read Only' : initialData ? 'Update Entry' : 'Save Statement'}
+            </span>
+            <span className="sm:hidden">
+              {isReadOnly ? 'Read Only' : initialData ? 'Update' : 'Save'}
+            </span>
           </button>
         </div>
       </div>

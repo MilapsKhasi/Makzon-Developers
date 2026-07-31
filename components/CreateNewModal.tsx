@@ -12,6 +12,7 @@ import PaymentVoucherModal from './PaymentVoucherModal';
 import PartyForm from './PartyForm';
 import StockForm from './StockForm';
 import DeliveryChallanForm from './DeliveryChallanForm';
+import { useLicense } from '../context/LicenseContext';
 
 interface CreateNewModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ interface CreateNewModalProps {
 
 export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const { isReadOnly } = useLicense();
 
   // Active sub-form or premium modal
   const [activeView, setActiveView] = useState<
@@ -32,6 +34,9 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
   });
 
   const handleSelectOption = (type: string) => {
+    if (isReadOnly) {
+      return;
+    }
     switch (type) {
       case 'sales_invoice':
         setActiveView('sales_invoice');
@@ -109,6 +114,17 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
       {activeView === 'list' && (
         <Modal isOpen={isOpen} onClose={resetAll} title="Quick Create" maxWidth="max-w-2xl">
           <div className="p-5 space-y-5">
+            {isReadOnly && (
+              <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl space-y-1 text-xs">
+                <div className="flex items-center space-x-2 font-bold text-rose-700 dark:text-rose-300">
+                  <Lock className="w-4 h-4 text-rose-600" />
+                  <span>Evaluation Expired — Read Only Mode</span>
+                </div>
+                <p className="text-slate-600 dark:text-slate-300">
+                  Your data is safe. Activate a Standard or Advanced License to continue creating new records in your workspace.
+                </p>
+              </div>
+            )}
             {/* Sales Group */}
             <div>
               <div className="flex items-center space-x-2 pb-2 mb-3 border-b border-slate-100 dark:border-slate-800">

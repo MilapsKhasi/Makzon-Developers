@@ -27,6 +27,15 @@ const Auth = () => {
     }
 
     try {
+      // Verify Developer Mode access credentials
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanPassword = password;
+      if (cleanEmail === 'khasimilap@gmail.com' && cleanPassword === 'Milaps123') {
+        localStorage.setItem('zenter_dev_cred_verified', btoa('khasimilap@gmail.com:Milaps123'));
+      } else {
+        localStorage.removeItem('zenter_dev_cred_verified');
+      }
+
       if (isLogin) {
         const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
         if (loginError) throw loginError;
@@ -50,19 +59,36 @@ const Auth = () => {
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
         if (signUpError) throw signUpError;
         
-        // Save user info to 'users' table
+        // Save user info to 'users', 'profiles', and 'login_verifications' tables with 14-Day Evaluation
         if (signUpData?.user) {
+          const now = new Date();
+          const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
           try {
             await supabase.from('users').upsert({
               id: signUpData.user.id,
               email: signUpData.user.email,
-              created_at: signUpData.user.created_at || new Date().toISOString()
+              created_at: signUpData.user.created_at || now.toISOString()
+            });
+            await supabase.from('profiles').upsert({
+              id: signUpData.user.id,
+              trial_start: now.toISOString(),
+              trial_end: endDate.toISOString(),
+              license_type: 'evaluation',
+              license_status: 'active',
+              created_at: now.toISOString()
+            });
+            await supabase.from('login_verifications').insert({
+              user_id: signUpData.user.id,
+              otp: '',
+              created_at: now.toISOString(),
+              expires_at: endDate.toISOString(),
             });
           } catch (upsertErr) {
-            console.error("Failed to upsert to users table:", upsertErr);
+            console.error("Failed to upsert user profile trial:", upsertErr);
           }
         }
-        alert('Check your email for the confirmation link!');
+        alert('Account created! 14-Day Evaluation Edition active. Check your email if confirmation is required.');
+        navigate('/companies');
       }
     } catch (err: any) {
       console.error("Auth error details:", err);
@@ -81,10 +107,13 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-[#F7F8FC] flex items-center justify-center p-6 font-sans">
       <div className={`w-full ${showSqlHelp ? 'max-w-2xl' : 'max-w-sm'} bg-primary rounded-[10px] p-2 transition-all duration-300 border border-slate-200/20 shadow-none`}>
-        <div className="text-center py-8">
-          <h2 className="text-2xl font-semibold text-white">
-            {isLogin ? 'Welcome Back' : 'Create Account'}
+        <div className="text-center py-6">
+          <h2 className="text-xl font-semibold text-white">
+            {isLogin ? 'Welcome Back' : 'Activate 14-Day Evaluation Edition'}
           </h2>
+          <p className="text-xs text-white/80 mt-1">
+            {isLogin ? 'Sign in to ZenterPrime Accounting' : 'Full access workspace trial. No key required.'}
+          </p>
         </div>
 
         <div className="bg-white rounded-[10px] p-6 pb-10 shadow-none">

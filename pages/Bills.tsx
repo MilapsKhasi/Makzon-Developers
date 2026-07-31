@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Loader2, Edit, Trash2, Plus, ShoppingBag } from 'lucide-react';
+import { Search, Loader2, Edit, Trash2, Plus, ShoppingBag, Lock } from 'lucide-react';
 import { formatDate, formatCurrency, getActiveCompanyId, normalizeBill, unsyncTransactionFromCashbook } from '../utils/helpers';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
@@ -10,9 +10,11 @@ import DateFilter, { DateFilterHandle } from '../components/DateFilter';
 import ExportModal from '../components/ExportModal';
 import EmptyState from '../components/EmptyState';
 import { supabase } from '../lib/supabase';
+import { useLicense } from '../context/LicenseContext';
 
 const Bills = () => {
   const location = useLocation();
+  const { isReadOnly } = useLicense();
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -232,10 +234,16 @@ const Bills = () => {
         </div>
         <button
           ref={newEntryBtnRef}
-          onClick={() => { setEditingBill(null); setIsModalOpen(true); }}
-          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
+          disabled={isReadOnly}
+          onClick={() => { if (!isReadOnly) { setEditingBill(null); setIsModalOpen(true); } }}
+          className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
+            isReadOnly
+              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+              : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+          }`}
+          title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Entry'}
         >
-          <Plus className="w-4 h-4 mr-2" /> New Entry
+          {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Entry
         </button>
       </div>
 
@@ -324,12 +332,18 @@ const Bills = () => {
                       <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">{formatCurrency(b.grand_total)}</td>
                       <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center space-x-1">
-                          <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="p-1 text-slate-400 hover:text-primary rounded transition-colors" title="Edit Bill">
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors" title="Delete Bill">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {!isReadOnly ? (
+                            <>
+                              <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="p-1 text-slate-400 hover:text-primary rounded transition-colors" title="Edit Bill">
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors" title="Delete Bill">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 italic">Read Only</span>
+                          )}
                         </div>
                       </td>
                     </tr>

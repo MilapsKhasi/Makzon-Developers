@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Loader2, Edit, Trash2, Plus, Printer, TrendingUp } from 'lucide-react';
+import { Search, Loader2, Edit, Trash2, Plus, Printer, TrendingUp, Lock } from 'lucide-react';
 import { formatDate, formatCurrency, getActiveCompanyId, normalizeBill, unsyncTransactionFromCashbook } from '../utils/helpers';
 import Modal from '../components/Modal';
 import SalesInvoiceForm from '../components/SalesInvoiceForm';
@@ -10,9 +10,11 @@ import DateFilter, { DateFilterHandle } from '../components/DateFilter';
 import EmptyState from '../components/EmptyState';
 import { supabase } from '../lib/supabase';
 import { InvoicePrintModal } from '../components/InvoicePrintModal';
+import { useLicense } from '../context/LicenseContext';
 
 const Sales = () => {
   const location = useLocation();
+  const { isReadOnly } = useLicense();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -236,10 +238,16 @@ const Sales = () => {
         </div>
         <button
           ref={newSaleBtnRef}
-          onClick={() => { setEditingInvoice(null); setIsModalOpen(true); }}
-          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
+          disabled={isReadOnly}
+          onClick={() => { if (!isReadOnly) { setEditingInvoice(null); setIsModalOpen(true); } }}
+          className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
+            isReadOnly
+              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+              : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+          }`}
+          title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Sale'}
         >
-          <Plus className="w-4 h-4 mr-2" /> New Sale
+          {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Sale
         </button>
       </div>
 
@@ -331,12 +339,16 @@ const Sales = () => {
                           <button onClick={() => setPrintModalInvoice(inv)} className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors" title="Print Invoice">
                             <Printer className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-1 text-slate-400 hover:text-primary rounded transition-colors" title="Edit Invoice">
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => setDeleteDialog({ isOpen: true, invoice: inv })} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors" title="Delete Invoice">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {!isReadOnly && (
+                            <>
+                              <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-1 text-slate-400 hover:text-primary rounded transition-colors" title="Edit Invoice">
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => setDeleteDialog({ isOpen: true, invoice: inv })} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors" title="Delete Invoice">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

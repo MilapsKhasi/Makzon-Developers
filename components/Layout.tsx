@@ -4,6 +4,7 @@ import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
 import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet, Truck, Sun, Moon } from 'lucide-react';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
+import { useLicense } from '../context/LicenseContext';
 import Logo from './Logo';
 import Modal from './Modal';
 import ConfirmDialog from './ConfirmDialog';
@@ -11,6 +12,8 @@ import UpdateNotification from './UpdateNotification';
 import CreateNewModal from './CreateNewModal';
 import GlobalSearchModal from './GlobalSearchModal';
 import ImportExcelModal from './ImportExcelModal';
+import LicenseSummaryBadge from './LicenseSummaryBadge';
+import ActivationScreen from './ActivationScreen';
 import { getUserActivity } from '../utils/activityTracker';
 import { processOfflineSyncQueue } from '../lib/syncEngine';
 
@@ -23,6 +26,7 @@ const Layout = () => {
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
   const [isImportExcelOpen, setIsImportExcelOpen] = useState(false);
   const { activeCompany, setCompany } = useCompany();
+  const { isWorkspaceLimitReached, devMode, isReadOnly } = useLicense();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -398,6 +402,11 @@ const Layout = () => {
                 <div className="flex items-center space-x-2">
                   <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">ZenterPrime</span>
                 </div>
+                {devMode ? (
+                  <span className="inline-block px-1.5 py-0.5 bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 text-[8.5px] font-extrabold uppercase tracking-wider rounded mt-0.5 leading-none w-fit border-0">Developer Mode</span>
+                ) : (
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 mt-0.5">Evaluation Edition</span>
+                )}
               </div>
             )}
           </div>
@@ -528,11 +537,17 @@ const Layout = () => {
                   </div>
                   <div className="border-t border-slate-100 dark:border-slate-800 py-1 bg-slate-50/50 dark:bg-slate-900/50">
                     <button
-                      onClick={handleOpenCreateWs}
-                      className="w-full flex items-center px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-b border-slate-100 dark:border-slate-800"
+                      onClick={isWorkspaceLimitReached ? undefined : handleOpenCreateWs}
+                      disabled={isWorkspaceLimitReached}
+                      className={`w-full flex items-center px-4 py-2 text-left text-xs font-medium border-b border-slate-100 dark:border-slate-800 transition-colors ${
+                        isWorkspaceLimitReached
+                          ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed bg-slate-50/50 dark:bg-slate-900/50'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                      title={isWorkspaceLimitReached ? 'Evaluation Edition accounts are limited to 1 workspace' : 'Create New Workspace'}
                     >
                       <Plus className="w-3.5 h-3.5 mr-2" />
-                      <span className="capitalize">Create New Workspace</span>
+                      <span className="capitalize">Create New Workspace {isWorkspaceLimitReached ? '(Limit 1)' : ''}</span>
                     </button>
                     <button
                       onClick={handleSignOut}
@@ -545,6 +560,7 @@ const Layout = () => {
                 </div>
               )}
             </div>
+            <LicenseSummaryBadge />
             {localStorage.getItem('use_offline_mode') === 'true' && (
               <span className="flex items-center space-x-1 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 font-bold rounded text-[10px] uppercase tracking-wider select-none">
                 <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse mr-1"></span>
@@ -573,18 +589,29 @@ const Layout = () => {
               </kbd>
             </button>
             <button
-              onClick={() => setIsImportExcelOpen(true)}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 border border-emerald-600 hover:border-emerald-700 text-white font-medium text-xs rounded capitalize flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-              title="Import Excel / CSV Data"
+              disabled={isReadOnly}
+              onClick={() => { if (!isReadOnly) setIsImportExcelOpen(true); }}
+              className={`px-3.5 py-1.5 font-medium text-xs rounded capitalize flex items-center gap-1.5 shadow-sm transition-all ${
+                isReadOnly
+                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 border border-slate-300 dark:border-slate-700 cursor-not-allowed'
+                  : 'bg-emerald-600 hover:bg-emerald-700 border border-emerald-600 hover:border-emerald-700 text-white cursor-pointer'
+              }`}
+              title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'Import Excel / CSV Data'}
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
+              {isReadOnly ? <Lock className="w-3.5 h-3.5" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
               <span>Import Excel</span>
             </button>
             <button
-              onClick={() => setIsCreateNewModalOpen(true)}
-              className="px-3.5 py-1.5 bg-white dark:bg-slate-900 text-black dark:text-white border border-primary font-semibold text-xs rounded-md capitalize hover:bg-slate-50 dark:hover:bg-slate-800/80 flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              disabled={isReadOnly}
+              onClick={() => { if (!isReadOnly) setIsCreateNewModalOpen(true); }}
+              className={`px-3.5 py-1.5 font-semibold text-xs rounded-md capitalize flex items-center gap-1.5 shadow-xs transition-all ${
+                isReadOnly
+                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 border border-slate-300 dark:border-slate-700 cursor-not-allowed'
+                  : 'bg-white dark:bg-slate-900 text-black dark:text-white border border-primary hover:bg-slate-50 dark:hover:bg-slate-800/80 cursor-pointer'
+              }`}
+              title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'Quick Create'}
             >
-              <Plus className="w-3.5 h-3.5 text-primary stroke-[2.5]" />
+              {isReadOnly ? <Lock className="w-3.5 h-3.5 text-slate-400" /> : <Plus className="w-3.5 h-3.5 text-primary stroke-[2.5]" />}
               <span>Quick Create</span>
             </button>
             <button
@@ -597,6 +624,8 @@ const Layout = () => {
             </button>
           </div>
         </header>
+
+        <ActivationScreen />
 
         <GlobalSearchModal
           isOpen={isGlobalSearchOpen}

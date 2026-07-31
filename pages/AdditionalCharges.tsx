@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { getActiveCompanyId, safeSupabaseSave, getSelectedLedgerIds, toggleSelectedLedgerId } from '../utils/helpers';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
+import { useLicense } from '../context/LicenseContext';
 
 const isGstLedger = (name: string) => {
   const upper = name.toUpperCase();
@@ -11,6 +12,7 @@ const isGstLedger = (name: string) => {
 };
 
 const AdditionalCharges = () => {
+  const { isReadOnly } = useLicense();
   const [taxes, setTaxes] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +74,7 @@ const AdditionalCharges = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return alert("Evaluation license expired. Read-only mode.");
     const cid = getActiveCompanyId();
     if (!cid) return alert("No active workspace selected.");
     
@@ -120,6 +123,7 @@ const AdditionalCharges = () => {
         isOpen={deleteDialog.isOpen}
         onClose={() => setDeleteDialog({ isOpen: false, tax: null })}
         onConfirm={async () => {
+            if (isReadOnly) return;
             const { error } = await supabase.from('duties_taxes').update({ is_deleted: true }).eq('id', deleteDialog.tax.id);
             if (!error) await loadData();
         }}
@@ -218,10 +222,16 @@ const AdditionalCharges = () => {
         <h1 className="text-[20px] font-medium text-slate-900 capitalize">Additional Charges</h1>
         {taxes.length > 0 && (
           <button 
-            onClick={() => { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); }} 
-            className="bg-primary text-white px-6 py-2 rounded-md font-medium text-sm hover:bg-primary-dark transition-none capitalize w-full sm:w-auto"
+            disabled={isReadOnly}
+            onClick={() => { if (!isReadOnly) { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); } }} 
+            className={`px-6 py-2 rounded-md font-medium text-sm transition-none capitalize w-full sm:w-auto flex items-center justify-center ${
+              isReadOnly
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+            }`}
+            title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Charge'}
           >
-            New Charge
+            {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Charge
           </button>
         )}
       </div>
@@ -230,8 +240,8 @@ const AdditionalCharges = () => {
         <EmptyState 
           title="No Additional Charges" 
           message="Configure user-defined adjustments such as Labour, Freight, or Discounts to apply them on your invoices and bills." 
-          actionLabel="Create First Charge" 
-          onAction={() => { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); }} 
+          actionLabel={isReadOnly ? undefined : "Create First Charge"} 
+          onAction={() => { if (!isReadOnly) { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); } }} 
         />
       ) : (
         <div className="border border-slate-200 rounded-md overflow-hidden bg-white overflow-x-auto">
@@ -256,10 +266,11 @@ const AdditionalCharges = () => {
                     <tr key={tax.id} className="hover:bg-slate-50/50">
                     <td className="text-center">
                         <button onClick={async () => {
+                            if (isReadOnly) return;
                             const nextIds = toggleSelectedLedgerId(tax.id);
                             setSelectedIds(nextIds);
                             window.dispatchEvent(new Event('appSettingsChanged'));
-                        }} className={`w-4 h-4 rounded border ${isSelected ? 'bg-primary border-slate-900' : 'bg-white border-slate-300'} mx-auto transition-none`} />
+                        }} className={`w-4 h-4 rounded border ${isSelected ? 'bg-primary border-slate-900' : 'bg-white border-slate-300'} mx-auto transition-none ${isReadOnly ? 'cursor-not-allowed opacity-50' : ''}`} />
                     </td>
                     <td className="font-medium text-slate-700">
                       <span>{tax.name}</span>
@@ -275,10 +286,14 @@ const AdditionalCharges = () => {
                     <td className="text-[11px] text-slate-400 capitalize">{tax.calc_method}</td>
                     <td className="font-mono text-[13px]">{tax.calc_method === 'Percentage' ? `${tax.rate}%` : tax.fixed_amount.toFixed(2)}</td>
                     <td className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          <button onClick={() => { setEditingTax(tax); setFormData({ ...tax, applicable_to: tax.applicable_to || 'Both' }); setIsModalOpen(true); }} className="text-slate-400 hover:text-slate-900 transition-none"><Edit className="w-4 h-4" /></button>
-                          <button onClick={() => setDeleteDialog({ isOpen: true, tax })} className="text-slate-400 hover:text-red-500 transition-none"><Trash2 className="w-4 h-4" /></button>
-                        </div>
+                        {!isReadOnly ? (
+                          <div className="flex justify-end space-x-2">
+                            <button onClick={() => { setEditingTax(tax); setFormData({ ...tax, applicable_to: tax.applicable_to || 'Both' }); setIsModalOpen(true); }} className="text-slate-400 hover:text-slate-900 transition-none" title="Edit Charge"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => setDeleteDialog({ isOpen: true, tax })} className="text-slate-400 hover:text-red-500 transition-none" title="Delete Charge"><Trash2 className="w-4 h-4" /></button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-mono italic">Read Only</span>
+                        )}
                     </td>
                     </tr>
                 );

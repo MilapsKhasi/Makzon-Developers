@@ -1,7 +1,7 @@
 // IndexedDB Engine for Purchase Master App Offline Resilience
 
 const DB_NAME = 'PurchaseMasterIDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const IDB_STORES = [
   'users',
@@ -92,6 +92,9 @@ export async function initIndexedDB(): Promise<Record<string, any[]>> {
 export async function getAllFromIDB(storeName: IDBStoreName): Promise<any[]> {
   try {
     const db = await openDB();
+    if (!db.objectStoreNames.contains(storeName)) {
+      return idbMemoryCache[storeName] || [];
+    }
     return new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readonly');
       const store = tx.objectStore(storeName);
@@ -112,6 +115,7 @@ export async function saveAllToIDB(storeName: IDBStoreName, items: any[]): Promi
 
   try {
     const db = await openDB();
+    if (!db.objectStoreNames.contains(storeName)) return;
     return new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readwrite');
       const store = tx.objectStore(storeName);
@@ -158,6 +162,7 @@ export async function upsertToIDB(storeName: IDBStoreName, itemOrItems: any | an
 
   try {
     const db = await openDB();
+    if (!db.objectStoreNames.contains(storeName)) return;
     return new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readwrite');
       const store = tx.objectStore(storeName);
@@ -184,6 +189,7 @@ export async function deleteFromIDB(storeName: IDBStoreName, id: string): Promis
 
   try {
     const db = await openDB();
+    if (!db.objectStoreNames.contains(storeName)) return;
     return new Promise((resolve, reject) => {
       const tx = db.transaction(storeName, 'readwrite');
       const store = tx.objectStore(storeName);

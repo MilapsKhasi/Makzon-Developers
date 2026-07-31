@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, FileText, ShoppingCart, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { ChevronDown, FileText, ShoppingCart, ArrowDownCircle, ArrowUpCircle, Lock } from 'lucide-react';
+import { useLicense } from '../context/LicenseContext';
 
 interface NewVoucherDropdownProps {
   onSelectSalesInvoice: () => void;
@@ -18,6 +19,7 @@ export const NewVoucherDropdown: React.FC<NewVoucherDropdownProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { isReadOnly } = useLicense();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -33,14 +35,21 @@ export const NewVoucherDropdown: React.FC<NewVoucherDropdownProps> = ({
     <div className={`relative inline-block text-left ${className}`} ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="px-4 py-2 bg-primary text-white font-medium text-xs rounded capitalize hover:bg-primary-dark flex items-center justify-between gap-1.5 shadow-sm transition-none"
+        disabled={isReadOnly}
+        onClick={() => { if (!isReadOnly) setIsOpen(!isOpen); }}
+        title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Voucher'}
+        className={`px-4 py-2 font-medium text-xs rounded capitalize flex items-center justify-between gap-1.5 shadow-sm transition-none ${
+          isReadOnly
+            ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700'
+            : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+        }`}
       >
+        {isReadOnly && <Lock className="w-3.5 h-3.5" />}
         <span>New Voucher</span>
         <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      {isOpen && (
+      {isOpen && !isReadOnly && (
         <div className="absolute right-0 mt-1.5 w-48 sm:w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl py-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
           <button
             type="button"

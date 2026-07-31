@@ -8,8 +8,10 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
+import { useLicense } from '../context/LicenseContext';
 
 const Companies = () => {
+  const { isWorkspaceLimitReached } = useLicense();
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -182,8 +184,17 @@ const Companies = () => {
                 <h1 className="text-[20px] font-medium text-slate-900 capitalize">Select Workspace</h1>
               </div>
               {companies.length > 0 && (
-                <button onClick={handleOpenCreate} className="bg-primary text-white px-8 py-3 rounded-md font-medium text-sm hover:bg-primary-dark transition-none flex items-center justify-center capitalize w-full sm:w-auto">
-                  <Plus className="w-4 h-4 mr-2" /> New Workspace
+                <button
+                  onClick={isWorkspaceLimitReached ? undefined : handleOpenCreate}
+                  disabled={isWorkspaceLimitReached}
+                  className={`px-8 py-3 rounded-md font-medium text-sm transition-none flex items-center justify-center capitalize w-full sm:w-auto ${
+                    isWorkspaceLimitReached
+                      ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+                      : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+                  }`}
+                  title={isWorkspaceLimitReached ? 'Evaluation Edition users are limited to 1 workspace' : 'New Workspace'}
+                >
+                  <Plus className="w-4 h-4 mr-2" /> New Workspace {isWorkspaceLimitReached ? '(Limit 1)' : ''}
                 </button>
               )}
             </div>

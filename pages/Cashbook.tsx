@@ -1,15 +1,17 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Loader2, Calendar, Trash2, Edit, Eye, RefreshCw, Landmark, FileDown, AlertCircle, Wallet } from 'lucide-react';
+import { Plus, Search, Loader2, Calendar, Trash2, Edit, Eye, RefreshCw, Landmark, FileDown, AlertCircle, Wallet, Lock } from 'lucide-react';
 import { formatDate, formatCurrency } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import CashbookSheet from '../components/CashbookSheet';
 import EmptyState from '../components/EmptyState';
 import { exportToCSV } from '../utils/exportHelper';
 import { useCompany } from '../context/CompanyContext';
+import { useLicense } from '../context/LicenseContext';
 
 const Cashbook = () => {
   const { activeCompany, loading: companyLoading } = useCompany();
+  const { isReadOnly } = useLicense();
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewState, setViewState] = useState<'list' | 'entry'>('list');
@@ -106,6 +108,7 @@ const Cashbook = () => {
   };
 
   const handleSaveSheet = async (data: any) => {
+    if (isReadOnly) return alert("Evaluation license expired. Read-only mode.");
     if (!data.date) return alert("Please provide a date.");
     setLoading(true);
     const cid = activeCompany?.id;
@@ -138,6 +141,7 @@ const Cashbook = () => {
   };
 
   const deleteEntry = async (id: string) => {
+      if (isReadOnly) return;
       if (!confirm("Permanently delete this?")) return;
       setLoading(true);
       try {
@@ -202,10 +206,16 @@ const Cashbook = () => {
             {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <FileDown className="w-3.5 h-3.5 mr-2" />} Export CSV
           </button>
           <button 
-            onClick={() => { setEditingEntry(null); setViewState('entry'); }} 
-            className="bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center shadow-sm cursor-pointer"
+            disabled={isReadOnly}
+            onClick={() => { if (!isReadOnly) { setEditingEntry(null); setViewState('entry'); } }} 
+            className={`px-5 py-2.5 rounded-md font-medium text-sm flex items-center shadow-sm ${
+              isReadOnly
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+            }`}
+            title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'Create Statement'}
           >
-            <Plus className="w-4 h-4 mr-2" /> Create Statement
+            {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} Create Statement
           </button>
         </div>
       </div>
@@ -214,8 +224,8 @@ const Cashbook = () => {
         <EmptyState 
           title="No Records" 
           message="No cashbook records found." 
-          actionLabel="Create Statement" 
-          onAction={() => { setEditingEntry(null); setViewState('entry'); }} 
+          actionLabel={isReadOnly ? undefined : "Create Statement"} 
+          onAction={() => { if (!isReadOnly) { setEditingEntry(null); setViewState('entry'); } }} 
         />
       ) : (
         <>
@@ -281,9 +291,13 @@ const Cashbook = () => {
                         </td>
                         <td className="text-center py-3 px-6">
                             <div className="flex items-center justify-center space-x-2">
-                            <button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"><Eye className="w-4 h-4" /></button>
-                            <button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"><Edit className="w-4 h-4" /></button>
-                            <button onClick={() => deleteEntry(e.id)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" title="View Statement"><Eye className="w-4 h-4" /></button>
+                            {!isReadOnly && (
+                              <>
+                                <button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" title="Edit Statement"><Edit className="w-4 h-4" /></button>
+                                <button onClick={() => deleteEntry(e.id)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors" title="Delete Statement"><Trash2 className="w-4 h-4" /></button>
+                              </>
+                            )}
                             </div>
                         </td>
                         </tr>

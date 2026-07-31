@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Plus, Printer, Edit, Trash2, Truck, Loader2 } from 'lucide-react';
+import { Search, Plus, Printer, Edit, Trash2, Truck, Loader2, Lock } from 'lucide-react';
 import { formatDate, formatCurrency, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import DeliveryChallanForm from '../components/DeliveryChallanForm';
@@ -9,9 +9,11 @@ import DateFilter, { DateFilterHandle } from '../components/DateFilter';
 import EmptyState from '../components/EmptyState';
 import { supabase } from '../lib/supabase';
 import { InvoicePrintModal } from '../components/InvoicePrintModal';
+import { useLicense } from '../context/LicenseContext';
 
 export const DeliveryChallans = () => {
   const location = useLocation();
+  const { isReadOnly } = useLicense();
   const [challans, setChallans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -105,10 +107,12 @@ export const DeliveryChallans = () => {
   // Open modal if state contains flag or selected item
   useEffect(() => {
     if (location.state?.createNew) {
-      setEditingChallan(null);
-      setIsModalOpen(true);
+      if (!isReadOnly) {
+        setEditingChallan(null);
+        setIsModalOpen(true);
+      }
     }
-  }, [location.state]);
+  }, [location.state, isReadOnly]);
 
   const filtered = challans.filter(c => {
     const search = searchQuery.toLowerCase();
@@ -119,7 +123,7 @@ export const DeliveryChallans = () => {
   });
 
   const confirmDelete = async () => {
-    if (!deleteDialog.challan) return;
+    if (isReadOnly || !deleteDialog.challan) return;
     const item = deleteDialog.challan;
 
     await supabase
@@ -192,13 +196,21 @@ export const DeliveryChallans = () => {
           </div>
         </div>
         <button
+          disabled={isReadOnly}
           onClick={() => {
-            setEditingChallan(null);
-            setIsModalOpen(true);
+            if (!isReadOnly) {
+              setEditingChallan(null);
+              setIsModalOpen(true);
+            }
           }}
-          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
+          className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
+            isReadOnly
+              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+              : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+          }`}
+          title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Delivery Challan'}
         >
-          <Plus className="w-4 h-4 mr-2" /> New Delivery Challan
+          {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Delivery Challan
         </button>
       </div>
 
@@ -248,10 +260,12 @@ export const DeliveryChallans = () => {
           <EmptyState
             title="No Delivery Challans"
             message="Issue delivery challans to track goods dispatched to customers before invoicing."
-            actionLabel="Create Delivery Challan"
+            actionLabel={isReadOnly ? undefined : "Create Delivery Challan"}
             onAction={() => {
-              setEditingChallan(null);
-              setIsModalOpen(true);
+              if (!isReadOnly) {
+                setEditingChallan(null);
+                setIsModalOpen(true);
+              }
             }}
           />
         ) : (
@@ -309,23 +323,27 @@ export const DeliveryChallans = () => {
                           >
                             <Printer className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => {
-                              setEditingChallan(c);
-                              setIsModalOpen(true);
-                            }}
-                            className="p-1 text-slate-400 hover:text-primary rounded transition-colors"
-                            title="Edit Challan"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteDialog({ isOpen: true, challan: c })}
-                            className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
-                            title="Delete Challan"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {!isReadOnly && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setEditingChallan(c);
+                                  setIsModalOpen(true);
+                                }}
+                                className="p-1 text-slate-400 hover:text-primary rounded transition-colors"
+                                title="Edit Challan"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteDialog({ isOpen: true, challan: c })}
+                                className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
+                                title="Delete Challan"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
