@@ -32,40 +32,16 @@ const getStoredTrialState = () => {
   let status = (localStorage.getItem('zenter_license_status') as 'active' | 'expired') || 'active';
 
   const now = new Date();
-  let shouldResetTo14Days = false;
+
   if (start && end && type === 'evaluation') {
-    const startTime = new Date(start).getTime();
-    const endTime = new Date(end).getTime();
-    const durationDays = (endTime - startTime) / (1000 * 60 * 60 * 24);
-    // If previous trial was short (e.g., 1 day trial set previously), reset to 14 days
-    if (durationDays < 13 || endTime <= now.getTime()) {
-      shouldResetTo14Days = true;
+    if (new Date(end).getTime() > now.getTime()) {
+      status = 'active';
+    } else {
+      status = 'expired';
     }
   }
 
-  if (!start || !end || shouldResetTo14Days) {
-    start = now.toISOString();
-    const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-    end = endDate.toISOString();
-    status = 'active';
-    type = 'evaluation';
-
-    try {
-      localStorage.setItem('zenter_trial_created_at', start);
-      localStorage.setItem('zenter_trial_expires_at', end);
-      localStorage.setItem('zenter_license_type', type);
-      localStorage.setItem('zenter_license_status', status);
-    } catch {}
-  }
-
-  if (end && new Date(end).getTime() <= Date.now() && type !== 'evaluation') {
-    status = 'expired';
-    try {
-      localStorage.setItem('zenter_license_status', 'expired');
-    } catch {}
-  }
-
-  return { start, end, type, status };
+  return { start: start || null, end: end || null, type, status };
 };
 
 export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -86,8 +62,8 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateTrialStorage = (
-    start: string,
-    end: string,
+    start: string | null,
+    end: string | null,
     type: 'evaluation' | 'standard' | 'advanced' = 'evaluation',
     status: 'active' | 'expired' = 'active'
   ) => {
@@ -96,8 +72,12 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setLicenseType(type);
     setLicenseStatus(status);
     try {
-      localStorage.setItem('zenter_trial_created_at', start);
-      localStorage.setItem('zenter_trial_expires_at', end);
+      if (start) localStorage.setItem('zenter_trial_created_at', start);
+      else localStorage.removeItem('zenter_trial_created_at');
+
+      if (end) localStorage.setItem('zenter_trial_expires_at', end);
+      else localStorage.removeItem('zenter_trial_expires_at');
+
       localStorage.setItem('zenter_license_type', type);
       localStorage.setItem('zenter_license_status', status);
     } catch {}
@@ -161,10 +141,10 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       const now = new Date();
 
-      let startIso = localStorage.getItem('zenter_trial_created_at');
-      let endIso = localStorage.getItem('zenter_trial_expires_at');
-      let type = isDevVerified ? 'advanced' : ((localStorage.getItem('zenter_license_type') as any) || 'evaluation');
-      let status = isDevVerified ? 'active' : ((localStorage.getItem('zenter_license_status') as any) || 'active');
+      let startIso: string | null = null;
+      let endIso: string | null = null;
+      let type: 'evaluation' | 'standard' | 'advanced' = isDevVerified ? 'advanced' : ((localStorage.getItem('zenter_license_type') as any) || 'evaluation');
+      let status: 'active' | 'expired' = isDevVerified ? 'active' : ((localStorage.getItem('zenter_license_status') as any) || 'active');
 
       if (userId) {
         // Fetch user's company count
@@ -177,74 +157,48 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const userWorkspaceCount = (companiesData || []).filter((c: any) => c.id !== 'local-company-1').length;
         setWorkspaceCount(userWorkspaceCount);
 
-        // Fetch latest trial data from Supabase login_verifications or profiles
-        const { data: verifications } = await supabase
-          .from('login_verifications')
-          .select('created_at, expires_at')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (verifications?.created_at && verifications?.expires_at) {
-          startIso = verifications.created_at;
-          endIso = verifications.expires_at;
-        } else if (profile?.trial_start && profile?.trial_end) {
-          startIso = profile.trial_start;
-          endIso = profile.trial_end;
+        // Fetch official trial & license data directly from Supabase profiles (primary source)
+        if (profile) {
+          startIso = profile.trial_start || profile.trial_created_at || profile.created_at || profile.start_date || null;
+          endIso = profile.trial_end || profile.trial_expires_at || profile.expires_at || profile.end_date || null;
+          if (profile.license_type) type = profile.license_type;
+          if (profile.license_status) status = profile.license_status;
         }
 
-        if (profile?.license_type) type = profile.license_type;
-        if (profile?.license_status) status = profile.license_status;
-
-        // If evaluation trial duration is short (e.g. 1 day trial set previously) or expired, reset to full 14-day trial
-        if (type === 'evaluation' && startIso && endIso) {
-          const startTime = new Date(startIso).getTime();
-          const endTime = new Date(endIso).getTime();
-          const durationDays = (endTime - startTime) / (1000 * 60 * 60 * 24);
-          if (durationDays < 13 || endTime <= now.getTime()) {
-            startIso = now.toISOString();
-            const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-            endIso = endDate.toISOString();
-            status = 'active';
-            try {
-              await supabase.from('profiles').upsert({
-                id: userId,
-                trial_start: startIso,
-                trial_end: endIso,
-                license_type: 'evaluation',
-                license_status: 'active',
-              });
-            } catch {}
-          }
-        }
-
-        // If user profile / verification is missing, initialize automatic 14-day evaluation in Supabase
+        // Fallback check on licenses table if profiles has no trial dates
         if (!startIso || !endIso) {
-          startIso = now.toISOString();
-          const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-          endIso = endDate.toISOString();
-          type = 'evaluation';
-          status = 'active';
-
           try {
-            await supabase.from('profiles').upsert({
-              id: userId,
-              trial_start: startIso,
-              trial_end: endIso,
-              license_type: type,
-              license_status: status,
-            });
+            const { data: licRow } = await supabase
+              .from('licenses')
+              .select('*')
+              .eq('user_id', userId)
+              .maybeSingle();
 
-            await supabase.from('login_verifications').insert({
-              user_id: userId,
-              otp: '',
-              created_at: startIso,
-              expires_at: endIso,
-            });
-          } catch (initErr) {
-            console.warn('Auto-init trial error:', initErr);
-          }
+            if (licRow) {
+              if (!startIso) startIso = licRow.trial_start || licRow.start_date || licRow.created_at || null;
+              if (!endIso) endIso = licRow.trial_end || licRow.end_date || licRow.expires_at || null;
+              if (licRow.license_type) type = licRow.license_type;
+              if (licRow.license_status) status = licRow.license_status;
+            }
+          } catch {}
+        }
+
+        // Check login_verifications table if dates still missing
+        if (!startIso || !endIso) {
+          try {
+            const { data: verifications } = await supabase
+              .from('login_verifications')
+              .select('created_at, expires_at')
+              .eq('user_id', userId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (verifications?.created_at && verifications?.expires_at) {
+              if (!startIso) startIso = verifications.created_at;
+              if (!endIso) endIso = verifications.expires_at;
+            }
+          } catch {}
         }
       } else {
         // Offline or unauthenticated count from local companies
@@ -258,21 +212,39 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } catch {}
       }
 
-      if (!startIso || !endIso) {
-        startIso = now.toISOString();
-        const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-        endIso = endDate.toISOString();
-        type = 'evaluation';
-        status = 'active';
-      }
+      // Fallback to localStorage ONLY if no dates were found in Supabase
+      if (!startIso) startIso = localStorage.getItem('zenter_trial_created_at');
+      if (!endIso) endIso = localStorage.getItem('zenter_trial_expires_at');
 
-      const endTime = new Date(endIso).getTime();
-      if (now.getTime() >= endTime && type === 'evaluation') {
-        status = 'expired';
-        if (userId) {
-          try {
-            await supabase.from('profiles').update({ license_status: 'expired' }).eq('id', userId);
-          } catch {}
+      // Calculate status strictly from current time vs endIso for evaluation trials
+      if (isDevVerified) {
+        type = 'advanced';
+        status = 'active';
+      } else if (type === 'evaluation' && endIso) {
+        const endTimeMs = new Date(endIso).getTime();
+        if (now.getTime() < endTimeMs) {
+          status = 'active';
+          if (userId && profile?.license_status === 'expired') {
+            try {
+              await supabase.from('profiles').update({ license_status: 'active' }).eq('id', userId);
+            } catch {}
+          }
+        } else {
+          status = 'expired';
+          if (userId && profile?.license_status !== 'expired') {
+            try {
+              await supabase.from('profiles').update({ license_status: 'expired' }).eq('id', userId);
+            } catch {}
+          }
+        }
+      } else if (endIso) {
+        const endTimeMs = new Date(endIso).getTime();
+        if (endTimeMs && now.getTime() >= endTimeMs) {
+          status = 'expired';
+        } else if (profile?.license_status) {
+          status = profile.license_status;
+        } else {
+          status = 'active';
         }
       }
 

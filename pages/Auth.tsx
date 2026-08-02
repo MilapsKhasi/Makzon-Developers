@@ -21,6 +21,10 @@ const Auth = () => {
 
     // Clear offline flag when attempting online account authentication
     localStorage.removeItem('use_offline_mode');
+    localStorage.removeItem('zenter_license_status');
+    localStorage.removeItem('zenter_trial_created_at');
+    localStorage.removeItem('zenter_trial_expires_at');
+    localStorage.removeItem('zenter_license_type');
     if (localStorage.getItem('activeCompanyId') === 'local-company-1') {
       localStorage.removeItem('activeCompanyId');
       localStorage.removeItem('activeCompanyName');
