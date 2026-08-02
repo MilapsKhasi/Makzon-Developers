@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronDown, Loader2, Save, ArrowLeft, Trash2, FileSpreadsheet, FileText, Calendar, RotateCcw, RotateCw, Lock } from 'lucide-react';
+import { ChevronDown, Loader2, Save, ArrowLeft, Trash2, FileSpreadsheet, FileText, Calendar, RotateCcw, RotateCw, Lock, AlertTriangle } from 'lucide-react';
 import { exportCashbookEntryToExcel, exportCashbookEntryToPDF } from '../utils/exportHelper';
 import { formatDate, parseDateFromInput, formatCurrency } from '../utils/helpers';
 import { useLicense } from '../context/LicenseContext';
@@ -26,6 +26,12 @@ interface CashbookSheetProps {
 }
 
 const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntries = [], prevBalance = 0, prevDate = 'Initial', onSave, onCancel }) => {
+  const [showCloseWarning, setShowCloseWarning] = useState(false);
+  const onCancelRef = useRef(onCancel);
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
   const [loading, setLoading] = useState(false);
   const [reportDate, setReportDate] = useState(''); 
   const [displayDate, setDisplayDate] = useState(''); 
@@ -140,16 +146,42 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
   // Keyboard shortcuts (Ctrl+S, Esc)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (showCloseWarning) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         executeSave();
       } else if (e.key === 'Escape') {
-        onCancel();
+        e.preventDefault();
+        e.stopPropagation();
+        setShowCloseWarning(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [initialData, reportDate, openingBalance, openingDateText, incomeTotal, expenseTotal, closingBalance, incomeRows, expenseRows, onSave, onCancel, loading]);
+  }, [initialData, reportDate, openingBalance, openingDateText, incomeTotal, expenseTotal, closingBalance, incomeRows, expenseRows, onSave, onCancel, loading, showCloseWarning]);
+
+  useEffect(() => {
+    if (!showCloseWarning) return;
+
+    const handleWarningKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (key === 'y') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowCloseWarning(false);
+        onCancelRef.current();
+      } else if (key === 'n' || key === 'escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowCloseWarning(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleWarningKeyDown, { capture: true });
+    return () => {
+      window.removeEventListener('keydown', handleWarningKeyDown, { capture: true });
+    };
+  }, [showCloseWarning]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
@@ -261,7 +293,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
       {/* Utility Header */}
       <div className="flex flex-col sm:flex-row items-center justify-between px-4 sm:px-6 py-3 sm:py-2 liquid-glass-header shrink-0 gap-4 sticky top-0 z-10">
         <div className="flex items-center space-x-4 w-full sm:w-auto">
-          <button onClick={onCancel} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500">
+          <button onClick={() => setShowCloseWarning(true)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500 cursor-pointer">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex flex-col">
@@ -424,6 +456,48 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
           </div>
         </div>
       </div>
+
+      {/* Confirmation Warning Dialog */}
+      {showCloseWarning && (
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 rounded-xl shadow-2xl p-6 max-w-md w-full flex flex-col items-center text-center animate-in zoom-in-95 duration-150">
+            <div className="p-3 bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-full mb-4">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+            
+            <h4 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">
+              Confirm Close Form
+            </h4>
+            
+            <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
+              Are you sure you want to close this form? You will not be able to see the entered draft data by reopening this form.
+            </p>
+
+            <div className="flex items-center justify-center gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => setShowCloseWarning(false)}
+                className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold uppercase text-[11px] tracking-wider rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>No</span>
+                <span className="text-[9px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-500 dark:text-slate-400 font-mono">(N)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCloseWarning(false);
+                  onCancelRef.current();
+                }}
+                className="flex-1 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold uppercase text-[11px] tracking-wider rounded-lg shadow-md transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>Yes</span>
+                <span className="text-[9px] bg-rose-700 px-1.5 py-0.5 rounded text-rose-100 font-mono">(Y)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

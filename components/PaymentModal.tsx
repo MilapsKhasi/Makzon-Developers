@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Loader2, X, Plus, Trash2, Calculator } from 'lucide-react';
+import { Loader2, Plus, Trash2, Calculator } from 'lucide-react';
 import { formatDate, parseDateFromInput, formatCurrency } from '../utils/helpers';
+import Modal from './Modal';
 
 interface PaymentEntry {
   id: string;
@@ -101,21 +102,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onSubmit, 
   const balance = totalAmount - totalPaid;
 
   return (
-    <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="px-6 py-4 liquid-glass-header flex justify-between items-center shrink-0 sticky top-0 z-10">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-              <Calculator className="w-4 h-4" />
-            </div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Payment Details - Bill {billNumber}</h3>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Payment Details - Bill ${billNumber}`} maxWidth="max-w-2xl">
+      <div className="flex flex-col">
+        <div className="p-6 space-y-6">
           <div className="grid grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
             <div className="text-center">
               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Bill Amount</p>
@@ -214,7 +203,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, onSubmit, 
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

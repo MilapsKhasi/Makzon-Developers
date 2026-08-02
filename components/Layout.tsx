@@ -157,10 +157,9 @@ const Layout = () => {
         }
       }
 
-      // Esc -> Close search / create new modal / mobile menu / workspace menu
+      // Esc -> Close search / mobile menu / workspace menu
       if (e.key === 'Escape') {
         if (isGlobalSearchOpen) setIsGlobalSearchOpen(false);
-        if (isCreateNewModalOpen) setIsCreateNewModalOpen(false);
         if (isMobileMenuOpen) setIsMobileMenuOpen(false);
         if (showWorkspaceMenu) setShowWorkspaceMenu(false);
       }

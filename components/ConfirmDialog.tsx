@@ -24,7 +24,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   variant = 'danger'
 }) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-sm">
+    <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-sm" skipEscWarning={true}>
       <div className="flex flex-col items-center text-center py-2">
         <div className={`p-4 rounded-full mb-4 ${variant === 'danger' ? 'bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-500 dark:text-amber-400'}`}>
           <AlertTriangle className="w-8 h-8" />

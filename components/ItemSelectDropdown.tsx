@@ -145,6 +145,8 @@ const ItemSelectDropdown: React.FC<ItemSelectDropdownProps> = ({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
                 setIsOpen(false);
               } else if (e.key === 'Enter') {
                 e.preventDefault();

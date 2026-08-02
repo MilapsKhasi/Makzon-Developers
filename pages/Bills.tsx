@@ -123,10 +123,6 @@ const Bills = () => {
         if (deleteDialog.isOpen) {
           e.preventDefault();
           setDeleteDialog({ isOpen: false, bill: null });
-        } else if (isModalOpen) {
-          e.preventDefault();
-          setIsModalOpen(false);
-          setEditingBill(null);
         } else if (isExportModalOpen) {
           e.preventDefault();
           setIsExportModalOpen(false);

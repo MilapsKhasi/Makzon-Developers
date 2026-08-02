@@ -129,10 +129,6 @@ const Sales = () => {
         if (deleteDialog.isOpen) {
           e.preventDefault();
           setDeleteDialog({ isOpen: false, invoice: null });
-        } else if (isModalOpen) {
-          e.preventDefault();
-          setIsModalOpen(false);
-          setEditingInvoice(null);
         } else if (selectedRowIdx !== null) {
           setSelectedRowIdx(null);
         }

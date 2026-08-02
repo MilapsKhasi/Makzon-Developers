@@ -112,7 +112,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
     <>
       {/* 1. Main Grouped Selection Modal */}
       {activeView === 'list' && (
-        <Modal isOpen={isOpen} onClose={resetAll} title="Quick Create" maxWidth="max-w-2xl">
+        <Modal isOpen={isOpen} onClose={resetAll} title="Quick Create" maxWidth="max-w-2xl" skipEscWarning={true}>
           <div className="p-5 space-y-5">
             {isReadOnly && (
               <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl space-y-1 text-xs">
