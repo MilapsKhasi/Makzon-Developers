@@ -25,7 +25,10 @@ export const realSupabase = createClient(finalUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    lock: async (_name: string, _acquireTimeout: number, fn: () => Promise<any>) => {
+      return await fn();
+    }
   },
   global: {
     fetch: (...args) => fetch(...args)
@@ -70,7 +73,12 @@ export async function syncUserWorkspaceDataToIndexedDB(userId: string) {
       .eq('is_deleted', false);
 
     if (compErr || !companies) {
-      console.warn('[IndexedDB Sync] Could not fetch companies:', compErr);
+      const errMsg = compErr?.message || (typeof compErr === 'string' ? compErr : '');
+      if (errMsg.includes('Lock broken') || errMsg.includes('AbortError')) {
+        console.log('[IndexedDB Sync] Fetch aborted or lock reset, will retry on next sync.');
+      } else {
+        console.warn('[IndexedDB Sync] Could not fetch companies:', compErr);
+      }
       isSyncingWorkspaces = false;
       return;
     }
