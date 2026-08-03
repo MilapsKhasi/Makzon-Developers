@@ -7,6 +7,7 @@ interface ItemSelectDropdownProps {
   stockItems: any[];
   onSelect: (item: any) => void;
   onAddNewItem: () => void;
+  onEditItem?: (item: any) => void;
   placeholder?: string;
 }
 
@@ -15,10 +16,12 @@ const ItemSelectDropdown: React.FC<ItemSelectDropdownProps> = ({
   stockItems,
   onSelect,
   onAddNewItem,
+  onEditItem,
   placeholder = "Select Item..."
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(0);
   const [coords, setCoords] = useState<{
     top?: number;
     bottom?: number;
@@ -106,9 +109,16 @@ const ItemSelectDropdown: React.FC<ItemSelectDropdownProps> = ({
     );
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      setHighlightedIndex(filteredItems.length > 0 ? 0 : -1);
+    }
+  }, [searchTerm, isOpen, filteredItems.length]);
+
   const handleOpen = () => {
     setIsOpen(true);
     setSearchTerm('');
+    setHighlightedIndex(stockItems.length > 0 ? 0 : -1);
     setTimeout(() => {
       updatePosition();
       inputRef.current?.focus();
@@ -148,14 +158,43 @@ const ItemSelectDropdown: React.FC<ItemSelectDropdownProps> = ({
                 e.preventDefault();
                 e.stopPropagation();
                 setIsOpen(false);
+              } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setHighlightedIndex((prev) => Math.min(prev + 1, filteredItems.length - 1));
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setHighlightedIndex((prev) => Math.max(prev - 1, -1));
               } else if (e.key === 'Enter') {
                 e.preventDefault();
-                if (filteredItems.length > 0) {
-                  onSelect(filteredItems[0]);
-                  setIsOpen(false);
+                e.stopPropagation();
+                if (e.ctrlKey || e.metaKey) {
+                  if (highlightedIndex >= 0 && highlightedIndex < filteredItems.length) {
+                    const itemToEdit = filteredItems[highlightedIndex];
+                    setIsOpen(false);
+                    if (onEditItem) {
+                      onEditItem(itemToEdit);
+                    } else if (onSelect) {
+                      onSelect(itemToEdit);
+                    }
+                  } else if (filteredItems.length > 0) {
+                    const itemToEdit = filteredItems[0];
+                    setIsOpen(false);
+                    if (onEditItem) onEditItem(itemToEdit);
+                  }
                 } else {
-                  setIsOpen(false);
-                  onAddNewItem();
+                  if (highlightedIndex === -1) {
+                    setIsOpen(false);
+                    onAddNewItem();
+                  } else if (highlightedIndex >= 0 && highlightedIndex < filteredItems.length) {
+                    onSelect(filteredItems[highlightedIndex]);
+                    setIsOpen(false);
+                  } else if (filteredItems.length > 0) {
+                    onSelect(filteredItems[0]);
+                    setIsOpen(false);
+                  } else {
+                    setIsOpen(false);
+                    onAddNewItem();
+                  }
                 }
               } else if (e.key === 'Tab') {
                 setIsOpen(false);
@@ -192,12 +231,17 @@ const ItemSelectDropdown: React.FC<ItemSelectDropdownProps> = ({
             {/* Top Option: + Add New Item */}
             <button
               type="button"
+              onMouseEnter={() => setHighlightedIndex(-1)}
               onMouseDown={(e) => {
                 e.preventDefault();
                 setIsOpen(false);
                 onAddNewItem();
               }}
-              className="w-full text-left px-3 py-2.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between transition-colors sticky top-0 z-20 cursor-pointer shrink-0"
+              className={`w-full text-left px-3 py-2.5 text-xs font-bold flex items-center justify-between transition-colors sticky top-0 z-20 cursor-pointer shrink-0 border-b border-slate-200 dark:border-slate-800 ${
+                highlightedIndex === -1
+                  ? 'bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 ring-1 ring-emerald-500'
+                  : 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60'
+              }`}
             >
               <span className="flex items-center gap-1.5">
                 <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -215,23 +259,38 @@ const ItemSelectDropdown: React.FC<ItemSelectDropdownProps> = ({
                   No matching item found. Click "+ Add New Item" above to create it.
                 </div>
               ) : (
-                filteredItems.map((item) => {
+                filteredItems.map((item, idx) => {
                   const qtyVal = item.in_stock !== undefined && item.in_stock !== null ? item.in_stock : 0;
                   const unitStr = item.unit ? ` ${item.unit}` : '';
                   const isSelected = item.name?.toLowerCase().trim() === value?.toLowerCase().trim();
+                  const isHighlighted = highlightedIndex === idx;
 
                   return (
                     <div
                       key={item.id}
+                      ref={(el) => {
+                        if (el && isHighlighted) {
+                          el.scrollIntoView({ block: 'nearest' });
+                        }
+                      }}
+                      onMouseEnter={() => setHighlightedIndex(idx)}
                       onMouseDown={(e) => {
                         e.preventDefault();
-                        onSelect(item);
-                        setIsOpen(false);
+                        if (e.ctrlKey || e.metaKey) {
+                          setIsOpen(false);
+                          if (onEditItem) onEditItem(item);
+                          else onSelect(item);
+                        } else {
+                          onSelect(item);
+                          setIsOpen(false);
+                        }
                       }}
                       className={`px-3 py-2.5 text-xs cursor-pointer flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 transition-colors ${
-                        isSelected
-                          ? 'bg-primary/10 text-primary font-bold dark:bg-primary/20'
-                          : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200'
+                        isHighlighted
+                          ? 'bg-amber-100 dark:bg-amber-950/60 text-slate-900 dark:text-white font-semibold ring-1 ring-amber-400'
+                          : isSelected
+                            ? 'bg-primary/10 text-primary font-bold dark:bg-primary/20'
+                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200'
                       }`}
                     >
                       <div className="flex flex-col pr-2 truncate">

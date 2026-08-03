@@ -13,6 +13,28 @@ interface ModalProps {
   skipEscWarning?: boolean;
 }
 
+// Global Modal Stack Management
+const modalStack: string[] = [];
+
+export function registerModal(id: string) {
+  const index = modalStack.indexOf(id);
+  if (index !== -1) {
+    modalStack.splice(index, 1);
+  }
+  modalStack.push(id);
+}
+
+export function unregisterModal(id: string) {
+  const index = modalStack.indexOf(id);
+  if (index !== -1) {
+    modalStack.splice(index, 1);
+  }
+}
+
+export function isTopModal(id: string): boolean {
+  return modalStack.length > 0 && modalStack[modalStack.length - 1] === id;
+}
+
 const Modal: React.FC<ModalProps> = ({ 
   isOpen, 
   onClose, 
@@ -23,6 +45,12 @@ const Modal: React.FC<ModalProps> = ({
   skipEscWarning = false
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const modalIdRef = useRef<string>('');
+  if (!modalIdRef.current) {
+    modalIdRef.current = 'modal_' + Math.random().toString(36).substring(2, 9);
+  }
+  const modalId = modalIdRef.current;
+
   const hasFocusedRef = useRef(false);
   const onCloseRef = useRef(onClose);
   const [showCloseWarning, setShowCloseWarning] = useState(false);
@@ -30,6 +58,17 @@ const Modal: React.FC<ModalProps> = ({
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+
+  useEffect(() => {
+    if (isOpen) {
+      registerModal(modalId);
+      return () => {
+        unregisterModal(modalId);
+      };
+    } else {
+      unregisterModal(modalId);
+    }
+  }, [isOpen, modalId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -50,6 +89,7 @@ const Modal: React.FC<ModalProps> = ({
       document.body.style.overflow = 'hidden';
       
       const handleKeyDown = (e: KeyboardEvent) => {
+        if (!isTopModal(modalId)) return;
         if (showCloseWarning) return;
 
         if (e.key === 'Escape') {
@@ -112,22 +152,26 @@ const Modal: React.FC<ModalProps> = ({
     } else {
       hasFocusedRef.current = false;
     }
-  }, [isOpen, showCloseWarning, skipEscWarning]);
+  }, [isOpen, showCloseWarning, skipEscWarning, modalId]);
 
   // Handle keyboard shortcuts (Y / N / Esc) when warning confirmation is active
   useEffect(() => {
     if (!showCloseWarning) return;
 
     const handleWarningKeyDown = (e: KeyboardEvent) => {
+      if (!isTopModal(modalId)) return;
+
       const key = e.key.toLowerCase();
       if (key === 'y') {
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
         setShowCloseWarning(false);
         onCloseRef.current();
       } else if (key === 'n' || key === 'escape') {
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
         setShowCloseWarning(false);
       }
     };
@@ -136,12 +180,19 @@ const Modal: React.FC<ModalProps> = ({
     return () => {
       window.removeEventListener('keydown', handleWarningKeyDown, { capture: true });
     };
-  }, [showCloseWarning]);
+  }, [showCloseWarning, modalId]);
 
   if (!isOpen) return null;
 
+  const stackIndex = Math.max(0, modalStack.indexOf(modalId));
+  const baseZIndex = 1000 + stackIndex * 20;
+  const warningZIndex = baseZIndex + 10;
+
   return createPortal(
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 flex items-center justify-center p-4"
+      style={{ zIndex: baseZIndex }}
+    >
       {/* Backdrop - Outside clicks strictly disabled */}
       <div 
         className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200" 
@@ -172,7 +223,10 @@ const Modal: React.FC<ModalProps> = ({
 
       {/* Draft Loss Confirmation Warning Dialog */}
       {showCloseWarning && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-150">
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-150"
+          style={{ zIndex: warningZIndex }}
+        >
           <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 rounded-xl shadow-2xl p-6 max-w-md w-full flex flex-col items-center text-center animate-in zoom-in-95 duration-150">
             <div className="p-3 bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-full mb-4">
               <AlertTriangle className="w-8 h-8" />

@@ -107,6 +107,50 @@ const Stock = () => {
     };
   }, [cid]);
 
+  const selectedItem = items.find(i => String(i.id) === String(selectedId));
+
+  const filteredItems = useMemo(() => {
+    return items.filter(i => i.name?.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [items, searchQuery]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isModalOpen || deleteDialog.isOpen) return;
+
+      if (e.key === 'ArrowDown') {
+        if (filteredItems.length === 0) return;
+        e.preventDefault();
+        const currIdx = filteredItems.findIndex(i => String(i.id) === String(selectedId));
+        const nextIdx = currIdx < 0 ? 0 : Math.min(currIdx + 1, filteredItems.length - 1);
+        const nextItem = filteredItems[nextIdx];
+        if (nextItem) {
+          setSelectedId(String(nextItem.id));
+          setHighlightedId(String(nextItem.id));
+        }
+      } else if (e.key === 'ArrowUp') {
+        if (filteredItems.length === 0) return;
+        e.preventDefault();
+        const currIdx = filteredItems.findIndex(i => String(i.id) === String(selectedId));
+        const prevIdx = currIdx <= 0 ? 0 : currIdx - 1;
+        const prevItem = filteredItems[prevIdx];
+        if (prevItem) {
+          setSelectedId(String(prevItem.id));
+          setHighlightedId(String(prevItem.id));
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (selectedItem && !isReadOnly) {
+          e.preventDefault();
+          e.stopPropagation();
+          setEditingItem(selectedItem);
+          setIsModalOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filteredItems, selectedId, selectedItem, isModalOpen, deleteDialog.isOpen, isReadOnly]);
+
   const handleSaveItem = async (itemData: any, isSaveAndNew?: boolean) => {
     const cid = getActiveCompanyId();
     let res;
@@ -135,8 +179,6 @@ const Stock = () => {
     await supabase.from('stock_items').update({ is_deleted: true }).eq('id', deleteDialog.item.id);
     loadData(); if (selectedId === String(deleteDialog.item.id)) setSelectedId(null);
   };
-
-  const selectedItem = items.find(i => String(i.id) === String(selectedId));
 
   const itemStats = useMemo(() => {
     if (!selectedItem) return null;
@@ -171,8 +213,6 @@ const Stock = () => {
       stockBalance
     };
   }, [selectedItem, vouchers]);
-
-  const filteredItems = items.filter(i => i.name?.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className="space-y-6 h-full flex flex-col animate-in fade-in duration-300">
@@ -245,6 +285,10 @@ const Stock = () => {
                         setSelectedId(String(item.id));
                         setHighlightedId(String(item.id));
                       }} 
+                      onMouseEnter={() => {
+                        setSelectedId(String(item.id));
+                        setHighlightedId(String(item.id));
+                      }}
                       className={`p-4 border rounded-[5px] cursor-pointer transition-all ${
                         isHighlighted
                           ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-500 ring-2 ring-amber-400 text-slate-900 dark:text-white font-semibold shadow-md'

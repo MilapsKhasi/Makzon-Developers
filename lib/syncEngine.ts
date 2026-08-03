@@ -1,4 +1,4 @@
-import { realSupabase } from './supabase';
+import { realSupabase, supabase, isRefreshTokenError, handleRefreshTokenError } from './supabase';
 import { 
   getAllFromIDB, 
   upsertToIDB, 
@@ -160,8 +160,11 @@ export async function processOfflineSyncQueue(): Promise<{
   isSyncingQueue = true;
 
   try {
-    const { data: userData, error: userErr } = await realSupabase.auth.getUser();
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
     if (userErr || !userData?.user) {
+      if (userErr && isRefreshTokenError(userErr)) {
+        handleRefreshTokenError();
+      }
       isSyncingQueue = false;
       return { success: false, processedCount: 0, remainingCount: -1 };
     }
@@ -169,7 +172,7 @@ export async function processOfflineSyncQueue(): Promise<{
     const currentUserId = userData.user.id;
 
     // Fetch user's accessible workspace IDs for Workspace Isolation (Requirement 8)
-    const { data: userCompanies } = await realSupabase
+    const { data: userCompanies } = await supabase
       .from('companies')
       .select('id')
       .or(`created_by.eq.${currentUserId},user_id.eq.${currentUserId}`);

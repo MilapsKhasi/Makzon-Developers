@@ -401,10 +401,8 @@ const Layout = () => {
                 <div className="flex items-center space-x-2">
                   <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">ZenterPrime</span>
                 </div>
-                {devMode ? (
+                {devMode && (
                   <span className="inline-block px-1.5 py-0.5 bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 text-[8.5px] font-extrabold uppercase tracking-wider rounded mt-0.5 leading-none w-fit border-0">Developer Mode</span>
-                ) : (
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 mt-0.5">Evaluation Edition</span>
                 )}
               </div>
             )}
@@ -578,12 +576,12 @@ const Layout = () => {
             )}
             <button
               onClick={() => setIsGlobalSearchOpen(true)}
-              className="flex items-center space-x-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg text-xs transition-all border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs"
+              className="flex items-center space-x-2 px-3 py-1.5 h-[32px] bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg text-xs transition-all border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs"
               title="Global Search (Ctrl + K)"
             >
               <Search className="w-3.5 h-3.5 text-slate-400" />
               <span className="hidden sm:inline font-medium text-slate-600 dark:text-slate-300">Global Search...</span>
-              <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded font-mono shadow-2xs">
+              <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 bg-slate-50 dark:bg-slate-900 border-none rounded font-mono shadow-2xs">
                 Ctrl K
               </kbd>
             </button>
@@ -606,7 +604,7 @@ const Layout = () => {
               className={`px-3.5 py-1.5 font-semibold text-xs rounded-md capitalize flex items-center gap-1.5 shadow-xs transition-all ${
                 isReadOnly
                   ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 border border-slate-300 dark:border-slate-700 cursor-not-allowed'
-                  : 'bg-white dark:bg-slate-900 text-black dark:text-white border border-primary hover:bg-slate-50 dark:hover:bg-slate-800/80 cursor-pointer'
+                  : 'bg-white dark:bg-slate-900 text-black dark:text-white border-[0.5px] border-primary hover:bg-slate-50 dark:hover:bg-slate-800/80 cursor-pointer'
               }`}
               title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'Quick Create'}
             >
@@ -615,7 +613,7 @@ const Layout = () => {
             </button>
             <button
               onClick={toggleTheme}
-              className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+              className="p-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
               title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               aria-label="Toggle Theme"
             >

@@ -54,7 +54,11 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
   const [loadingChallanNo, setLoadingChallanNo] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const [itemModal, setItemModal] = useState<{ isOpen: boolean; rowIdx: number | null }>({
+  const [itemModal, setItemModal] = useState<{
+    isOpen: boolean;
+    rowIdx: number | null;
+    initialData?: any;
+  }>({
     isOpen: false,
     rowIdx: null
   });
@@ -262,34 +266,45 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
       const user = await getAuthUser();
       if (user) recordActivity(user.id, user.email || '');
 
-      const storageData = { ...itemData, company_id: cid, is_deleted: false };
-      let res = await supabase.from('stock_items').insert([storageData]).select();
-      if (res.error && (res.error.message?.includes('selling_price') || res.error.code === 'PGRST204' || res.error.code === '42703')) {
-        const { selling_price, ...cleanData } = storageData;
-        res = await supabase.from('stock_items').insert([cleanData]).select();
+      let insertedItem: any;
+      if (itemModal.initialData?.id) {
+        let res = await supabase.from('stock_items').update({ ...itemData }).eq('id', itemModal.initialData.id).select();
+        if (res.error && (res.error.message?.includes('selling_price') || res.error.code === 'PGRST204' || res.error.code === '42703')) {
+          const { selling_price, ...cleanData } = itemData;
+          res = await supabase.from('stock_items').update(cleanData).eq('id', itemModal.initialData.id).select();
+        }
+        insertedItem = (res.data && res.data[0]) ? res.data[0] : { ...itemData, id: itemModal.initialData.id };
+      } else {
+        const storageData = { ...itemData, company_id: cid, is_deleted: false };
+        let res = await supabase.from('stock_items').insert([storageData]).select();
+        if (res.error && (res.error.message?.includes('selling_price') || res.error.code === 'PGRST204' || res.error.code === '42703')) {
+          const { selling_price, ...cleanData } = storageData;
+          res = await supabase.from('stock_items').insert([cleanData]).select();
+        }
+
+        insertedItem = (res.data && res.data[0]) ? res.data[0] : null;
+        if (!insertedItem) {
+          const { data: fetchRes } = await supabase.from('stock_items')
+            .select('*')
+            .eq('company_id', cid)
+            .eq('name', itemData.name)
+            .eq('is_deleted', false)
+            .maybeSingle();
+          insertedItem = fetchRes || itemData;
+        }
       }
 
-      let insertedItem = (res.data && res.data[0]) ? res.data[0] : null;
-      if (!insertedItem) {
-        const { data: fetchRes } = await supabase.from('stock_items')
-          .select('*')
-          .eq('company_id', cid)
-          .eq('name', itemData.name)
-          .eq('is_deleted', false)
-          .maybeSingle();
-        insertedItem = fetchRes || itemData;
-      }
-
+      window.dispatchEvent(new Event('stockUpdated'));
       const stockData = await fetchStockItemsWithBalance(cid);
       setStockItemsList(stockData || []);
 
-      if (itemModal.rowIdx !== null && itemModal.rowIdx >= 0) {
+      if (itemModal.rowIdx !== null && itemModal.rowIdx >= 0 && insertedItem) {
         selectStockItemForDCRow(itemModal.rowIdx, insertedItem);
       }
 
       setItemModal({ isOpen: false, rowIdx: null });
     } catch (err: any) {
-      alert("Error creating stock item: " + err.message);
+      alert("Error saving stock item: " + err.message);
     }
   };
 
@@ -756,7 +771,8 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
                       value={item.item_name}
                       stockItems={stockItemsList}
                       onSelect={(selectedItem) => selectStockItemForDCRow(idx, selectedItem)}
-                      onAddNewItem={() => setItemModal({ isOpen: true, rowIdx: idx })}
+                      onAddNewItem={() => setItemModal({ isOpen: true, rowIdx: idx, initialData: null })}
+                      onEditItem={(itemToEdit) => setItemModal({ isOpen: true, rowIdx: idx, initialData: itemToEdit })}
                       placeholder="Select Item"
                     />
                   </td>
@@ -880,9 +896,10 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
         <Modal
           isOpen={itemModal.isOpen}
           onClose={() => setItemModal({ isOpen: false, rowIdx: null })}
-          title="Add New Stock Item"
+          title={itemModal.initialData ? "Edit Stock Item" : "Add New Stock Item"}
         >
           <StockForm
+            initialData={itemModal.initialData}
             onSubmit={handleSaveNewStockItem}
             onCancel={() => setItemModal({ isOpen: false, rowIdx: null })}
           />

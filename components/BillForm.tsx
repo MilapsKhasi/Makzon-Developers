@@ -73,8 +73,15 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel, fo
 
   const formRef = useRef<HTMLFormElement>(null);
 
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [stockItems, setStockItems] = useState<any[]>([]);
+  const [vendorModal, setVendorModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
+  const [itemModal, setItemModal] = useState<{ isOpen: boolean; rowIdx: number | null; initialData?: any }>({ isOpen: false, rowIdx: null });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (vendorModal.isOpen || itemModal.isOpen) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         undo();
@@ -98,7 +105,7 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel, fo
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo]);
+  }, [undo, redo, vendorModal.isOpen, itemModal.isOpen]);
 
   // Auto focus & select first field or qty field on mount
   useEffect(() => {
@@ -132,12 +139,6 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel, fo
     }, 150);
     return () => clearTimeout(timer);
   }, [focusQtyField]);
-
-  const [vendors, setVendors] = useState<any[]>([]);
-  const [stockItems, setStockItems] = useState<any[]>([]);
-  const [vendorModal, setVendorModal] = useState({ isOpen: false, initialData: null, prefilledName: '' });
-  const [itemModal, setItemModal] = useState<{ isOpen: boolean; rowIdx: number | null }>({ isOpen: false, rowIdx: null });
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const parseNumber = (val: string) => {
     if (!val) return 0;
@@ -371,34 +372,45 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel, fo
       const user = await getAuthUser();
       if (user) recordActivity(user.id, user.email || '');
 
-      const storageData = { ...itemData, company_id: cid, is_deleted: false };
-      let res = await supabase.from('stock_items').insert([storageData]).select();
-      if (res.error && (res.error.message?.includes('selling_price') || res.error.code === 'PGRST204' || res.error.code === '42703')) {
-        const { selling_price, ...cleanData } = storageData;
-        res = await supabase.from('stock_items').insert([cleanData]).select();
+      let insertedItem: any;
+      if (itemModal.initialData?.id) {
+        let res = await supabase.from('stock_items').update({ ...itemData }).eq('id', itemModal.initialData.id).select();
+        if (res.error && (res.error.message?.includes('selling_price') || res.error.code === 'PGRST204' || res.error.code === '42703')) {
+          const { selling_price, ...cleanData } = itemData;
+          res = await supabase.from('stock_items').update(cleanData).eq('id', itemModal.initialData.id).select();
+        }
+        insertedItem = (res.data && res.data[0]) ? res.data[0] : { ...itemData, id: itemModal.initialData.id };
+      } else {
+        const storageData = { ...itemData, company_id: cid, is_deleted: false };
+        let res = await supabase.from('stock_items').insert([storageData]).select();
+        if (res.error && (res.error.message?.includes('selling_price') || res.error.code === 'PGRST204' || res.error.code === '42703')) {
+          const { selling_price, ...cleanData } = storageData;
+          res = await supabase.from('stock_items').insert([cleanData]).select();
+        }
+
+        insertedItem = (res.data && res.data[0]) ? res.data[0] : null;
+        if (!insertedItem) {
+          const { data: fetchRes } = await supabase.from('stock_items')
+            .select('*')
+            .eq('company_id', cid)
+            .eq('name', itemData.name)
+            .eq('is_deleted', false)
+            .maybeSingle();
+          insertedItem = fetchRes || itemData;
+        }
       }
 
-      let insertedItem = (res.data && res.data[0]) ? res.data[0] : null;
-      if (!insertedItem) {
-        const { data: fetchRes } = await supabase.from('stock_items')
-          .select('*')
-          .eq('company_id', cid)
-          .eq('name', itemData.name)
-          .eq('is_deleted', false)
-          .maybeSingle();
-        insertedItem = fetchRes || itemData;
-      }
-
+      window.dispatchEvent(new Event('stockUpdated'));
       const stockData = await fetchStockItemsWithBalance(cid);
       setStockItems(stockData || []);
 
-      if (itemModal.rowIdx !== null && itemModal.rowIdx >= 0) {
+      if (itemModal.rowIdx !== null && itemModal.rowIdx >= 0 && insertedItem) {
         selectStockItemForBillRow(itemModal.rowIdx, insertedItem);
       }
 
       setItemModal({ isOpen: false, rowIdx: null });
     } catch (err: any) {
-      alert("Error creating stock item: " + err.message);
+      alert("Error saving stock item: " + err.message);
     }
   };
 
@@ -464,8 +476,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel, fo
         <PartyForm defaultType="vendor" initialData={vendorModal.initialData} prefilledName={vendorModal.prefilledName} onSubmit={(v) => { setVendorModal({ ...vendorModal, isOpen: false }); loadDependencies(); }} onCancel={() => setVendorModal({ ...vendorModal, isOpen: false })} />
       </Modal>
 
-      <Modal isOpen={itemModal.isOpen} onClose={() => setItemModal({ isOpen: false, rowIdx: null })} title="Create New Item" maxWidth="max-w-5xl">
-        <StockForm onSubmit={handleSaveNewStockItem} onCancel={() => setItemModal({ isOpen: false, rowIdx: null })} />
+      <Modal isOpen={itemModal.isOpen} onClose={() => setItemModal({ isOpen: false, rowIdx: null })} title={itemModal.initialData ? "Edit Stock Item" : "Create New Item"} maxWidth="max-w-5xl">
+        <StockForm initialData={itemModal.initialData} onSubmit={handleSaveNewStockItem} onCancel={() => setItemModal({ isOpen: false, rowIdx: null })} />
       </Modal>
 
       <PaymentModal 
@@ -569,7 +581,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel, fo
                                             value={it.itemName}
                                             stockItems={stockItems}
                                             onSelect={(selectedItem) => selectStockItemForBillRow(idx, selectedItem)}
-                                            onAddNewItem={() => setItemModal({ isOpen: true, rowIdx: idx })}
+                                            onAddNewItem={() => setItemModal({ isOpen: true, rowIdx: idx, initialData: null })}
+                                            onEditItem={(itemToEdit) => setItemModal({ isOpen: true, rowIdx: idx, initialData: itemToEdit })}
                                             placeholder="Select Item"
                                         />
                                     </td>

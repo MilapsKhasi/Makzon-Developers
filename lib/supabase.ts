@@ -37,15 +37,46 @@ export const realSupabase = createClient(finalUrl, supabaseAnonKey, {
 
 function isNetworkError(err: any): boolean {
   if (!err) return false;
-  const msg = typeof err === 'string' ? err : (err.message || err.details || err.toString() || '');
+  const msg = typeof err === 'string' ? err : (err.message || err.details || err.description || err.error_description || err.toString() || '');
   const lower = msg.toLowerCase();
   return (
     lower.includes('failed to fetch') ||
     lower.includes('networkerror') ||
     lower.includes('network request failed') ||
     lower.includes('fetch failed') ||
-    err.name === 'TypeError'
+    lower.includes('load failed') ||
+    lower.includes('cors') ||
+    lower.includes('network_error') ||
+    err.name === 'TypeError' ||
+    err.status === 0
   );
+}
+
+export function isRefreshTokenError(err: any): boolean {
+  if (!err) return false;
+  const msg = typeof err === 'string' ? err : (err.message || err.details || err.error_description || err.toString() || '');
+  const lower = msg.toLowerCase();
+  return (
+    lower.includes('invalid refresh token') ||
+    lower.includes('refresh token not found') ||
+    lower.includes('refresh_token_not_found') ||
+    lower.includes('invalid_grant') ||
+    lower.includes('jwt expired')
+  );
+}
+
+export function handleRefreshTokenError() {
+  if (typeof window !== 'undefined') {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('sb-') || key.includes('supabase.auth.token'))) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch {}
+    localStorage.removeItem('local_session_user');
+  }
 }
 
 function enableOfflineMode() {
@@ -66,7 +97,7 @@ export async function syncUserWorkspaceDataToIndexedDB(userId: string) {
     console.log(`[IndexedDB Sync] Syncing workspace data for user: ${userId}`);
 
     // Fetch user's accessible companies
-    const { data: companies, error: compErr } = await realSupabase
+    const { data: companies, error: compErr } = await supabase
       .from('companies')
       .select('*')
       .or(`created_by.eq.${userId},user_id.eq.${userId}`)
@@ -89,7 +120,7 @@ export async function syncUserWorkspaceDataToIndexedDB(userId: string) {
     const companyIds = companies.map((c: any) => c.id).filter(Boolean);
 
     // Fetch user profile
-    const { data: profile } = await realSupabase
+    const { data: profile } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
@@ -120,7 +151,7 @@ export async function syncUserWorkspaceDataToIndexedDB(userId: string) {
 
     for (const table of workspaceTables) {
       try {
-        const { data: rows } = await realSupabase
+        const { data: rows } = await supabase
           .from(table)
           .select('*')
           .in('company_id', companyIds);
@@ -803,22 +834,32 @@ class ResilientQueryBuilder {
     }
     try {
       const res = await this.realQb;
-      if (res?.error && isNetworkError(res.error)) {
-        console.warn(`[Supabase Network Warning] Query on '${this.table}' failed, using local offline storage.`, res.error);
-        enableOfflineMode();
-        return this.mockQb.execute();
+      if (res?.error) {
+        if (isRefreshTokenError(res.error)) {
+          handleRefreshTokenError();
+          return this.mockQb.execute();
+        }
+        if (isNetworkError(res.error)) {
+          console.warn(`[Supabase Network Warning] Query on '${this.table}' failed, using local offline storage.`, res.error);
+          enableOfflineMode();
+          return this.mockQb.execute();
+        }
       }
       if (res && !res.error) {
         autoCacheOnlineResult(this.table, res);
       }
       return res;
     } catch (err: any) {
+      if (isRefreshTokenError(err)) {
+        handleRefreshTokenError();
+        return this.mockQb.execute();
+      }
       if (isNetworkError(err)) {
         console.warn(`[Supabase Network Warning] Query on '${this.table}' threw network exception, using local offline storage.`, err.message || err);
         enableOfflineMode();
         return this.mockQb.execute();
       }
-      throw err;
+      return this.mockQb.execute();
     }
   }
 
@@ -827,12 +868,16 @@ class ResilientQueryBuilder {
       const res = await this.execute();
       return resolve(res);
     } catch (err) {
+      if (isRefreshTokenError(err)) {
+        handleRefreshTokenError();
+        return resolve(this.mockQb.execute());
+      }
       if (isNetworkError(err)) {
         enableOfflineMode();
         return resolve(this.mockQb.execute());
       }
       if (reject) return reject(err);
-      throw err;
+      return resolve(this.mockQb.execute());
     }
   }
 
@@ -842,20 +887,30 @@ class ResilientQueryBuilder {
     }
     try {
       const res = await (this.realQb?.single ? this.realQb.single() : this.realQb);
-      if (res?.error && isNetworkError(res.error)) {
-        enableOfflineMode();
-        return await this.mockQb.single();
+      if (res?.error) {
+        if (isRefreshTokenError(res.error)) {
+          handleRefreshTokenError();
+          return await this.mockQb.single();
+        }
+        if (isNetworkError(res.error)) {
+          enableOfflineMode();
+          return await this.mockQb.single();
+        }
       }
       if (res && !res.error) {
         autoCacheOnlineResult(this.table, res);
       }
       return res;
     } catch (err: any) {
+      if (isRefreshTokenError(err)) {
+        handleRefreshTokenError();
+        return await this.mockQb.single();
+      }
       if (isNetworkError(err)) {
         enableOfflineMode();
         return await this.mockQb.single();
       }
-      return { data: null, error: { message: err.message || 'Error', code: 'FETCH_ERROR' } };
+      return await this.mockQb.single();
     }
   }
 
@@ -865,20 +920,30 @@ class ResilientQueryBuilder {
     }
     try {
       const res = await (this.realQb?.maybeSingle ? this.realQb.maybeSingle() : this.realQb);
-      if (res?.error && isNetworkError(res.error)) {
-        enableOfflineMode();
-        return await this.mockQb.maybeSingle();
+      if (res?.error) {
+        if (isRefreshTokenError(res.error)) {
+          handleRefreshTokenError();
+          return await this.mockQb.maybeSingle();
+        }
+        if (isNetworkError(res.error)) {
+          enableOfflineMode();
+          return await this.mockQb.maybeSingle();
+        }
       }
       if (res && !res.error) {
         autoCacheOnlineResult(this.table, res);
       }
       return res;
     } catch (err: any) {
+      if (isRefreshTokenError(err)) {
+        handleRefreshTokenError();
+        return await this.mockQb.maybeSingle();
+      }
       if (isNetworkError(err)) {
         enableOfflineMode();
         return await this.mockQb.maybeSingle();
       }
-      return { data: null, error: null };
+      return await this.mockQb.maybeSingle();
     }
   }
 }
@@ -890,8 +955,14 @@ const resilientAuth = {
     }
     try {
       const res = await realSupabase.auth.getSession();
-      if (res?.error && isNetworkError(res.error) && typeof navigator !== 'undefined' && !navigator.onLine) {
-        return await mockAuth.getSession();
+      if (res?.error) {
+        if (isRefreshTokenError(res.error)) {
+          handleRefreshTokenError();
+          return await mockAuth.getSession();
+        }
+        if (isNetworkError(res.error) && typeof navigator !== 'undefined' && !navigator.onLine) {
+          return await mockAuth.getSession();
+        }
       }
       if (!res?.data?.session && typeof window !== 'undefined' && localStorage.getItem('local_session_user') && localStorage.getItem('use_offline_mode') === 'true') {
         return await mockAuth.getSession();
@@ -908,6 +979,10 @@ const resilientAuth = {
       }
       return res;
     } catch (err: any) {
+      if (isRefreshTokenError(err)) {
+        handleRefreshTokenError();
+        return await mockAuth.getSession();
+      }
       if (isNetworkError(err) && typeof navigator !== 'undefined' && !navigator.onLine) {
         return await mockAuth.getSession();
       }
@@ -920,8 +995,14 @@ const resilientAuth = {
     }
     try {
       const res = await realSupabase.auth.getUser();
-      if (res?.error && isNetworkError(res.error) && typeof navigator !== 'undefined' && !navigator.onLine) {
-        return await mockAuth.getUser();
+      if (res?.error) {
+        if (isRefreshTokenError(res.error)) {
+          handleRefreshTokenError();
+          return await mockAuth.getUser();
+        }
+        if (isNetworkError(res.error) && typeof navigator !== 'undefined' && !navigator.onLine) {
+          return await mockAuth.getUser();
+        }
       }
       if (!res?.data?.user && typeof window !== 'undefined' && localStorage.getItem('local_session_user') && localStorage.getItem('use_offline_mode') === 'true') {
         return await mockAuth.getUser();
@@ -938,6 +1019,10 @@ const resilientAuth = {
       }
       return res;
     } catch (err: any) {
+      if (isRefreshTokenError(err)) {
+        handleRefreshTokenError();
+        return await mockAuth.getUser();
+      }
       if (isNetworkError(err) && typeof navigator !== 'undefined' && !navigator.onLine) {
         return await mockAuth.getUser();
       }
