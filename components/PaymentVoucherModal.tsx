@@ -3,6 +3,7 @@ import { Loader2, Calendar, CreditCard, FileText, ArrowDownCircle, ArrowUpCircle
 import Modal from './Modal';
 import { supabase } from '../lib/supabase';
 import { getActiveCompanyId, formatDate, normalizeBill, safeSupabaseSave, syncTransactionToCashbook, formatCurrency } from '../utils/helpers';
+import { getDraft, saveDraft, clearDraft } from '../utils/draftManager';
 
 interface PaymentVoucherModalProps {
   isOpen: boolean;
@@ -33,13 +34,38 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
   const [selectedBillIds, setSelectedBillIds] = useState<string[]>([]);
   const [loadingBills, setLoadingBills] = useState(false);
 
-  // Sync initial type when opened
+  const cid = getActiveCompanyId();
+  const draftKey = `payment_voucher_${cid}_${voucherType}`;
+  const [isDraftRestored, setIsDraftRestored] = useState(false);
+
+  // Sync initial type & check draft when opened
   useEffect(() => {
     if (isOpen) {
       setVoucherType(initialType);
-      resetForm();
+      const savedDraft = getDraft(`payment_voucher_${cid}_${initialType}`);
+      if (savedDraft) {
+        if (savedDraft.date) setDate(savedDraft.date);
+        if (savedDraft.account) setAccount(savedDraft.account);
+        if (savedDraft.partyName) setPartyName(savedDraft.partyName);
+        if (savedDraft.amount) setAmount(savedDraft.amount);
+        if (savedDraft.description) setDescription(savedDraft.description);
+        if (savedDraft.selectedBillIds) setSelectedBillIds(savedDraft.selectedBillIds);
+        setIsDraftRestored(true);
+      } else {
+        resetForm();
+      }
     }
-  }, [isOpen, initialType]);
+  }, [isOpen, initialType, cid]);
+
+  // Auto-save draft
+  useEffect(() => {
+    if (!isOpen || !cid) return;
+    if (partyName?.trim() || amount?.trim() || description?.trim() || selectedBillIds.length > 0) {
+      saveDraft(draftKey, {
+        date, account, partyName, amount, description, selectedBillIds
+      });
+    }
+  }, [isOpen, cid, draftKey, date, account, partyName, amount, description, selectedBillIds]);
 
   const resetForm = () => {
     setDate(new Date().toISOString().split('T')[0]);
@@ -50,6 +76,7 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
     setSelectedBillIds([]);
     setAlreadyPaidBillIds([]);
     setPartyBills([]);
+    setIsDraftRestored(false);
   };
 
   // Load Parties
@@ -268,6 +295,8 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
           .in('id', selectedBillIds);
       }
 
+      clearDraft(draftKey);
+      setIsDraftRestored(false);
       window.dispatchEvent(new Event('appSettingsChanged'));
 
       if (onSuccess) onSuccess();
@@ -284,6 +313,11 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
     }
   };
 
+  const handleDiscardDraft = () => {
+    clearDraft(draftKey);
+    resetForm();
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -292,6 +326,21 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
       maxWidth="max-w-5xl"
     >
       <form onSubmit={handleSave} className="p-6 space-y-4">
+        {isDraftRestored && (
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 shadow-2xs">
+            <span className="flex items-center gap-2 font-medium">
+              <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Restored unsaved draft from your previous session.</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="px-2.5 py-1 bg-amber-200/70 dark:bg-amber-900/60 hover:bg-amber-300 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 font-semibold rounded transition-colors cursor-pointer"
+            >
+              Discard Draft
+            </button>
+          </div>
+        )}
         <div>
           <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">Voucher Type</label>
           <div className="grid grid-cols-2 gap-2">

@@ -7,6 +7,7 @@ import StockForm from './StockForm';
 import BillForm from './BillForm';
 import ItemSelectDropdown from './ItemSelectDropdown';
 import { recordActivity } from '../utils/activityTracker';
+import { getDraft, saveDraft, clearDraft } from '../utils/draftManager';
 
 interface DeliveryChallanFormProps {
   initialData?: any;
@@ -115,6 +116,38 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
       { id: '1', item_name: '', hsn: '', quantity: 1, unit: 'PCS', rate: 0, tax_rate: 0, amount: 0 }
     ];
   });
+
+  const draftKey = `delivery_challan_${cid}_${initialData?.id || 'new'}`;
+  const [isDraftRestored, setIsDraftRestored] = useState(false);
+
+  // Restore draft on initial load
+  useEffect(() => {
+    if (!cid) return;
+    const savedDraft = getDraft(draftKey);
+    if (savedDraft) {
+      if (savedDraft.date) setDate(savedDraft.date);
+      if (savedDraft.challanNumber) setChallanNumber(savedDraft.challanNumber);
+      if (savedDraft.partyName) setPartyName(savedDraft.partyName);
+      if (savedDraft.vehicleNo) setVehicleNo(savedDraft.vehicleNo);
+      if (savedDraft.driverName) setDriverName(savedDraft.driverName);
+      if (savedDraft.ewayBillNo) setEwayBillNo(savedDraft.ewayBillNo);
+      if (savedDraft.dispatchDestination) setDispatchDestination(savedDraft.dispatchDestination);
+      if (savedDraft.notes) setNotes(savedDraft.notes);
+      if (savedDraft.lineItems) setLineItems(savedDraft.lineItems);
+      setIsDraftRestored(true);
+    }
+  }, [cid, draftKey]);
+
+  // Auto-save draft on changes
+  useEffect(() => {
+    if (!cid) return;
+    const isMeaningful = partyName?.trim() || vehicleNo?.trim() || notes?.trim() || lineItems.some(i => i.item_name?.trim() || i.quantity > 1 || i.rate > 0);
+    if (isMeaningful) {
+      saveDraft(draftKey, {
+        date, challanNumber, partyName, vehicleNo, driverName, ewayBillNo, dispatchDestination, notes, lineItems
+      });
+    }
+  }, [cid, draftKey, date, challanNumber, partyName, vehicleNo, driverName, ewayBillNo, dispatchDestination, notes, lineItems]);
 
   // Load parties, stock items, and existing delivery challan numbers
   useEffect(() => {
@@ -495,6 +528,8 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
       const savedData = savedRes?.data?.[0] || { ...payload, id: initialData?.id || 'new-dc' };
       const normalized = normalizeBill(savedData);
 
+      clearDraft(draftKey);
+      setIsDraftRestored(false);
       onSubmit(normalized, shouldPrint, isSaveAndNew);
     } catch (err: any) {
       console.error('Error saving delivery challan:', err);
@@ -502,6 +537,22 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDiscardDraft = () => {
+    clearDraft(draftKey);
+    setIsDraftRestored(false);
+    setDate(initialData?.date || new Date().toISOString().split('T')[0]);
+    setChallanNumber(initialData?.invoice_number || initialData?.bill_number || '');
+    setPartyName(initialData?.customer_name || initialData?.vendor_name || '');
+    setVehicleNo(initialData?.items_raw?.vehicle_no || '');
+    setDriverName(initialData?.items_raw?.driver_name || '');
+    setEwayBillNo(initialData?.items_raw?.eway_bill_no || '');
+    setDispatchDestination(initialData?.items_raw?.dispatch_destination || '');
+    setNotes(initialData?.description || '');
+    setLineItems([
+      { id: '1', item_name: '', hsn: '', quantity: 1, unit: 'PCS', rate: 0, tax_rate: 0, amount: 0 }
+    ]);
   };
 
   const handleOpenStockAdjustment = () => {
@@ -606,6 +657,22 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
 
   return (
     <div className="space-y-6 p-5">
+      {isDraftRestored && (
+        <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 shadow-2xs">
+          <span className="flex items-center gap-2 font-medium">
+            <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>Restored unsaved draft from your previous session.</span>
+          </span>
+          <button
+            type="button"
+            onClick={handleDiscardDraft}
+            className="px-2.5 py-1 bg-amber-200/70 dark:bg-amber-900/60 hover:bg-amber-300 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 font-semibold rounded transition-colors cursor-pointer"
+          >
+            Discard Draft
+          </button>
+        </div>
+      )}
+
       {/* Basic Info Fields */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-md border border-slate-200/80 dark:border-slate-800">
         <div>

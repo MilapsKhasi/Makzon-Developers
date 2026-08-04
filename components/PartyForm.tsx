@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, FileText } from 'lucide-react';
 import { getActiveCompanyId, safeSupabaseSave, toStorageValue, toDisplayValue } from '../utils/helpers';
 import { getAuthUser } from '../lib/supabase';
 import { recordActivity } from '../utils/activityTracker';
+import { getDraft, saveDraft, clearDraft } from '../utils/draftManager';
 
 interface PartyFormProps {
   initialData?: any | null;
@@ -13,8 +14,13 @@ interface PartyFormProps {
 }
 
 const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defaultType = 'customer', onSubmit, onCancel }) => {
+  const cid = getActiveCompanyId();
   const [loading, setLoading] = useState(false);
   const [isSaveAndNew, setIsSaveAndNew] = useState(false);
+  const [isDraftRestored, setIsDraftRestored] = useState(false);
+
+  const draftKey = `party_${cid}_${initialData?.id || 'new'}`;
+
   const [formData, setFormData] = useState<any>({
     name: prefilledName || '', 
     email: '', 
@@ -34,7 +40,11 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (initialData) {
+    const savedDraft = getDraft(draftKey);
+    if (savedDraft) {
+      setFormData(savedDraft);
+      setIsDraftRestored(true);
+    } else if (initialData) {
       let pType = (initialData.party_type || '').toLowerCase();
       if (!pType || (pType !== 'customer' && pType !== 'vendor' && pType !== 'both')) {
         pType = initialData.is_customer ? 'customer' : 'vendor';
@@ -51,7 +61,15 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
       firstInputRef.current?.focus();
       firstInputRef.current?.select();
     }, 100);
-  }, [initialData, prefilledName]);
+  }, [initialData, prefilledName, draftKey]);
+
+  // Auto-save draft
+  useEffect(() => {
+    if (!cid) return;
+    if (formData.name?.trim() || formData.phone?.trim() || formData.email?.trim() || formData.gstin?.trim()) {
+      saveDraft(draftKey, formData);
+    }
+  }, [formData, draftKey, cid]);
 
   const handleChange = (field: string, value: any) => { 
     if (field === 'name') {
@@ -91,6 +109,8 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
       
       // Save to 'vendors' table, which acts as our unified 'parties' table
       const result = await safeSupabaseSave('vendors', payload, initialData?.id);
+      clearDraft(draftKey);
+      setIsDraftRestored(false);
       onSubmit(result.data[0], isSaveAndNew);
       if (isSaveAndNew) {
         setFormData({
@@ -117,6 +137,24 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
     }
   };
 
+  const handleDiscardDraft = () => {
+    clearDraft(draftKey);
+    setIsDraftRestored(false);
+    if (initialData) {
+      let pType = (initialData.party_type || '').toLowerCase();
+      if (!pType || (pType !== 'customer' && pType !== 'vendor' && pType !== 'both')) {
+        pType = initialData.is_customer ? 'customer' : 'vendor';
+      }
+      setFormData({ ...initialData, party_type: pType, is_customer: pType === 'customer' || pType === 'both' });
+    } else {
+      setFormData({
+        name: prefilledName || '', email: '', phone: '', gstin: '', pan: '', state: '',
+        account_number: '', account_name: '', ifsc_code: '', address: '', balance: 0,
+        party_type: defaultType, is_customer: defaultType === 'customer' || defaultType === 'both'
+      });
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-slate-900 w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden rounded-md border border-slate-300 dark:border-slate-800">
       {/* Header */}
@@ -126,6 +164,22 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
           <X className="w-5 h-5" />
         </button>
       </div>
+
+      {isDraftRestored && (
+        <div className="mx-6 mt-4 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 shadow-2xs">
+          <span className="flex items-center gap-2 font-medium">
+            <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>Restored unsaved draft from your previous session.</span>
+          </span>
+          <button
+            type="button"
+            onClick={handleDiscardDraft}
+            className="px-2.5 py-1 bg-amber-200/70 dark:bg-amber-900/60 hover:bg-amber-300 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 font-semibold rounded transition-colors cursor-pointer"
+          >
+            Discard Draft
+          </button>
+        </div>
+      )}
 
       {/* Scrollable Form Body */}
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto flex flex-col bg-white dark:bg-slate-900">

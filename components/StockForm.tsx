@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Package, Tag, Box, Hash, Scale, X, Loader2 } from 'lucide-react';
-import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES } from '../utils/helpers';
+import { Save, Package, Tag, Box, Hash, Scale, X, Loader2, FileText } from 'lucide-react';
+import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES, getActiveCompanyId } from '../utils/helpers';
 import { recordActivity } from '../utils/activityTracker';
 import { supabase, getAuthUser } from '../lib/supabase';
+import { getDraft, saveDraft, clearDraft } from '../utils/draftManager';
 
 interface StockFormProps {
   initialData?: any;
@@ -15,8 +16,13 @@ interface StockFormProps {
 const TAX_RATES = [0, 5, 12, 18, 28];
 
 const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel, focusStockField }) => {
+  const cid = getActiveCompanyId();
   const [loading, setLoading] = useState(false);
   const [isSaveAndNew, setIsSaveAndNew] = useState(false);
+  const [isDraftRestored, setIsDraftRestored] = useState(false);
+
+  const draftKey = `stock_${cid}_${initialData?.id || 'new'}`;
+
   const [formData, setFormData] = useState<any>({
       name: '', sku: '', unit: 'PCS', hsn: '', rate: 0, selling_price: 0, in_stock: 0, description: '', tax_rate: 18, kg_per_bag: 0
   });
@@ -26,7 +32,11 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel, 
   const stockInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (initialData) {
+    const savedDraft = getDraft(draftKey);
+    if (savedDraft) {
+      setFormData(savedDraft);
+      setIsDraftRestored(true);
+    } else if (initialData) {
       setFormData({ 
         name: initialData.name || '',
         sku: initialData.sku || '',
@@ -49,7 +59,15 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel, 
         firstInputRef.current?.select();
       }
     }, 150);
-  }, [initialData, focusStockField]);
+  }, [initialData, focusStockField, draftKey]);
+
+  // Auto-save draft
+  useEffect(() => {
+    if (!cid) return;
+    if (formData.name?.trim() || formData.sku?.trim() || formData.hsn?.trim() || formData.rate > 0 || formData.selling_price > 0) {
+      saveDraft(draftKey, formData);
+    }
+  }, [formData, draftKey, cid]);
 
   const handleInputChange = (field: string, value: any) => { 
     if (field === 'name') {
@@ -78,6 +96,8 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel, 
           kg_per_bag: toStorageValue(formData.kg_per_bag)
         };
         await onSubmit(storageData, isSaveAndNew);
+        clearDraft(draftKey);
+        setIsDraftRestored(false);
         if (isSaveAndNew) {
           setFormData({
             name: '', sku: '', unit: 'PCS', hsn: '', rate: 0, selling_price: 0, in_stock: 0, description: '', tax_rate: 18, kg_per_bag: 0
@@ -89,10 +109,48 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel, 
       } finally {
         setLoading(false);
       }
-  }
+  };
+
+  const handleDiscardDraft = () => {
+    clearDraft(draftKey);
+    setIsDraftRestored(false);
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        sku: initialData.sku || '',
+        unit: initialData.unit || 'PCS',
+        hsn: initialData.hsn || '',
+        rate: toDisplayValue(initialData.rate),
+        selling_price: toDisplayValue(initialData.selling_price || 0),
+        in_stock: toDisplayValue(initialData.in_stock),
+        description: initialData.description || '',
+        tax_rate: initialData.tax_rate || 18,
+        kg_per_bag: toDisplayValue(initialData.kg_per_bag)
+      });
+    } else {
+      setFormData({
+        name: '', sku: '', unit: 'PCS', hsn: '', rate: 0, selling_price: 0, in_stock: 0, description: '', tax_rate: 18, kg_per_bag: 0
+      });
+    }
+  };
 
   return (
     <div className="bg-white dark:bg-slate-900 flex flex-col max-h-[90vh] overflow-hidden">
+        {isDraftRestored && (
+          <div className="mx-4 sm:mx-8 mt-4 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 shadow-2xs">
+            <span className="flex items-center gap-2 font-medium">
+              <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Restored unsaved draft from your previous session.</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="px-2.5 py-1 bg-amber-200/70 dark:bg-amber-900/60 hover:bg-amber-300 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 font-semibold rounded transition-colors cursor-pointer"
+            >
+              Discard Draft
+            </button>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 bg-white dark:bg-slate-900 custom-scrollbar">
             <div className="space-y-6">
                 <div className="space-y-1.5">

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, ToggleLeft, ToggleRight, FileText } from 'lucide-react';
 import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS, fetchStockItemsWithBalance } from '../utils/helpers';
 import { supabase, getAuthUser } from '../lib/supabase';
 import Modal from './Modal';
@@ -9,6 +9,7 @@ import StockForm from './StockForm';
 import ItemSelectDropdown from './ItemSelectDropdown';
 import PaymentModal from './PaymentModal';
 import { recordActivity } from '../utils/activityTracker';
+import { getDraft, saveDraft, clearDraft } from '../utils/draftManager';
 
 interface BillFormProps {
   initialData?: any;
@@ -46,6 +47,21 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel, fo
   const [future, setFuture] = useState<any[]>([]);
   const [isGstEnabled, setIsGstEnabled] = useState(appSettings.gstEnabled);
   const [isSaveAndNew, setIsSaveAndNew] = useState(false);
+  const [isDraftRestored, setIsDraftRestored] = useState(false);
+
+  const draftKey = `bill_${cid}_${initialData?.id || 'new'}`;
+
+  // Auto-save draft on form changes
+  useEffect(() => {
+    if (!cid) return;
+    const isMeaningful = formData.vendor_name?.trim() || 
+      formData.bill_number?.trim() ||
+      formData.items?.some((it: any) => it.itemName?.trim() || it.qty || it.rate) || 
+      formData.description?.trim();
+    if (isMeaningful) {
+      saveDraft(draftKey, formData);
+    }
+  }, [formData, draftKey, cid]);
 
   const updateFormData = useCallback((next: any, skipHistory = false) => {
     if (!skipHistory) {
@@ -314,7 +330,11 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel, fo
       .filter((d: any) => isApplicableToPurchase(d))
       .filter((d: any) => d.is_default || selectedIds.includes(d.id));
 
-    if (!initialData) {
+    const savedDraft = getDraft(draftKey);
+    if (savedDraft) {
+      setFormData(savedDraft);
+      setIsDraftRestored(true);
+    } else if (!initialData) {
       setFormData((prev: any) => {
         if (prev.duties_and_taxes.length > 0) return prev;
         return recalculate({ ...prev, duties_and_taxes: activeDuties.map((d: any) => ({ ...d, amount: 0 }))});
@@ -459,6 +479,8 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel, fo
       await ensureStockItems(formData.items, cid);
       await ensureParty(formData.vendor_name, 'vendor', cid);
       if (payload.status === 'Paid' && savedRes.data) await syncTransactionToCashbook(savedRes.data[0]);
+      clearDraft(draftKey);
+      setIsDraftRestored(false);
       window.dispatchEvent(new Event('appSettingsChanged'));
       onSubmit(payload, isSaveAndNew);
       if (isSaveAndNew) {
@@ -468,6 +490,19 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel, fo
         loadDependencies();
       }
     } catch (err: any) { alert("Error: " + err.message); } finally { setLoading(false); }
+  };
+
+  const handleDiscardDraft = () => {
+    clearDraft(draftKey);
+    setIsDraftRestored(false);
+    manualOverrides.current = new Set();
+    if (initialData) {
+      const normalized = normalizeBill(initialData);
+      setFormData(recalculate({ ...getInitialState(), ...normalized }));
+    } else {
+      setFormData(getInitialState());
+      loadDependencies();
+    }
   };
 
   return (
@@ -496,6 +531,22 @@ const BillForm: React.FC<BillFormProps> = ({ initialData, onSubmit, onCancel, fo
       />
 
       <form ref={formRef} onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6">
+        {isDraftRestored && (
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 shadow-2xs">
+            <span className="flex items-center gap-2 font-medium">
+              <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Restored unsaved draft from your previous session.</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="px-2.5 py-1 bg-amber-200/70 dark:bg-amber-900/60 hover:bg-amber-300 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 font-semibold rounded transition-colors cursor-pointer"
+            >
+              Discard Draft
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between p-3 rounded-lg liquid-glass-box sticky top-0 z-20">
           <div className="flex items-center space-x-4">
             {appSettings.gstEnabled && (

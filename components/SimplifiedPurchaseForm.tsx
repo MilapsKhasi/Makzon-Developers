@@ -4,6 +4,7 @@ import { Save, Loader2, Check } from 'lucide-react';
 // Fixed: Removed non-existent getDatePlaceholder from imports
 import { getActiveCompanyId, formatCurrency, parseDateFromInput, formatDate } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
+import { getDraft, saveDraft, clearDraft } from '../utils/draftManager';
 
 interface SimplifiedPurchaseFormProps {
   initialData?: any;
@@ -19,8 +20,13 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
     total_without_gst: 0, total_gst: 0, round_off: 0, grand_total: 0, status: 'Pending'
   });
 
+  const draftKey = `simplified_purchase_${cid}_${initialData?.id || 'new'}`;
+
   useEffect(() => {
-    if (initialData) {
+    const savedDraft = getDraft(draftKey);
+    if (savedDraft) {
+      setFormData(savedDraft);
+    } else if (initialData) {
       setFormData({ 
         vendor_name: initialData.vendor_name || '',
         bill_number: initialData.bill_number || '',
@@ -33,7 +39,15 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
         status: initialData.status || 'Pending'
       });
     }
-  }, [initialData]);
+  }, [initialData, draftKey]);
+
+  // Auto-save draft
+  useEffect(() => {
+    if (!cid) return;
+    if (formData.vendor_name?.trim() || formData.bill_number?.trim() || formData.grand_total > 0) {
+      saveDraft(draftKey, formData);
+    }
+  }, [formData, draftKey, cid]);
 
   const updateAmounts = (taxable: number, gst: number) => {
       const rawTotal = taxable + gst;
@@ -84,6 +98,7 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
         throw new Error(error.message);
       }
       
+      clearDraft(draftKey);
       window.dispatchEvent(new Event('appSettingsChanged'));
       onSubmit(payload);
     } catch (err: any) {
