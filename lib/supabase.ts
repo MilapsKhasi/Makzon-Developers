@@ -950,7 +950,7 @@ class ResilientQueryBuilder {
 
 const resilientAuth = {
   async getSession() {
-    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true' && typeof navigator !== 'undefined' && !navigator.onLine) {
+    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true') {
       return await mockAuth.getSession();
     }
     try {
@@ -960,11 +960,12 @@ const resilientAuth = {
           handleRefreshTokenError();
           return await mockAuth.getSession();
         }
-        if (isNetworkError(res.error) && typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (isNetworkError(res.error)) {
+          enableOfflineMode();
           return await mockAuth.getSession();
         }
       }
-      if (!res?.data?.session && typeof window !== 'undefined' && localStorage.getItem('local_session_user') && localStorage.getItem('use_offline_mode') === 'true') {
+      if (!res?.data?.session && typeof window !== 'undefined' && localStorage.getItem('local_session_user')) {
         return await mockAuth.getSession();
       }
       if (res?.data?.session?.user) {
@@ -983,14 +984,15 @@ const resilientAuth = {
         handleRefreshTokenError();
         return await mockAuth.getSession();
       }
-      if (isNetworkError(err) && typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (isNetworkError(err)) {
+        enableOfflineMode();
         return await mockAuth.getSession();
       }
       return { data: { session: null }, error: err };
     }
   },
   async getUser() {
-    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true' && typeof navigator !== 'undefined' && !navigator.onLine) {
+    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true') {
       return await mockAuth.getUser();
     }
     try {
@@ -1000,11 +1002,12 @@ const resilientAuth = {
           handleRefreshTokenError();
           return await mockAuth.getUser();
         }
-        if (isNetworkError(res.error) && typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (isNetworkError(res.error)) {
+          enableOfflineMode();
           return await mockAuth.getUser();
         }
       }
-      if (!res?.data?.user && typeof window !== 'undefined' && localStorage.getItem('local_session_user') && localStorage.getItem('use_offline_mode') === 'true') {
+      if (!res?.data?.user && typeof window !== 'undefined' && localStorage.getItem('local_session_user')) {
         return await mockAuth.getUser();
       }
       if (res?.data?.user) {
@@ -1023,20 +1026,22 @@ const resilientAuth = {
         handleRefreshTokenError();
         return await mockAuth.getUser();
       }
-      if (isNetworkError(err) && typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (isNetworkError(err)) {
+        enableOfflineMode();
         return await mockAuth.getUser();
       }
       return { data: { user: null }, error: err };
     }
   },
   async signInWithPassword(params: any) {
-    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true' && typeof navigator !== 'undefined' && !navigator.onLine) {
+    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true') {
       return await mockAuth.signInWithPassword(params);
     }
     try {
       const res = await realSupabase.auth.signInWithPassword(params);
       if (res?.error) {
-        if (isNetworkError(res.error) && typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (isNetworkError(res.error)) {
+          enableOfflineMode();
           return await mockAuth.signInWithPassword(params);
         }
         return res;
@@ -1053,19 +1058,21 @@ const resilientAuth = {
       }
       return res;
     } catch (err: any) {
-      if (isNetworkError(err) && typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (isNetworkError(err)) {
+        enableOfflineMode();
         return await mockAuth.signInWithPassword(params);
       }
       return { data: null, error: err };
     }
   },
   async signUp(params: any) {
-    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true' && typeof navigator !== 'undefined' && !navigator.onLine) {
+    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true') {
       return await mockAuth.signUp(params);
     }
     try {
       const res = await realSupabase.auth.signUp(params);
-      if (res?.error && isNetworkError(res.error) && typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (res?.error && isNetworkError(res.error)) {
+        enableOfflineMode();
         return await mockAuth.signUp(params);
       }
       if (res?.data?.user) {
@@ -1080,7 +1087,8 @@ const resilientAuth = {
       }
       return res;
     } catch (err: any) {
-      if (isNetworkError(err) && typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (isNetworkError(err)) {
+        enableOfflineMode();
         return await mockAuth.signUp(params);
       }
       return { data: null, error: err };

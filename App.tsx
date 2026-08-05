@@ -49,13 +49,16 @@ const AppContent = () => {
           if (error.message.includes('not found') || error.message.includes('does not exist')) {
             setDbError("SCHEMA_MISSING");
           } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            setDbError("CONNECTION_ERROR");
+            console.warn("Schema check offline / connection warning:", error.message);
+            localStorage.setItem('use_offline_mode', 'true');
+            setDbError(null);
           }
         }
       } catch (e: any) {
         if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError') || e.name === 'TypeError') {
           console.warn("Schema check offline / connection warning:", e.message || e);
-          setDbError("CONNECTION_ERROR");
+          localStorage.setItem('use_offline_mode', 'true');
+          setDbError(null);
         } else {
           console.error("Schema check error:", e);
         }
@@ -69,7 +72,11 @@ const AppContent = () => {
         if (error) {
           if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
             console.warn("Auth init session offline warning:", error.message);
-            setDbError("CONNECTION_ERROR");
+            localStorage.setItem('use_offline_mode', 'true');
+            const { data: offlineData } = await supabase.auth.getSession();
+            setSession(offlineData?.session || null);
+            setAuthLoading(false);
+            return;
           } else {
             console.error("Auth init session error:", error);
             localStorage.removeItem('local_session_user');
@@ -89,7 +96,9 @@ const AppContent = () => {
       } catch (e: any) {
         if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError') || e.name === 'TypeError') {
           console.warn("Auth init session offline unexpected warning:", e.message || e);
-          setDbError("CONNECTION_ERROR");
+          localStorage.setItem('use_offline_mode', 'true');
+          const { data: offlineData } = await supabase.auth.getSession();
+          setSession(offlineData?.session || null);
         } else {
           console.error("Auth init unexpected error:", e);
         }
