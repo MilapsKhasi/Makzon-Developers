@@ -23,12 +23,18 @@ const Layout = () => {
   const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [isCreateNewModalOpen, setIsCreateNewModalOpen] = useState(false);
+  const [quickCreateType, setQuickCreateType] = useState<string | null>(null);
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
   const [isImportExcelOpen, setIsImportExcelOpen] = useState(false);
   const { activeCompany, setCompany } = useCompany();
   const { isWorkspaceLimitReached, devMode, isReadOnly } = useLicense();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const handleQuickCreate = (type: string) => {
+    setQuickCreateType(type);
+    setIsCreateNewModalOpen(true);
+  };
 
   const [user, setUser] = useState<any>(null);
   const [isInactive, setIsInactive] = useState(false);
@@ -122,6 +128,7 @@ const Layout = () => {
       if (isCtrl && (e.key === 'n' || e.key === 'N' || e.code === 'KeyN')) {
         e.preventDefault();
         e.stopPropagation();
+        setQuickCreateType(null);
         setIsCreateNewModalOpen(true);
         return;
       }
@@ -335,28 +342,28 @@ const Layout = () => {
     {
       groupName: 'Sales',
       items: [
-        { icon: FileText, label: 'Sales Invoices', path: '/sales' },
-        { icon: ArrowDownCircle, label: 'Receive Payment', path: '/receive-payment' },
-        { icon: Truck, label: 'Delivery Challan', path: '/delivery-challan' },
+        { icon: FileText, label: 'Sales Invoices', path: '/sales', createType: 'sales_invoice' },
+        { icon: ArrowDownCircle, label: 'Receive Payment', path: '/receive-payment', createType: 'receive_payment' },
+        { icon: Truck, label: 'Delivery Challan', path: '/delivery-challan', createType: 'delivery_challan' },
       ]
     },
     {
       groupName: 'Purchases',
       items: [
-        { icon: ShoppingCart, label: 'Purchase Bill', path: '/bills' },
-        { icon: ArrowUpCircle, label: 'Pay Supplier', path: '/make-payment' },
+        { icon: ShoppingCart, label: 'Purchase Bills', path: '/bills', createType: 'purchase_bill' },
+        { icon: ArrowUpCircle, label: 'Pay Supplier', path: '/make-payment', createType: 'make_payment' },
       ]
     },
     {
       groupName: 'Stock',
       items: [
-        { icon: Package, label: 'Stock Items', path: '/stock' },
+        { icon: Package, label: 'Stock Items', path: '/stock', createType: 'stock_item' },
       ]
     },
     {
       groupName: 'Parties',
       items: [
-        { icon: Contact, label: 'Parties', path: '/parties' },
+        { icon: Contact, label: 'Parties', path: '/parties', createType: 'party' },
       ]
     },
     {
@@ -420,7 +427,7 @@ const Layout = () => {
         <div className={`bg-slate-50 dark:bg-slate-800/40 flex items-center transition-all duration-300 shrink-0 border-b border-slate-100 dark:border-slate-800 ${(isSidebarOpen || isMobileMenuOpen) ? 'px-4 py-2.5 h-10' : 'h-1.5 justify-center'}`}>
           {(isSidebarOpen || isMobileMenuOpen) && (
             <span className="text-slate-500 dark:text-slate-400 font-bold text-[10px] capitalize tracking-wide whitespace-nowrap">
-              Gateway Of ZenterPrime
+              Quick Start
             </span>
           )}
         </div>
@@ -470,19 +477,48 @@ const Layout = () => {
 
                 const isActive = location.pathname === item.path;
                 return (
-                  <Link
+                  <div
                     key={item.path || iIdx}
-                    to={item.path || '/'}
-                    className={`flex items-center px-3 py-2 rounded transition-colors ${isActive
-                      ? 'bg-primary text-white font-bold'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                      }`}
+                    className={`flex items-center justify-between px-2.5 py-1.5 rounded transition-colors group ${isActive
+                      ? 'bg-primary text-white font-bold shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60'
+                    }`}
                   >
-                    <IconComponent className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
-                    {(isSidebarOpen || isMobileMenuOpen) && (
-                      <span className="ml-3 text-[13px] whitespace-nowrap capitalize">{item.label}</span>
+                    <Link
+                      to={item.path || '/'}
+                      onClick={() => {
+                        if (window.innerWidth < 1024) {
+                          setIsMobileMenuOpen(false);
+                        }
+                      }}
+                      className="flex items-center min-w-0 flex-1 py-0.5 mr-1"
+                    >
+                      <IconComponent className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
+                      {(isSidebarOpen || isMobileMenuOpen) && (
+                        <span className="ml-2.5 text-[13px] whitespace-nowrap capitalize truncate">{item.label}</span>
+                      )}
+                    </Link>
+                    {(isSidebarOpen || isMobileMenuOpen) && item.createType && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (isReadOnly) return;
+                          handleQuickCreate(item.createType);
+                        }}
+                        title={`Create New ${item.label}`}
+                        disabled={isReadOnly}
+                        className={`p-1 rounded transition-all shrink-0 flex items-center justify-center cursor-pointer ${
+                          isActive
+                            ? 'bg-white/20 hover:bg-white/35 text-white'
+                            : 'text-slate-400 dark:text-slate-500 hover:text-primary dark:hover:text-primary-light hover:bg-slate-200/80 dark:hover:bg-slate-700/80'
+                        } ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </button>
                     )}
-                  </Link>
+                  </div>
                 );
               })}
             </div>
@@ -600,7 +636,12 @@ const Layout = () => {
             </button>
             <button
               disabled={isReadOnly}
-              onClick={() => { if (!isReadOnly) setIsCreateNewModalOpen(true); }}
+              onClick={() => {
+                if (!isReadOnly) {
+                  setQuickCreateType(null);
+                  setIsCreateNewModalOpen(true);
+                }
+              }}
               className={`px-3.5 py-1.5 font-semibold text-xs rounded-md capitalize flex items-center gap-1.5 shadow-xs transition-all ${
                 isReadOnly
                   ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 border border-slate-300 dark:border-slate-700 cursor-not-allowed'
@@ -639,7 +680,11 @@ const Layout = () => {
         />
         <CreateNewModal
           isOpen={isCreateNewModalOpen}
-          onClose={() => setIsCreateNewModalOpen(false)}
+          initialView={quickCreateType || undefined}
+          onClose={() => {
+            setIsCreateNewModalOpen(false);
+            setQuickCreateType(null);
+          }}
         />
         <main className="flex-1 overflow-y-auto p-3 sm:p-6 bg-[#F7F8FC] dark:bg-slate-950">
           <Outlet />

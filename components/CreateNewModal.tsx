@@ -17,16 +17,27 @@ import { useLicense } from '../context/LicenseContext';
 interface CreateNewModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialView?: string;
 }
 
-export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose }) => {
+export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose, initialView }) => {
   const navigate = useNavigate();
   const { isReadOnly } = useLicense();
 
   // Active sub-form or premium modal
   const [activeView, setActiveView] = useState<
-    'list' | 'sales_invoice' | 'purchase_bill' | 'receive_payment' | 'make_payment' | 'customer' | 'vendor' | 'stock_item' | 'delivery_challan' | 'premium_notice'
+    'list' | 'sales_invoice' | 'purchase_bill' | 'receive_payment' | 'make_payment' | 'customer' | 'vendor' | 'party' | 'stock_item' | 'delivery_challan' | 'premium_notice'
   >('list');
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialView && !isReadOnly) {
+        setActiveView(initialView as any);
+      } else {
+        setActiveView('list');
+      }
+    }
+  }, [isOpen, initialView, isReadOnly]);
 
   const [premiumNotice, setPremiumNotice] = useState<{ title: string; edition: string }>({
     title: '',
@@ -425,17 +436,18 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose 
         />
       )}
 
-      {(activeView === 'customer' || activeView === 'vendor') && (
+      {(activeView === 'customer' || activeView === 'vendor' || activeView === 'party') && (
         <Modal
           isOpen={true}
           onClose={resetAll}
-          title={activeView === 'customer' ? 'Register New Customer' : 'Register New Vendor'}
+          title={activeView === 'vendor' ? 'Register New Vendor' : activeView === 'customer' ? 'Register New Customer' : 'Register New Party'}
           maxWidth="max-w-5xl"
         >
           <PartyForm
-            defaultType={activeView}
+            defaultType={activeView === 'vendor' ? 'vendor' : 'customer'}
             onSubmit={(party, isSaveAndNew) => {
               window.dispatchEvent(new Event('appSettingsChanged'));
+              window.dispatchEvent(new Event('partiesUpdated'));
               if (!isSaveAndNew) resetAll();
             }}
             onCancel={resetAll}
