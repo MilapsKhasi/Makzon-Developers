@@ -6,16 +6,19 @@ import Modal from '../components/Modal';
 import Logo from '../components/Logo';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
+import { EditionSelectionModal } from '../components/EditionSelectionModal';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import { useLicense } from '../context/LicenseContext';
 
 const Companies = () => {
-  const { isWorkspaceLimitReached } = useLicense();
+  const { isWorkspaceLimitReached, setDevEdition, refreshLicense } = useLicense();
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showEditionModal, setShowEditionModal] = useState(false);
+  const [editionLoading, setEditionLoading] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [formData, setFormData] = useState({ name: '', gstin: '', address: '' });
   const [creating, setCreating] = useState(false);
@@ -47,6 +50,14 @@ const Companies = () => {
       });
 
       setCompanies(filtered);
+
+      // Trigger edition selection popup on signup or prior to creating first workspace
+      if (
+        localStorage.getItem('zenter_show_edition_popup') === 'true' ||
+        (localStorage.getItem('zenter_edition_selected') !== 'true' && filtered.length === 0)
+      ) {
+        setShowEditionModal(true);
+      }
     } catch (err: any) {
       console.error(err.message);
     } finally {
@@ -56,7 +67,44 @@ const Companies = () => {
 
   useEffect(() => { loadData(); }, []);
 
+  const handleSelectEdition = async (edition: 'standard' | 'professional') => {
+    setEditionLoading(true);
+    try {
+      const licType = edition === 'standard' ? 'standard' : 'advanced';
+      localStorage.setItem('zenter_license_type', licType);
+      localStorage.setItem('zenter_edition_selected', edition);
+      localStorage.removeItem('zenter_show_edition_popup');
+
+      const user = await getAuthUser();
+      if (user && user.id !== 'local-user-1') {
+        await supabase.from('profiles').upsert({
+          id: user.id,
+          license_type: licType,
+          license_status: 'active'
+        });
+      }
+
+      if (setDevEdition) {
+        await setDevEdition(licType as any, 14);
+      }
+      if (refreshLicense) {
+        await refreshLicense();
+      }
+
+      setShowEditionModal(false);
+      handleOpenCreate();
+    } catch (err: any) {
+      console.error('Error selecting edition:', err);
+    } finally {
+      setEditionLoading(false);
+    }
+  };
+
   const handleOpenCreate = () => {
+    if (localStorage.getItem('zenter_edition_selected') !== 'true' && !showEditionModal) {
+      setShowEditionModal(true);
+      return;
+    }
     setEditingCompany(null);
     setFormData({ name: '', gstin: '', address: '' });
     setIsModalOpen(true);
@@ -248,6 +296,13 @@ const Companies = () => {
         onConfirm={confirmDelete} 
         title="Delete Workspace" 
         message={`Are you sure you want to delete "${deleteDialog.company?.name}" forever? This action cannot be undone.`} 
+      />
+
+      <EditionSelectionModal
+        isOpen={showEditionModal}
+        onClose={() => setShowEditionModal(false)}
+        onSelect={handleSelectEdition}
+        loading={editionLoading}
       />
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCompany ? "Edit Business Workspace" : "Register Business Workspace"} maxWidth="max-w-2xl">

@@ -91,7 +91,9 @@ const Auth = () => {
             console.error("Failed to upsert user profile trial:", upsertErr);
           }
         }
-        alert('Account created! 14-Day Evaluation Edition active. Check your email if confirmation is required.');
+        // Set edition popup flag so user chooses Standard or Professional edition before creating workspace
+        localStorage.setItem('zenter_show_edition_popup', 'true');
+        localStorage.removeItem('zenter_edition_selected');
         navigate('/companies');
       }
     } catch (err: any) {
