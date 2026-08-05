@@ -1,12 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor, Percent, CheckCircle2, RotateCcw, Trash, Filter, ShieldCheck, BadgeCheck, HardDrive, Download, Cpu, FolderSymlink, Laptop } from 'lucide-react';
+import { Save, Loader2, Trash2, AlertTriangle, Building2, MapPin, Fingerprint, Moon, Sun, Monitor, Percent, CheckCircle2, RotateCcw, Trash, Filter, ShieldCheck, BadgeCheck, HardDrive, Download, Cpu, FolderSymlink, Laptop, Zap, User, Sparkles } from 'lucide-react';
 import { getActiveCompanyId, safeSupabaseSave, getAppSettings, formatDate, calculateNextInvoiceNumber, filterActualSalesInvoices } from '../utils/helpers';
-import { supabase } from '../lib/supabase';
+import { supabase, getAuthUser } from '../lib/supabase';
 import { processOfflineSyncQueue } from '../lib/syncEngine';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { exportFullDatabaseToFolder, downloadStandaloneOfflineLauncher, downloadWindowsExePackage } from '../utils/offlineHelper';
+import { useLicense } from '../context/LicenseContext';
+import { EditionSelectionModal } from '../components/EditionSelectionModal';
+import { applyEditionTheme } from '../utils/themeHelper';
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -76,6 +79,50 @@ const Settings = () => {
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [licenseId, setLicenseId] = useState('26401');
+  
+  const { licenseType, setDevEdition, refreshLicense } = useLicense();
+  const [showEditionModal, setShowEditionModal] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [editionLoading, setEditionLoading] = useState(false);
+
+  useEffect(() => {
+    getAuthUser().then(u => {
+      if (u?.email) setUserEmail(u.email);
+    });
+  }, []);
+
+  const isProf = licenseType === 'advanced' || localStorage.getItem('zenter_edition') === 'professional';
+
+  const handleSwitchEditionInSettings = async (edition: 'standard' | 'professional') => {
+    setEditionLoading(true);
+    try {
+      const licType = edition === 'standard' ? 'standard' : 'advanced';
+      localStorage.setItem('zenter_license_type', licType);
+      localStorage.setItem('zenter_edition', edition);
+      applyEditionTheme(edition);
+
+      const user = await getAuthUser();
+      if (user && user.id !== 'local-user-1') {
+        await supabase.from('profiles').upsert({
+          id: user.id,
+          license_type: licType,
+          license_status: 'active'
+        });
+      }
+
+      if (setDevEdition) {
+        await setDevEdition(licType as any, 14);
+      }
+      if (refreshLicense) {
+        await refreshLicense();
+      }
+      setShowEditionModal(false);
+    } catch (err: any) {
+      console.error('Error selecting edition:', err);
+    } finally {
+      setEditionLoading(false);
+    }
+  };
   
   // Offline & Desktop State
   const [offlineActionLoading, setOfflineActionLoading] = useState(false);
@@ -336,21 +383,57 @@ const Settings = () => {
       <form onSubmit={handleUpdate} className="space-y-6">
         {/* License Information Section */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm">
-          <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">
-            <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">License Information</h3>
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50 flex items-center justify-between">
+            <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">License & Plan Information</h3>
+            <button
+              type="button"
+              onClick={() => setShowEditionModal(true)}
+              className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              <span>Switch Edition</span>
+            </button>
           </div>
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
               <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20">
-                  <ShieldCheck className="w-6 h-6 text-primary-dark" />
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center border ${
+                  isProf
+                    ? 'bg-blue-500/10 border-blue-500/30 text-blue-600'
+                    : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-600'
+                }`}>
+                  {isProf ? <Zap className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Plan - <span className="text-link">Active</span></h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider font-mono">License ID: {licenseId}</p>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      {isProf ? 'ZenterPrime Professional Edition' : 'ZenterPrime Standard Edition'}
+                    </h4>
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                      isProf
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-indigo-600 text-white'
+                    }`}>
+                      {isProf ? 'Professional Blue' : 'Standard Violet'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Logged-in Account: <strong className="text-slate-700 dark:text-slate-200">{userEmail || 'khasimilap@gmail.com'}</strong>
+                  </p>
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 uppercase tracking-wider font-mono">
+                    License ID: {licenseId}
+                  </p>
                 </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditionModal(true)}
+                  className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Change Edition</span>
+                </button>
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 px-4 py-2 rounded-lg flex items-center">
                   <BadgeCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mr-2" />
                   <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-tighter">Version ZP-26.07.01</span>
@@ -359,6 +442,13 @@ const Settings = () => {
             </div>
           </div>
         </div>
+
+        <EditionSelectionModal
+          isOpen={showEditionModal}
+          onClose={() => setShowEditionModal(false)}
+          onSelect={handleSwitchEditionInSettings}
+          loading={editionLoading}
+        />
 
         {/* Appearance Section */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm">

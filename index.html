@@ -44,6 +44,31 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600;700&family=Georama:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
 
+    <style>
+      :root {
+        --color-primary: #4338CA;
+        --color-primary-dark: #3730A3;
+        --color-primary-light: #e0e7ff;
+      }
+    </style>
+    <script>
+      (function() {
+        try {
+          var ed = localStorage.getItem('zenter_edition') || localStorage.getItem('zenter_license_type');
+          if (ed === 'professional' || ed === 'advanced') {
+            document.documentElement.style.setProperty('--color-primary', '#2563EB');
+            document.documentElement.style.setProperty('--color-primary-dark', '#1D4ED8');
+            document.documentElement.style.setProperty('--color-primary-light', '#DBEAFE');
+            document.documentElement.setAttribute('data-edition', 'professional');
+          } else {
+            document.documentElement.style.setProperty('--color-primary', '#4338CA');
+            document.documentElement.style.setProperty('--color-primary-dark', '#3730A3');
+            document.documentElement.style.setProperty('--color-primary-light', '#E0E7FF');
+            document.documentElement.setAttribute('data-edition', 'standard');
+          }
+        } catch(e) {}
+      })();
+    </script>
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2215%22 fill=%22%234338ca%22/><text x=%2250%%22 y=%2252%%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22 fill=%22%23ffffff%22 style=%22font-size:52px;font-weight:800;font-family:sans-serif%22>Z</text></svg>">
 
@@ -65,9 +90,9 @@
             },
             colors: {
               primary: {
-                DEFAULT: '#4338CA',
-                dark: '#3730A3',
-                light: '#e0e7ff'
+                DEFAULT: 'var(--color-primary, #4338CA)',
+                dark: 'var(--color-primary-dark, #3730A3)',
+                light: 'var(--color-primary-light, #e0e7ff)'
               },
               link: '#2563EB',
               slate: {

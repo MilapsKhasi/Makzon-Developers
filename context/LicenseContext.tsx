@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase, getAuthUser } from '../lib/supabase';
+import { applyEditionTheme } from '../utils/themeHelper';
 
 export interface TrialInfo {
   createdAt: string | null;
@@ -80,6 +81,7 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       localStorage.setItem('zenter_license_type', type);
       localStorage.setItem('zenter_license_status', status);
+      applyEditionTheme(type);
     } catch {}
   };
 

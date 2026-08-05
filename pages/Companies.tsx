@@ -7,6 +7,7 @@ import Logo from '../components/Logo';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import { EditionSelectionModal } from '../components/EditionSelectionModal';
+import { applyEditionTheme } from '../utils/themeHelper';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import { useLicense } from '../context/LicenseContext';
@@ -72,8 +73,11 @@ const Companies = () => {
     try {
       const licType = edition === 'standard' ? 'standard' : 'advanced';
       localStorage.setItem('zenter_license_type', licType);
+      localStorage.setItem('zenter_edition', edition);
       localStorage.setItem('zenter_edition_selected', edition);
       localStorage.removeItem('zenter_show_edition_popup');
+
+      applyEditionTheme(edition);
 
       const user = await getAuthUser();
       if (user && user.id !== 'local-user-1') {
