@@ -16,6 +16,7 @@ export const LicenseSummaryBadge: React.FC = () => {
     minutesRemaining,
     isExpired,
     devMode,
+    isBackendActive,
     setDevEdition,
     refreshLicense,
   } = useLicense();
@@ -61,6 +62,7 @@ export const LicenseSummaryBadge: React.FC = () => {
   };
 
   const getRemainingText = () => {
+    if (isBackendActive) return 'Active License';
     if (isExpired) return 'Trial Expired';
     if (daysRemaining > 1) return `${daysRemaining} Days Remaining`;
     if (hoursRemaining > 1) return `${hoursRemaining} Hours Remaining`;
@@ -133,168 +135,132 @@ export const LicenseSummaryBadge: React.FC = () => {
         title="License Information"
         maxWidth="max-w-md"
       >
-        <div className="p-6 space-y-5 text-slate-800 dark:text-slate-100">
+        <div className="p-6 space-y-4 text-slate-800 dark:text-slate-100">
           {/* Active Account & Edition Header Banner */}
-          <div className={`p-4 rounded-xl border flex items-start space-x-3.5 ${
+          <div className={`p-4 rounded-xl border flex items-center space-x-3.5 ${
             isProf
-              ? 'bg-blue-50/70 dark:bg-blue-950/40 border-blue-200/80 dark:border-blue-900/50'
-              : 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-200/80 dark:border-indigo-900/50'
+              ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200/80 dark:border-blue-900/50'
+              : 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-200/80 dark:border-indigo-900/50'
           }`}>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
               isProf ? 'bg-blue-600 text-white' : 'bg-indigo-600 text-white'
             }`}>
-              {isProf ? <Zap className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
+              <Sparkles className="w-5 h-5 fill-current" />
             </div>
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-extrabold text-sm text-slate-900 dark:text-white truncate">
-                  {getEditionLabel()}
-                </span>
-                <span
-                  className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full shrink-0 uppercase tracking-wider ${
-                    isExpired
-                      ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
-                      : isProf
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-indigo-600 text-white'
-                  }`}
-                >
+              <div className="flex items-center text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                <span>ZenterPrime</span>
+                <span className={`ml-1.5 ${isProf ? 'text-blue-600 dark:text-blue-400' : 'text-indigo-600 dark:text-indigo-400'}`}>
                   {isProf ? 'Professional Blue' : 'Standard Violet'}
                 </span>
               </div>
-
-              {userEmail && (
-                <div className="flex items-center text-xs text-slate-600 dark:text-slate-300 mt-1 gap-1">
-                  <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span className="truncate">Account: <strong>{userEmail}</strong></span>
-                </div>
-              )}
-
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                {isExpired
-                  ? 'Your evaluation license has ended. System is in read-only mode.'
-                  : isProf
-                  ? 'Full Professional Trial Active. Color scheme: Professional Blue.'
-                  : 'Standard Edition Trial Active. Color scheme: Standard Violet.'}
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
+                {userEmail || 'accountemail@gmail.com'}
               </p>
             </div>
           </div>
 
-          {/* Trial Progress Bar */}
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold">
-              <span className="text-slate-800 dark:text-slate-200 flex items-center font-bold">
-                <Clock className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-                14-Day Evaluation Trial
+          {/* Trial / License Status Box */}
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-2.5">
+            <div className="flex items-center justify-between text-xs font-bold">
+              <span className="text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                {isBackendActive ? 'Activated License' : '14-days Evaluation Trial'}
               </span>
-              <span className="text-slate-800 dark:text-slate-200 font-bold font-mono">
-                {isExpired ? '0 / 14 Days Remaining' : `${daysRemaining} / 14 Days Left`}
+              <span className="text-slate-700 dark:text-slate-300 font-mono font-bold">
+                {isBackendActive ? 'Active (No Expiry)' : isExpired ? '0 / 14 Days Left' : `${daysRemaining} / 14 Days Left`}
               </span>
             </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  isExpired
+                  isBackendActive
+                    ? 'bg-emerald-500'
+                    : isExpired
                     ? 'bg-rose-500 w-0'
                     : isProf
                     ? 'bg-blue-600'
                     : 'bg-indigo-600'
                 }`}
                 style={{
-                  width: `${isExpired ? 0 : Math.min(100, Math.max(0, (daysRemaining / 14) * 100))}%`,
+                  width: `${isBackendActive ? 100 : isExpired ? 0 : Math.min(100, Math.max(0, (daysRemaining / 14) * 100))}%`,
                 }}
               />
             </div>
           </div>
 
           {/* Details Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-            <div className="flex items-center justify-between p-3.5">
-              <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center">
-                <Sparkles className="w-3.5 h-3.5 mr-2 text-slate-400" />
+          <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-200/80 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+            <div className="flex items-center justify-between p-3.5 sm:p-4">
+              <span className="text-slate-600 dark:text-slate-300 font-medium flex items-center">
+                <Sparkles className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                 Active Plan / Edition
               </span>
-              <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
-                isProf ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
+              <span className={`font-bold px-3 py-1 rounded-lg text-xs ${
+                isProf ? 'bg-blue-600 text-white' : 'bg-indigo-600 text-white'
               }`}>
-                {getEditionLabel()}
+                {isProf ? 'Professional Blue' : 'Standard Violet'}
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-3.5">
-              <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center">
-                <Calendar className="w-3.5 h-3.5 mr-2 text-slate-400" />
+            <div className="flex items-center justify-between p-3.5 sm:p-4">
+              <span className="text-slate-600 dark:text-slate-300 font-medium flex items-center">
+                <Calendar className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
                 Created Date
               </span>
-              <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
+              <span className="font-semibold text-slate-900 dark:text-white font-mono">
                 {formatDateTime(createdAt)}
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-3.5">
-              <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center">
-                <Clock className="w-3.5 h-3.5 mr-2 text-slate-400" />
-                Expiration Date
+            <div className="flex items-center justify-between p-3.5 sm:p-4">
+              <span className="text-slate-600 dark:text-slate-300 font-medium flex items-center">
+                <Calendar className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                Expires At
               </span>
-              <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
-                {formatDateTime(expiresAt)}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5">
-              <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center">
-                <Info className="w-3.5 h-3.5 mr-2 text-slate-400" />
-                Current Remaining
-              </span>
-              <span
-                className={`font-bold ${
-                  isExpired
-                    ? 'text-rose-600 dark:text-rose-400'
-                    : 'text-amber-600 dark:text-amber-400'
-                }`}
-              >
-                {isExpired
-                  ? '0 Days (Expired)'
-                  : daysRemaining > 0
-                  ? `${daysRemaining} ${daysRemaining === 1 ? 'Day' : 'Days'} (${hoursRemaining % 24} hrs)`
-                  : hoursRemaining > 0
-                  ? `${hoursRemaining} ${hoursRemaining === 1 ? 'Hour' : 'Hours'} (${minutesRemaining % 60} mins)`
-                  : `${minutesRemaining} ${minutesRemaining === 1 ? 'Minute' : 'Minutes'}`}
+              <span className="font-semibold text-slate-900 dark:text-white font-mono">
+                {isBackendActive ? 'Unlimited' : formatDateTime(expiresAt)}
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-3.5">
-              <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center">
-                <CheckCircle2 className="w-3.5 h-3.5 mr-2 text-slate-400" />
-                License Status
+            <div className="flex items-center justify-between p-3.5 sm:p-4">
+              <span className="text-slate-600 dark:text-slate-300 font-medium flex items-center">
+                <CheckCircle2 className="w-4 h-4 mr-2 text-slate-400 shrink-0" />
+                Status
               </span>
-              <span className="font-bold text-slate-800 dark:text-slate-200 capitalize">
-                {isExpired ? 'Read Only Mode' : 'Active Trial'}
+              <span className="font-bold text-slate-900 dark:text-white">
+                {isBackendActive ? 'Active License (Backend Activated)' : isExpired ? 'Expired' : 'Active Trial'}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                setShowSwitchModal(true);
-              }}
-              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-primary font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Change Edition</span>
-            </button>
-
+          {/* Action Button */}
+          <div className="pt-2 space-y-2">
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="px-5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-lg transition-colors cursor-pointer"
+              className={`w-full py-3 rounded-xl font-bold text-sm text-white shadow-sm transition-all active:scale-[0.99] cursor-pointer ${
+                isProf
+                  ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700'
+                  : 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700'
+              }`}
             >
-              Close
+              Got it
             </button>
+
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  setShowSwitchModal(true);
+                }}
+                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium underline transition-colors cursor-pointer"
+              >
+                Change or switch edition
+              </button>
+            </div>
           </div>
         </div>
       </Modal>

@@ -31,7 +31,25 @@ export const realSupabase = createClient(finalUrl, supabaseAnonKey, {
     }
   },
   global: {
-    fetch: (...args) => fetch(...args)
+    fetch: async (...args) => {
+      try {
+        return await fetch(...args);
+      } catch (err: any) {
+        console.warn('[Supabase Fetch] Intercepted network error:', err);
+        return new Response(
+          JSON.stringify({
+            error: 'Failed to fetch',
+            message: 'Network request failed',
+            status: 503
+          }),
+          {
+            status: 503,
+            statusText: 'Service Unavailable',
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
+      }
+    }
   }
 });
 

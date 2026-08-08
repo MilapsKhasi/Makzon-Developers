@@ -18,6 +18,7 @@ export interface TrialInfo {
   dismiss5DayWarning: () => void;
   loading: boolean;
   devMode: boolean;
+  isBackendActive: boolean;
   setDevMode: (active: boolean) => void;
   setDevTrialDuration: (durationMinutes: number) => Promise<void>;
   setDevEdition: (type: 'evaluation' | 'standard' | 'advanced', durationAmount: number, isMinutes?: boolean) => Promise<void>;
@@ -55,8 +56,8 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [loading, setLoading] = useState(false);
   const [warningDismissed, setWarningDismissed] = useState(false);
 
-  // Developer mode is false by default in production and only controllable via code
   const [devMode, setDevModeState] = useState<boolean>(false);
+  const [isBackendActive, setIsBackendActive] = useState<boolean>(false);
 
   const setDevMode = (active: boolean) => {
     setDevModeState(active);
@@ -92,7 +93,17 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const userId = user?.id || null;
 
       let profile: any = null;
+      let licRow: any = null;
       let isDbDeveloper = false;
+      let backendActive = false;
+
+      const checkIsYes = (val: any) => {
+        if (typeof val === 'string') {
+          const s = val.trim().toUpperCase();
+          return s === 'YES' || s === 'TRUE';
+        }
+        return val === true;
+      };
 
       if (userId) {
         try {
@@ -103,33 +114,36 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             .maybeSingle();
           profile = prof;
 
+          const { data: licenseData } = await supabase
+            .from('licenses')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle();
+          licRow = licenseData;
+
           if (
-            (typeof profile?.is_developer === 'string' && profile.is_developer.trim().toUpperCase() === 'YES') ||
-            (typeof profile?.isDeveloper === 'string' && profile.isDeveloper.trim().toUpperCase() === 'YES') ||
-            profile?.is_developer === true ||
-            profile?.isDeveloper === true
+            checkIsYes(profile?.is_developer) ||
+            checkIsYes(profile?.isDeveloper) ||
+            checkIsYes(licRow?.is_developer) ||
+            checkIsYes(licRow?.isDeveloper)
           ) {
             isDbDeveloper = true;
-          } else {
-            const { data: licenseRow } = await supabase
-              .from('licenses')
-              .select('*')
-              .eq('user_id', userId)
-              .maybeSingle();
+          }
 
-            if (
-              (typeof licenseRow?.is_developer === 'string' && licenseRow.is_developer.trim().toUpperCase() === 'YES') ||
-              (typeof licenseRow?.isDeveloper === 'string' && licenseRow.isDeveloper.trim().toUpperCase() === 'YES') ||
-              licenseRow?.is_developer === true ||
-              licenseRow?.isDeveloper === true
-            ) {
-              isDbDeveloper = true;
-            }
+          if (
+            checkIsYes(licRow?.isActive) ||
+            checkIsYes(licRow?.is_active) ||
+            checkIsYes(profile?.isActive) ||
+            checkIsYes(profile?.is_active)
+          ) {
+            backendActive = true;
           }
         } catch (e) {
-          console.warn('Developer mode check warning:', e);
+          console.warn('Developer & license check warning:', e);
         }
       }
+
+      setIsBackendActive(backendActive);
 
       const isDevEmail = !!user && user.email?.trim().toLowerCase() === 'khasimilap@gmail.com';
       const devToken = localStorage.getItem('zenter_dev_cred_verified');
@@ -169,20 +183,12 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         // Fallback check on licenses table if profiles has no trial dates
         if (!startIso || !endIso) {
-          try {
-            const { data: licRow } = await supabase
-              .from('licenses')
-              .select('*')
-              .eq('user_id', userId)
-              .maybeSingle();
-
-            if (licRow) {
-              if (!startIso) startIso = licRow.trial_start || licRow.start_date || licRow.created_at || null;
-              if (!endIso) endIso = licRow.trial_end || licRow.end_date || licRow.expires_at || null;
-              if (licRow.license_type) type = licRow.license_type;
-              if (licRow.license_status) status = licRow.license_status;
-            }
-          } catch {}
+          if (licRow) {
+            if (!startIso) startIso = licRow.trial_start || licRow.start_date || licRow.created_at || null;
+            if (!endIso) endIso = licRow.trial_end || licRow.end_date || licRow.expires_at || null;
+            if (licRow.license_type) type = licRow.license_type;
+            if (licRow.license_status) status = licRow.license_status;
+          }
         }
 
         // Check login_verifications table if dates still missing
@@ -222,6 +228,16 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (isDevVerified) {
         type = 'advanced';
         status = 'active';
+      } else if (backendActive) {
+        // When backend isActive is YES: account is activated without trial limit.
+        // Expiration date won't work / lockout. Converts evaluation to proper edition.
+        status = 'active';
+        const storedEdition = localStorage.getItem('zenter_edition') || localStorage.getItem('zenter_license_type');
+        if (storedEdition === 'professional' || storedEdition === 'advanced' || profile?.license_type === 'advanced' || licRow?.license_type === 'advanced') {
+          type = 'advanced';
+        } else {
+          type = 'standard';
+        }
       } else if (type === 'evaluation' && endIso) {
         const endTimeMs = new Date(endIso).getTime();
         if (now.getTime() < endTimeMs) {
@@ -273,7 +289,7 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Periodic status check every 5 seconds to update time remaining and expiry status
   useEffect(() => {
     const interval = setInterval(() => {
-      if (expiresAt && licenseStatus === 'active' && licenseType === 'evaluation') {
+      if (!isBackendActive && expiresAt && licenseStatus === 'active' && licenseType === 'evaluation') {
         const now = Date.now();
         const end = new Date(expiresAt).getTime();
         if (now >= end) {
@@ -292,7 +308,7 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [expiresAt, licenseStatus, licenseType]);
+  }, [expiresAt, licenseStatus, licenseType, isBackendActive]);
 
   // Developer mode duration & edition setter
   const setDevEdition = async (
@@ -346,13 +362,14 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const hoursRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60)));
   const minutesRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60)));
 
-  const isExpired = !devMode && (licenseStatus === 'expired' || (licenseType === 'evaluation' && diffMs <= 0));
+  const isExpired = !devMode && !isBackendActive && (licenseStatus === 'expired' || (licenseType === 'evaluation' && diffMs <= 0));
   const isReadOnly = isExpired;
-  const isWorkspaceLimitReached = !devMode && licenseType === 'evaluation' && workspaceCount >= 1;
+  const isWorkspaceLimitReached = !devMode && !isBackendActive && licenseType === 'evaluation' && workspaceCount >= 1;
 
   // Show 5-day warning popup if trial is active and <= 5 days remain
   const show5DayWarning =
     !devMode &&
+    !isBackendActive &&
     licenseType === 'evaluation' &&
     !isExpired &&
     daysRemaining <= 5 &&
@@ -378,6 +395,7 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         dismiss5DayWarning,
         loading,
         devMode,
+        isBackendActive,
         setDevMode,
         setDevTrialDuration,
         setDevEdition,
