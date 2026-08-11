@@ -27,19 +27,23 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         <html>
           <head>
             <title>${party?.name || 'Party'} - Ledger Statement</title>
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+            <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
             <script src="https://cdn.tailwindcss.com"></script>
             <style>
-              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+              @import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
               
               * {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 box-sizing: border-box;
+                font-family: 'Ubuntu', sans-serif !important;
+              }
+              .font-extrabold, .font-black {
+                font-weight: 500 !important;
               }
               
               body {
-                font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-family: 'Ubuntu', sans-serif !important;
                 margin: 0;
                 padding: 0;
                 background-color: #ffffff;
@@ -443,7 +447,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
 
             {/* Centered Business Name and Address block */}
             <div className="text-center py-4 border-b-2 border-black px-6">
-              <h1 className="text-xl font-extrabold tracking-widest text-black mb-1">
+              <h1 className="text-xl font-medium tracking-widest text-black mb-1">
                 {companyInfo?.name?.toUpperCase() || 'SK ENTERPRISE'}
               </h1>
               <p className="text-[9px] font-semibold text-gray-700 uppercase tracking-wide">
@@ -454,17 +458,17 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
             {/* Account Info and Period grid block */}
             <div className="grid grid-cols-12 text-[10px] border-b-2 border-black font-semibold">
               <div className="col-span-7 p-3 border-r-2 border-black space-y-1.5 uppercase">
-                <div>ACCOUNT : <span className="font-extrabold text-sm ml-2">{party?.name?.toUpperCase() || 'KRAFT AQUATECH'}</span></div>
-                <div>GSTIN : <span className="font-extrabold text-sm ml-2">{party?.gstin || '24AANFK2769B1ZD'}</span></div>
+                <div>ACCOUNT : <span className="font-medium text-sm ml-2">{party?.name?.toUpperCase() || 'KRAFT AQUATECH'}</span></div>
+                <div>GSTIN : <span className="font-medium text-sm ml-2">{party?.gstin || '24AANFK2769B1ZD'}</span></div>
               </div>
               <div className="col-span-5 p-3 space-y-1.5 uppercase">
                 <div className="flex justify-between">
                   <span>FROM DATE</span> 
-                  <span className="font-extrabold mr-12">{fromDateFormatted}</span>
+                  <span className="font-medium mr-12">{fromDateFormatted}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>TO DATE</span> 
-                  <span className="font-extrabold mr-12">{toDateFormatted}</span>
+                  <span className="font-medium mr-12">{toDateFormatted}</span>
                 </div>
               </div>
             </div>
@@ -524,13 +528,13 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
                   <td colSpan={4} className="p-2 text-right border-r-2 border-black">
                     TOTAL
                   </td>
-                  <td className="p-2 text-right border-r-2 border-black font-extrabold px-2 font-mono">
+                  <td className="p-2 text-right border-r-2 border-black font-medium px-2 font-mono">
                     {debitSum.toFixed(2)}
                   </td>
-                  <td className="p-2 text-right border-r-2 border-black font-extrabold px-2 font-mono">
+                  <td className="p-2 text-right border-r-2 border-black font-medium px-2 font-mono">
                     {creditSum.toFixed(2)}
                   </td>
-                  <td className="p-2 text-right font-extrabold px-2 font-mono">
+                  <td className="p-2 text-right font-medium px-2 font-mono">
                     {/* Blank or matching style */}
                   </td>
                 </tr>
@@ -538,7 +542,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
                   <td colSpan={4} className="p-2 text-right border-r-2 border-black">
                     NET CLOSING BALANCE
                   </td>
-                  <td className="p-2 text-right border-r-2 border-black font-extrabold px-2 font-mono">
+                  <td className="p-2 text-right border-r-2 border-black font-medium px-2 font-mono">
                     {!isDebitHigher && netBalance > 0 ? (
                       <>
                         {netBalance.toFixed(2)}
@@ -546,7 +550,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
                       </>
                     ) : ''}
                   </td>
-                  <td className="p-2 text-right border-r-2 border-black font-extrabold px-2 font-mono">
+                  <td className="p-2 text-right border-r-2 border-black font-medium px-2 font-mono">
                     {isDebitHigher && netBalance > 0 ? (
                       <>
                         {netBalance.toFixed(2)}
@@ -554,7 +558,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
                       </>
                     ) : ''}
                   </td>
-                  <td className="p-2 text-right font-extrabold px-2 font-mono bg-gray-50">
+                  <td className="p-2 text-right font-medium px-2 font-mono bg-gray-50">
                     {netBalance.toFixed(2)}
                     <span className="text-[8px] ml-1 font-sans font-bold">
                       {debitSum === creditSum ? 'Nil' : (isDebitHigher ? 'Dr' : 'Cr')}

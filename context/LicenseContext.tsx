@@ -114,11 +114,20 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             .maybeSingle();
           profile = prof;
 
-          const { data: licenseData } = await supabase
+          let { data: licenseData } = await supabase
             .from('licenses')
             .select('*')
             .eq('user_id', userId)
             .maybeSingle();
+
+          if (!licenseData && user?.email) {
+            const { data: licenseByEmail } = await supabase
+              .from('licenses')
+              .select('*')
+              .eq('email', user.email)
+              .maybeSingle();
+            licenseData = licenseByEmail;
+          }
           licRow = licenseData;
 
           if (

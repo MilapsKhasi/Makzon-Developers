@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, ShieldCheck, Calendar, CheckCircle2, AlertCircle, Info, Zap, User, Sparkles } from 'lucide-react';
+import { Clock, ShieldCheck, Calendar, CheckCircle2, Zap, Sparkles, BadgeCheck } from 'lucide-react';
 import { useLicense } from '../context/LicenseContext';
-import { getAuthUser, supabase } from '../lib/supabase';
+import { getAuthUser } from '../lib/supabase';
 import Modal from './Modal';
-import EditionSelectionModal from './EditionSelectionModal';
-import { applyEditionTheme } from '../utils/themeHelper';
 
 export const LicenseSummaryBadge: React.FC = () => {
   const {
@@ -17,14 +15,10 @@ export const LicenseSummaryBadge: React.FC = () => {
     isExpired,
     devMode,
     isBackendActive,
-    setDevEdition,
-    refreshLicense,
   } = useLicense();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [showSwitchModal, setShowSwitchModal] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
-  const [switchLoading, setSwitchLoading] = useState(false);
 
   useEffect(() => {
     getAuthUser().then(u => {
@@ -62,43 +56,11 @@ export const LicenseSummaryBadge: React.FC = () => {
   };
 
   const getRemainingText = () => {
-    if (isBackendActive) return 'Active License';
+    if (isBackendActive) return 'Activated License';
     if (isExpired) return 'Trial Expired';
     if (daysRemaining > 1) return `${daysRemaining} Days Remaining`;
     if (hoursRemaining > 1) return `${hoursRemaining} Hours Remaining`;
     return `${minutesRemaining} Mins Remaining`;
-  };
-
-  const handleSwitchEdition = async (edition: 'standard' | 'professional') => {
-    setSwitchLoading(true);
-    try {
-      const licType = edition === 'standard' ? 'standard' : 'advanced';
-      localStorage.setItem('zenter_license_type', licType);
-      localStorage.setItem('zenter_edition', edition);
-      applyEditionTheme(edition);
-
-      const user = await getAuthUser();
-      if (user && user.id !== 'local-user-1') {
-        await supabase.from('profiles').upsert({
-          id: user.id,
-          license_type: licType,
-          license_status: 'active'
-        });
-      }
-
-      if (setDevEdition) {
-        await setDevEdition(licType as any, 14);
-      }
-      if (refreshLicense) {
-        await refreshLicense();
-      }
-
-      setShowSwitchModal(false);
-    } catch (err: any) {
-      console.error('Error switching edition:', err);
-    } finally {
-      setSwitchLoading(false);
-    }
   };
 
   return (
@@ -107,16 +69,20 @@ export const LicenseSummaryBadge: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`flex items-center space-x-1.5 py-1 px-2 rounded-lg text-xs font-bold transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700 cursor-pointer select-none ${
-          isExpired
-            ? 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40'
+        className={`flex items-center space-x-1.5 py-1 px-2.5 rounded-lg text-xs font-bold transition-all border cursor-pointer select-none ${
+          isBackendActive
+            ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800 shadow-2xs'
+            : isExpired
+            ? 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-transparent hover:border-slate-200 dark:hover:border-slate-700'
             : isProf
-            ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40'
-            : 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40'
+            ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border-transparent hover:border-slate-200 dark:hover:border-slate-700'
+            : 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border-transparent hover:border-slate-200 dark:hover:border-slate-700'
         }`}
         title="Click to view license summary"
       >
-        {isProf ? (
+        {isBackendActive ? (
+          <BadgeCheck className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+        ) : isProf ? (
           <Zap className="w-3.5 h-3.5 shrink-0 text-blue-500 fill-blue-500/20" />
         ) : (
           <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-indigo-500" />
@@ -124,7 +90,7 @@ export const LicenseSummaryBadge: React.FC = () => {
         <span className="font-bold tracking-tight flex items-center gap-1.5">
           <span>{isProf ? 'Professional' : 'Standard'}</span>
           <span className="opacity-50">•</span>
-          <span>{getRemainingText()}</span>
+          <span className={isBackendActive ? 'text-emerald-700 dark:text-emerald-300 font-bold' : ''}>{getRemainingText()}</span>
         </span>
       </button>
 
@@ -138,21 +104,29 @@ export const LicenseSummaryBadge: React.FC = () => {
         <div className="p-6 space-y-4 text-slate-800 dark:text-slate-100">
           {/* Active Account & Edition Header Banner */}
           <div className={`p-4 rounded-xl border flex items-center space-x-3.5 ${
-            isProf
+            isBackendActive
+              ? 'bg-emerald-50/90 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800'
+              : isProf
               ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-200/80 dark:border-blue-900/50'
               : 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-200/80 dark:border-indigo-900/50'
           }`}>
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
-              isProf ? 'bg-blue-600 text-white' : 'bg-indigo-600 text-white'
+              isBackendActive
+                ? 'bg-emerald-600 text-white'
+                : isProf ? 'bg-blue-600 text-white' : 'bg-indigo-600 text-white'
             }`}>
-              <Sparkles className="w-5 h-5 fill-current" />
+              {isBackendActive ? <BadgeCheck className="w-5 h-5" /> : <Sparkles className="w-5 h-5 fill-current" />}
             </div>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center text-sm sm:text-base font-bold text-slate-900 dark:text-white">
                 <span>ZenterPrime</span>
-                <span className={`ml-1.5 ${isProf ? 'text-blue-600 dark:text-blue-400' : 'text-indigo-600 dark:text-indigo-400'}`}>
-                  {isProf ? 'Professional Blue' : 'Standard Violet'}
+                <span className={`ml-1.5 ${
+                  isBackendActive
+                    ? 'text-emerald-700 dark:text-emerald-300'
+                    : isProf ? 'text-blue-600 dark:text-blue-400' : 'text-indigo-600 dark:text-indigo-400'
+                }`}>
+                  {isProf ? 'Professional' : 'Standard'} Edition
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
@@ -166,7 +140,7 @@ export const LicenseSummaryBadge: React.FC = () => {
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                {isBackendActive ? 'Activated License' : '14-days Evaluation Trial'}
+                {isBackendActive ? 'Activated License (Genuine)' : '14-days Evaluation Trial'}
               </span>
               <span className="text-slate-700 dark:text-slate-300 font-mono font-bold">
                 {isBackendActive ? 'Active (No Expiry)' : isExpired ? '0 / 14 Days Left' : `${daysRemaining} / 14 Days Left`}
@@ -198,9 +172,11 @@ export const LicenseSummaryBadge: React.FC = () => {
                 Active Plan / Edition
               </span>
               <span className={`font-bold px-3 py-1 rounded-lg text-xs ${
-                isProf ? 'bg-blue-600 text-white' : 'bg-indigo-600 text-white'
+                isBackendActive
+                  ? 'bg-emerald-600 text-white'
+                  : isProf ? 'bg-blue-600 text-white' : 'bg-indigo-600 text-white'
               }`}>
-                {isProf ? 'Professional Blue' : 'Standard Violet'}
+                {isProf ? 'Professional' : 'Standard'}
               </span>
             </div>
 
@@ -236,41 +212,23 @@ export const LicenseSummaryBadge: React.FC = () => {
           </div>
 
           {/* Action Button */}
-          <div className="pt-2 space-y-2">
+          <div className="pt-2">
             <button
               type="button"
               onClick={() => setIsOpen(false)}
               className={`w-full py-3 rounded-xl font-bold text-sm text-white shadow-sm transition-all active:scale-[0.99] cursor-pointer ${
-                isProf
-                  ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700'
-                  : 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700'
+                isBackendActive
+                  ? 'bg-emerald-600 hover:bg-emerald-700'
+                  : isProf
+                  ? 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-indigo-600 hover:bg-indigo-700'
               }`}
             >
               Got it
             </button>
-
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  setShowSwitchModal(true);
-                }}
-                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium underline transition-colors cursor-pointer"
-              >
-                Change or switch edition
-              </button>
-            </div>
           </div>
         </div>
       </Modal>
-
-      <EditionSelectionModal
-        isOpen={showSwitchModal}
-        onClose={() => setShowSwitchModal(false)}
-        onSelect={handleSwitchEdition}
-        loading={switchLoading}
-      />
     </>
   );
 };

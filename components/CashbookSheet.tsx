@@ -449,7 +449,7 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
               <span>Total Expense</span>
               <span className="font-mono">{formatCurrency(expenseTotal)}</span>
             </div>
-            <div className="flex flex-col sm:flex-row sm:justify-between text-[12px] sm:text-[15px] font-black text-slate-900 dark:text-white uppercase mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 gap-1">
+            <div className="flex flex-col sm:flex-row sm:justify-between text-[12px] sm:text-[15px] font-medium text-slate-900 dark:text-white uppercase mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 gap-1">
               <span className="max-w-[150px] sm:max-w-none">CLOSING BALANCE FOR DATE {displayDate}</span>
               <span className="font-mono text-link">{formatCurrency(closingBalance)}</span>
             </div>

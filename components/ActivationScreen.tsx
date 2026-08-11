@@ -35,7 +35,7 @@ export const ActivationScreen: React.FC = () => {
           <div className="flex items-center space-x-3 bg-amber-50 dark:bg-amber-950/40 p-4 rounded-xl border border-amber-200 dark:border-amber-900/60">
             <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400 shrink-0" />
             <div>
-              <h4 className="font-extrabold text-sm text-amber-900 dark:text-amber-200">
+              <h4 className="font-medium text-sm text-amber-900 dark:text-amber-200">
                 Trial Expiring Soon
               </h4>
               <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 font-medium leading-relaxed">
@@ -76,7 +76,7 @@ export const ActivationScreen: React.FC = () => {
           <div className="flex items-start space-x-3 bg-rose-50 dark:bg-rose-950/40 p-4 rounded-xl border border-rose-200 dark:border-rose-900/60">
             <ShieldAlert className="w-8 h-8 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
             <div className="space-y-1.5">
-              <h4 className="font-extrabold text-sm text-rose-900 dark:text-rose-200">
+              <h4 className="font-medium text-sm text-rose-900 dark:text-rose-200">
                 Your 14-Day Evaluation Edition expired on {formattedExpiryDate}
               </h4>
               <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">

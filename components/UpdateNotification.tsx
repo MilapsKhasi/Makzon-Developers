@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Gift, Zap, Shield, Layout } from 'lucide-react';
 
-const CURRENT_VERSION = 'ZP-26.07.01';
+const CURRENT_VERSION = 'v7.3';
 const STORAGE_KEY = `version_popup_shown_${CURRENT_VERSION}`;
 
 const UpdateNotification = () => {
@@ -39,7 +39,7 @@ const UpdateNotification = () => {
         </div>
         
         <div className="p-8">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">ZenterPrime - Early Access - Version ZP-26.07.01 Released!</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">ZenterPrime - Version v7.3 Released!</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Experience the next evolution of your digital finance desk with our latest update.</p>
             
             <div className="space-y-4 mb-8">

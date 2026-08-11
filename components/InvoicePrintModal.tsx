@@ -239,14 +239,18 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
             <title>Tax Invoice - ${invoiceNo}</title>
             <script src="https://cdn.tailwindcss.com"></script>
             <style>
-              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+              @import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
               * {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 box-sizing: border-box;
+                font-family: 'Ubuntu', sans-serif !important;
+              }
+              .font-extrabold, .font-black {
+                font-weight: 500 !important;
               }
               html, body {
-                font-family: 'Inter', system-ui, -apple-system, sans-serif;
+                font-family: 'Ubuntu', sans-serif !important;
                 margin: 0;
                 padding: 0;
                 background-color: #ffffff;

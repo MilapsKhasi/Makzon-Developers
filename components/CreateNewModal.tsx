@@ -139,7 +139,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose,
             {/* Sales Group */}
             <div>
               <div className="flex items-center space-x-2 pb-2 mb-3 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] font-extrabold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                <span className="text-[11px] font-medium uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
                   Sales
                 </span>
                 <span className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800" />
@@ -214,7 +214,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose,
             {/* Purchase Group */}
             <div>
               <div className="flex items-center space-x-2 pb-2 mb-3 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] font-extrabold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+                <span className="text-[11px] font-medium uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
                   Purchase
                 </span>
                 <span className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800" />
@@ -292,7 +292,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose,
             {/* Stock Group */}
             <div>
               <div className="flex items-center space-x-2 pb-2 mb-3 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] font-extrabold uppercase tracking-widest text-sky-600 dark:text-sky-400">
+                <span className="text-[11px] font-medium uppercase tracking-widest text-sky-600 dark:text-sky-400">
                   Stock
                 </span>
                 <span className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800" />
@@ -357,7 +357,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose,
             {/* Others Group */}
             <div>
               <div className="flex items-center space-x-2 pb-2 mb-3 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-[11px] font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                <span className="text-[11px] font-medium uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   Others
                 </span>
                 <span className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800" />

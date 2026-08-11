@@ -83,7 +83,7 @@ const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose, title, children,
       <div className={`absolute top-0 right-0 h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col ${width} w-full border-l border-slate-200 dark:border-slate-800`}>
         {/* Header - Compact */}
         <div className="flex items-center justify-between px-4 py-3 bg-slate-900 text-white shrink-0">
-          <h3 className="text-xs font-black uppercase tracking-widest">{title}</h3>
+          <h3 className="text-xs font-medium uppercase tracking-widest">{title}</h3>
           <button
             onClick={handleCloseAttempt}
             className="p-1 hover:bg-white/10 rounded cursor-pointer"

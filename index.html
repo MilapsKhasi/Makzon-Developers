@@ -39,10 +39,10 @@
       }
     </script>
     
-    <!-- Google Fonts: Geologica & Georama (Geometric Sans Fonts) -->
+    <!-- Google Fonts: Ubuntu -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600;700&family=Georama:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
 
     <style>
       :root {
@@ -79,9 +79,9 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Geologica', 'Georama', 'Calibri', 'sans-serif'],
-              mono: ['Geologica', 'Georama', 'Calibri', 'sans-serif'],
-              serif: ['Geologica', 'Georama', 'Calibri', 'sans-serif'],
+              sans: ['Ubuntu', 'sans-serif'],
+              mono: ['Ubuntu', 'sans-serif'],
+              serif: ['Ubuntu', 'sans-serif'],
             },
             fontSize: {
               'xs': ['13px', '18px'],
@@ -133,7 +133,7 @@
 
     <style>
       body { 
-        font-family: 'Geologica', 'Georama', sans-serif !important; 
+        font-family: 'Ubuntu', sans-serif !important; 
         background-color: #F7F8FC;
         color: #111827;
         font-size: 13.5px !important;
@@ -144,7 +144,7 @@
         color: #f1f5f9;
       }
       *, ::before, ::after {
-        font-family: 'Geologica', 'Georama', sans-serif !important;
+        font-family: 'Ubuntu', sans-serif !important;
         transition: background-color 0.2s ease-out, 
                     color 0.2s ease-out, 
                     border-color 0.2s ease-out, 
@@ -152,7 +152,12 @@
                     stroke 0.2s ease-out !important;
       }
       button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span, div, td, th, pre, code, label, .font-mono, .font-sans, .font-serif {
-        font-family: 'Geologica', 'Georama', sans-serif !important;
+        font-family: 'Ubuntu', sans-serif !important;
+      }
+
+      /* Convert extra bold font styles to medium font weight */
+      .font-extrabold, .font-black {
+        font-weight: 500 !important;
       }
 
       /* Liquid Glass Header styling for form headers, modals, and sticky top sections */

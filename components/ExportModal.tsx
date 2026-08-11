@@ -48,7 +48,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onExport, re
     <Modal isOpen={isOpen} onClose={onClose} title="Export Document" maxWidth="max-w-md">
         <div className="p-6 space-y-6">
             <div className="bg-slate-50 p-4 border border-slate-200 rounded-md">
-                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">Active View</p>
+                <p className="text-[10px] text-slate-400 uppercase font-medium tracking-widest mb-1">Active View</p>
                 <p className="text-[14px] font-semibold text-slate-900">{reportName}</p>
             </div>
 

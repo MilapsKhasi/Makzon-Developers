@@ -6,7 +6,7 @@ const PRECACHE_URLS = [
   '/manifest.json',
   '/index.tsx',
   'https://cdn.tailwindcss.com',
-  'https://fonts.googleapis.com/css2?family=Geologica:wght@300;400;500;600;700&family=Georama:ital,wght@0,300..700;1,300..700&display=swap'
+  'https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap'
 ];
 
 self.addEventListener('install', (event) => {

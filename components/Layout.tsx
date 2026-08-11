@@ -409,7 +409,7 @@ const Layout = () => {
                   <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">ZenterPrime</span>
                 </div>
                 {devMode && (
-                  <span className="inline-block px-1.5 py-0.5 bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 text-[8.5px] font-extrabold uppercase tracking-wider rounded mt-0.5 leading-none w-fit border-0">Developer Mode</span>
+                  <span className="inline-block px-1.5 py-0.5 bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 text-[8.5px] font-medium uppercase tracking-wider rounded mt-0.5 leading-none w-fit border-0">Developer Mode</span>
                 )}
               </div>
             )}
@@ -437,7 +437,7 @@ const Layout = () => {
             <div key={gIdx} className="space-y-0.5">
               {(isSidebarOpen || isMobileMenuOpen) && group.groupName && (
                 <div className="pt-2 pb-1 px-3 flex items-center space-x-2">
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                  <span className="text-[10px] font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 whitespace-nowrap">
                     {group.groupName}
                   </span>
                   <span className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800" />

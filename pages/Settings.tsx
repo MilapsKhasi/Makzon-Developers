@@ -8,8 +8,6 @@ import { processOfflineSyncQueue } from '../lib/syncEngine';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { exportFullDatabaseToFolder, downloadStandaloneOfflineLauncher, downloadWindowsExePackage } from '../utils/offlineHelper';
 import { useLicense } from '../context/LicenseContext';
-import { EditionSelectionModal } from '../components/EditionSelectionModal';
-import { applyEditionTheme } from '../utils/themeHelper';
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -80,10 +78,8 @@ const Settings = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [licenseId, setLicenseId] = useState('26401');
   
-  const { licenseType, setDevEdition, refreshLicense } = useLicense();
-  const [showEditionModal, setShowEditionModal] = useState(false);
+  const { licenseType, isBackendActive } = useLicense();
   const [userEmail, setUserEmail] = useState('');
-  const [editionLoading, setEditionLoading] = useState(false);
 
   useEffect(() => {
     getAuthUser().then(u => {
@@ -92,37 +88,6 @@ const Settings = () => {
   }, []);
 
   const isProf = licenseType === 'advanced' || localStorage.getItem('zenter_edition') === 'professional';
-
-  const handleSwitchEditionInSettings = async (edition: 'standard' | 'professional') => {
-    setEditionLoading(true);
-    try {
-      const licType = edition === 'standard' ? 'standard' : 'advanced';
-      localStorage.setItem('zenter_license_type', licType);
-      localStorage.setItem('zenter_edition', edition);
-      applyEditionTheme(edition);
-
-      const user = await getAuthUser();
-      if (user && user.id !== 'local-user-1') {
-        await supabase.from('profiles').upsert({
-          id: user.id,
-          license_type: licType,
-          license_status: 'active'
-        });
-      }
-
-      if (setDevEdition) {
-        await setDevEdition(licType as any, 14);
-      }
-      if (refreshLicense) {
-        await refreshLicense();
-      }
-      setShowEditionModal(false);
-    } catch (err: any) {
-      console.error('Error selecting edition:', err);
-    } finally {
-      setEditionLoading(false);
-    }
-  };
   
   // Offline & Desktop State
   const [offlineActionLoading, setOfflineActionLoading] = useState(false);
@@ -385,14 +350,6 @@ const Settings = () => {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50 flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">License & Plan Information</h3>
-            <button
-              type="button"
-              onClick={() => setShowEditionModal(true)}
-              className="text-xs font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Switch Edition</span>
-            </button>
           </div>
           <div className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -426,29 +383,20 @@ const Settings = () => {
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowEditionModal(true)}
-                  className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Change Edition</span>
-                </button>
+                {isBackendActive && (
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-3.5 py-2 rounded-lg flex items-center text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                    <BadgeCheck className="w-4 h-4 mr-1.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Genuine Activated License</span>
+                  </div>
+                )}
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 px-4 py-2 rounded-lg flex items-center">
                   <BadgeCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mr-2" />
-                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-tighter">Version ZP-26.07.01</span>
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-tighter">v7.3</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        <EditionSelectionModal
-          isOpen={showEditionModal}
-          onClose={() => setShowEditionModal(false)}
-          onSelect={handleSwitchEditionInSettings}
-          loading={editionLoading}
-        />
 
         {/* Appearance Section */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm">
@@ -745,7 +693,7 @@ const Settings = () => {
             </div>
 
             <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-4.5 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col justify-between relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-bl">Desktop</div>
+              <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-medium uppercase px-2 py-0.5 rounded-bl">Desktop</div>
               <div className="space-y-1.5 mb-4">
                 <div className="flex items-center space-x-2 text-slate-900 dark:text-slate-100 font-bold text-xs">
                   <Cpu className="w-4 h-4 text-blue-500" />

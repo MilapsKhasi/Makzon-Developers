@@ -571,7 +571,7 @@ const Parties = () => {
                   <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 rounded-lg p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div>
                       <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Net Outstanding Ledger Balance</span>
-                      <h3 className="text-2xl sm:text-3xl font-mono font-extrabold mt-1 text-slate-900 dark:text-white">
+                      <h3 className="text-2xl sm:text-3xl font-mono font-medium mt-1 text-slate-900 dark:text-white">
                         ₹{Math.abs(partyStats.netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         <span className="text-sm font-sans font-normal text-slate-500 dark:text-slate-400 ml-2">
                           {partyStats.netBalance === 0 ? 'Nil' : (partyStats.netBalance > 0 ? 'Dr (Receivable)' : 'Cr (Payable)')}
