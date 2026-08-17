@@ -645,7 +645,7 @@ const Layout = () => {
               className={`px-3.5 py-1.5 font-semibold text-xs rounded-md capitalize flex items-center gap-1.5 shadow-xs transition-all ${
                 isReadOnly
                   ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 border border-slate-300 dark:border-slate-700 cursor-not-allowed'
-                  : 'bg-white dark:bg-slate-900 text-black dark:text-white border-[0.5px] border-primary hover:bg-slate-50 dark:hover:bg-slate-800/80 cursor-pointer'
+                  : 'bg-white dark:bg-slate-900 text-black dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80 cursor-pointer'
               }`}
               title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'Quick Create'}
             >
