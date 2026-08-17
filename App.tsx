@@ -302,10 +302,11 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
   return (
     <div className="animate-in fade-in duration-500">
       <Routes>
+        <Route path="/login" element={authenticated ? <Navigate to="/companies" replace /> : <Auth />} />
         <Route path="/setup" element={authenticated ? <Navigate to="/companies" replace /> : <Auth />} />
-        <Route path="/companies" element={authenticated ? <Companies /> : <Navigate to="/setup" replace />} />
+        <Route path="/companies" element={authenticated ? <Companies /> : <Navigate to="/login" replace />} />
         
-        <Route path="/" element={authenticated ? (activeCompany ? <Layout /> : <Navigate to="/companies" replace />) : (<Navigate to="/setup" replace />)}>
+        <Route path="/" element={authenticated ? (activeCompany ? <Layout /> : <Navigate to="/companies" replace />) : (<Navigate to="/login" replace />)}>
           <Route index element={<Dashboard />} />
           <Route path="masters" element={<Masters />} />
           <Route path="purchases" element={<Purchases />} />
