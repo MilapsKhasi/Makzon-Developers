@@ -100,8 +100,8 @@ const SidePanel: React.FC<SidePanelProps> = ({ isOpen, onClose, title, children,
 
       {/* Confirmation Warning Dialog */}
       {showCloseWarning && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 rounded-xl shadow-2xl p-6 max-w-md w-full flex flex-col items-center text-center animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md">
+          <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 rounded-xl shadow-2xl p-6 max-w-md w-full flex flex-col items-center text-center">
             <div className="p-3 bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-full mb-4">
               <AlertTriangle className="w-8 h-8" />
             </div>

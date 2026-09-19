@@ -18,7 +18,6 @@ import Auth from './pages/Auth';
 import Companies from './pages/Companies';
 import UserActivity from './pages/UserActivity';
 import DeliveryChallans from './pages/DeliveryChallans';
-import SplashScreen from './components/SplashScreen';
 import { CompanyProvider, useCompany } from './context/CompanyContext';
 import { LicenseProvider } from './context/LicenseContext';
 import { supabase } from './lib/supabase';
@@ -28,19 +27,12 @@ import { processInactivity, recordActivity } from './utils/activityTracker';
 const AppContent = () => {
   const [session, setSession] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [showSplash, setShowSplash] = useState(true);
-  const [isSplashExiting, setIsSplashExiting] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   
   const { activeCompany, loading: companyLoading } = useCompany();
 
   useEffect(() => {
-    const splashTimer = setTimeout(() => {
-      setIsSplashExiting(true);
-      setTimeout(() => setShowSplash(false), 700);
-    }, 2500);
-
     const checkSchema = async (sess: any) => {
       if (!sess) return;
       try {
@@ -127,7 +119,6 @@ const AppContent = () => {
     }, 60000); // Check every minute
 
     return () => {
-      clearTimeout(splashTimer);
       subscription.unsubscribe();
       clearInterval(inactivityInterval);
     };
@@ -234,8 +225,6 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (showSplash) return <SplashScreen isExiting={isSplashExiting} />;
-
   if (authLoading || companyLoading) return (
     <div className="h-screen w-screen flex items-center justify-center bg-white">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -300,7 +289,7 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
   const authenticated = !!session;
 
   return (
-    <div className="animate-in fade-in duration-500">
+    <div>
       <Routes>
         <Route path="/login" element={authenticated ? <Navigate to="/companies" replace /> : <Auth />} />
         <Route path="/setup" element={authenticated ? <Navigate to="/companies" replace /> : <Auth />} />

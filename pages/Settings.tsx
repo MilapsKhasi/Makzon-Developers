@@ -339,7 +339,7 @@ const Settings = () => {
   if (loading) return <div className="py-40 text-center"><Loader2 className="w-8 h-8 animate-spin inline text-primary" /></div>;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300 max-w-5xl">
+    <div className="space-y-8 max-w-5xl">
       <div className="flex flex-col text-left">
         <h1 className="text-[20px] font-medium text-slate-900 dark:text-slate-100 capitalize">Workspace Settings</h1>
         <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Configure your business profile, theme preferences, and workspace lifecycle.</p>
@@ -517,7 +517,7 @@ const Settings = () => {
               </button>
             </div>
             {gstConfig.enabled && (
-                <div className="animate-in slide-in-from-top-2 duration-300 grid grid-cols-1 md:grid-cols-2 gap-8 items-center border-t border-slate-100 dark:border-slate-800 pt-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center border-t border-slate-100 dark:border-slate-800 pt-8">
                     <div><h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Select GST Type</h4><p className="text-xs text-slate-500 dark:text-slate-400">Ledgers will be created automatically based on your choice.</p></div>
                     <div className="relative">
                         <select 

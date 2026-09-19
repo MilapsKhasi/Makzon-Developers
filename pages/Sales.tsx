@@ -209,7 +209,7 @@ const Sales = () => {
   }, [filtered, selectedRowIdx, deleteDialog, headerFocusIdx, isModalOpen, lastShiftNTime]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6">
       <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingInvoice(null); }} title={editingInvoice ? "Update Sale Invoice" : "Generate Sale Invoice"} maxWidth="max-w-5xl">
         <SalesInvoiceForm initialData={editingInvoice} onSubmit={(inv, shouldPrint, isSaveAndNew) => { if (!isSaveAndNew) { setIsModalOpen(false); setEditingInvoice(null); } loadData(); if (shouldPrint && inv) setPrintModalInvoice(inv); }} onCancel={() => { setIsModalOpen(false); setEditingInvoice(null); }} />
       </Modal>

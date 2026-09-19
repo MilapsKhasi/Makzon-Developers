@@ -60,7 +60,7 @@ export const NewVoucherDropdown: React.FC<NewVoucherDropdownProps> = ({
       </button>
 
       {isOpen && !isReadOnly && (
-        <div className="absolute right-0 mt-1.5 w-48 sm:w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl py-1 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-1.5 w-48 sm:w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl py-1 z-50 text-xs">
           <button
             type="button"
             onClick={() => { setIsOpen(false); onSelectSalesInvoice(); }}

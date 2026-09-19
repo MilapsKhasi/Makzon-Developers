@@ -97,7 +97,7 @@ const UserActivity = () => {
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
                         item.status === 'active' 
                           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' 
-                          : 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 animate-pulse'
+                          : 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400'
                       }`}>
                         {item.status}
                       </span>

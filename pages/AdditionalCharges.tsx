@@ -118,7 +118,7 @@ const AdditionalCharges = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6">
       <ConfirmDialog 
         isOpen={deleteDialog.isOpen}
         onClose={() => setDeleteDialog({ isOpen: false, tax: null })}

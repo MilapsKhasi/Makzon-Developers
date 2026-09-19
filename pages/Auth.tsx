@@ -123,7 +123,7 @@ const Auth = () => {
           <form onSubmit={handleLogin} className="space-y-6">
             {error && (
               <div className="space-y-3">
-                <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-[10px] font-semibold animate-shake flex items-start">
+                <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-[10px] font-semibold flex items-start">
                   <AlertCircle className="w-4 h-4 text-red-500 mr-2 shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
@@ -222,7 +222,7 @@ const Auth = () => {
           </form>
 
           {showSqlHelp && (
-            <div className="mt-6 p-5 bg-slate-900 text-slate-100 rounded-[10px] border border-slate-800 text-xs space-y-3 animate-in fade-in slide-in-from-top-4 duration-300 text-left">
+            <div className="mt-6 p-5 bg-slate-900 text-slate-100 rounded-[10px] border border-slate-800 text-xs space-y-3 text-left">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-emerald-400 uppercase tracking-wider text-[10px]">Database Setup SQL Script</span>
                 <div className="flex items-center space-x-2">

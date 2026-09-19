@@ -145,11 +145,18 @@
       }
       *, ::before, ::after {
         font-family: 'Ubuntu', sans-serif !important;
-        transition: background-color 0.2s ease-out, 
-                    color 0.2s ease-out, 
-                    border-color 0.2s ease-out, 
-                    fill 0.2s ease-out, 
-                    stroke 0.2s ease-out !important;
+        animation-duration: 0.001ms !important;
+        animation-delay: 0s !important;
+        transition-duration: 0.001ms !important;
+        transition-delay: 0s !important;
+      }
+      /* Allow spinner to spin during async operations */
+      .animate-spin {
+        animation: spin 1s linear infinite !important;
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
       button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span, div, td, th, pre, code, label, .font-mono, .font-sans, .font-serif {
         font-family: 'Ubuntu', sans-serif !important;

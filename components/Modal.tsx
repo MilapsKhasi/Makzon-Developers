@@ -195,7 +195,7 @@ const Modal: React.FC<ModalProps> = ({
     >
       {/* Backdrop - Outside clicks strictly disabled */}
       <div 
-        className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200" 
+        className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm" 
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -203,7 +203,7 @@ const Modal: React.FC<ModalProps> = ({
       />
       <div 
         ref={modalRef}
-        className={`relative bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 w-full ${maxWidth} flex flex-col overflow-hidden rounded-lg shadow-2xl max-h-[90vh] z-10 animate-in zoom-in-95 fade-in duration-200`}
+        className={`relative bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 w-full ${maxWidth} flex flex-col overflow-hidden rounded-lg shadow-2xl max-h-[90vh] z-10`}
       >
         <div className="flex items-center justify-between px-6 py-4 liquid-glass-header shrink-0 border-b border-slate-100 dark:border-slate-800 z-10">
           <h3 className="text-[18px] font-medium text-slate-900 dark:text-slate-100 capitalize">{title}</h3>
@@ -224,10 +224,10 @@ const Modal: React.FC<ModalProps> = ({
       {/* Draft Loss Confirmation Warning Dialog */}
       {showCloseWarning && (
         <div 
-          className="fixed inset-0 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-150"
+          className="fixed inset-0 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md"
           style={{ zIndex: warningZIndex }}
         >
-          <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 rounded-xl shadow-2xl p-6 max-w-md w-full flex flex-col items-center text-center animate-in zoom-in-95 duration-150">
+          <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/50 rounded-xl shadow-2xl p-6 max-w-md w-full flex flex-col items-center text-center">
             <div className="p-3 bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-full mb-4">
               <AlertTriangle className="w-8 h-8" />
             </div>

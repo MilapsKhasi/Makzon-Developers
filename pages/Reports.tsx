@@ -165,7 +165,7 @@ const Reports = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6">
       <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} onExport={handleExport} reportName={`${activeTab}`} />
 
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4 print:hidden">

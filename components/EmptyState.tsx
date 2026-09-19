@@ -18,7 +18,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   icon: Icon = FolderSearch
 }) => {
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-4 text-center animate-in fade-in zoom-in-95 duration-500">
+    <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
       <div className="relative mb-8">
         {/* Decorative background circle */}
         <div className="absolute inset-0 bg-slate-100 rounded-full scale-150 opacity-50 blur-2xl"></div>

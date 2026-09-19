@@ -81,7 +81,7 @@ const Purchases = () => {
   });
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6">
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Edit Purchase Bill" maxWidth="max-w-5xl">
         <BillForm initialData={editingBill} onSubmit={(bill, isSaveAndNew) => { if (!isSaveAndNew) { setIsModalOpen(false); setEditingBill(null); } loadData(); }} onCancel={() => setIsModalOpen(false)} />
       </Modal>

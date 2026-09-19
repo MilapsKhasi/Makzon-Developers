@@ -215,7 +215,7 @@ const Stock = () => {
   }, [selectedItem, vouchers]);
 
   return (
-    <div className="space-y-6 h-full flex flex-col animate-in fade-in duration-300">
+    <div className="space-y-6 h-full flex flex-col">
       <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} title={editingItem ? "Edit Stock Master" : "Add New Stock Item"} maxWidth="max-w-5xl">
         <StockForm initialData={editingItem} onSubmit={handleSaveItem} onCancel={() => { setIsModalOpen(false); setEditingItem(null); }} />
       </Modal>
@@ -313,7 +313,7 @@ const Stock = () => {
 
             <div className={`flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md flex flex-col overflow-hidden ${isFullScreen ? 'fixed inset-4 z-[500] m-0 shadow-2xl' : ''} ${!selectedId ? 'hidden lg:flex' : 'flex'}`}>
             {selectedItem && itemStats ? (
-                <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-300">
+                <div className="flex flex-col h-full overflow-hidden">
                 <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30 shrink-0">
                     <div className="flex items-center space-x-3 sm:space-x-4 overflow-hidden">
                     <button onClick={() => setSelectedId(null)} className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-slate-900 dark:hover:text-white">

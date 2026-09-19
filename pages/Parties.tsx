@@ -322,7 +322,7 @@ const Parties = () => {
   }, [selectedParty, salesInvoices, purchaseBills]);
 
   return (
-    <div className="space-y-6 h-full flex flex-col min-h-0 animate-in fade-in duration-300">
+    <div className="space-y-6 h-full flex flex-col min-h-0">
       
       {/* Save/Edit Party Modal */}
       <Modal 

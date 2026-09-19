@@ -907,7 +907,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
           
           {/* Success Screen */}
           {importSuccess ? (
-            <div className="py-12 flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-300">
+            <div className="py-12 flex flex-col items-center justify-center text-center">
               <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-4 border border-emerald-200 dark:border-emerald-800">
                 <CheckCircle2 className="w-10 h-10" />
               </div>
@@ -933,7 +933,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
             <>
               {/* Error Banner */}
               {errorMsg && (
-                <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg flex items-start space-x-3 text-rose-700 dark:text-rose-300 text-xs animate-in fade-in duration-200">
+                <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg flex items-start space-x-3 text-rose-700 dark:text-rose-300 text-xs">
                   <AlertTriangle className="w-5 h-5 shrink-0 text-rose-500" />
                   <div className="flex-1">
                     <p className="font-bold">Import Error</p>
@@ -1021,7 +1021,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
 
               {/* Data Preview & Conflict Resolution Section */}
               {parsedRows.length > 0 && (
-                <div className="space-y-4 pt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="space-y-4 pt-2">
                   
                   {/* Summary Bar */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 gap-2">
@@ -1244,8 +1244,8 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
 
         {/* Smart Template Mismatch Confirmation Dialog */}
         {templateMismatch && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-200">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-5">
               <div className="flex items-start space-x-4">
                 <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-200 dark:border-amber-800">
                   <AlertTriangle className="w-6 h-6" />

@@ -132,7 +132,7 @@ const BulkEditModal: React.FC<BulkEditModalProps> = ({ isOpen, onClose, title, c
         {/* Delete Confirmation Popup */}
         {deleteConfirm.isOpen && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/30 dark:bg-slate-950/50 backdrop-blur-[1px]">
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-xl border border-red-100 dark:border-red-900/30 max-w-xs w-full animate-in zoom-in-95 duration-200">
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-xl border border-red-100 dark:border-red-900/30 max-w-xs w-full">
                     <div className="flex justify-center mb-4">
                         <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-full">
                             <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />

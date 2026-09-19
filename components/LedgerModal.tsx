@@ -292,7 +292,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
   return (
     <>
       {/* SCREEN MODAL VIEW (print:hidden) */}
-      <div className="fixed inset-0 z-[550] flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300 print:hidden">
+      <div className="fixed inset-0 z-[550] flex items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm print:hidden">
         <div className="bg-white dark:bg-slate-900 w-full max-w-6xl h-full sm:h-[90vh] rounded-none sm:rounded-2xl shadow-2xl border-0 sm:border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="px-4 sm:px-8 py-4 sm:py-6 liquid-glass-header flex justify-between items-center shrink-0">

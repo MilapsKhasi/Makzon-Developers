@@ -164,7 +164,7 @@ const Cashbook = () => {
 
   if (viewState === 'entry') {
     return (
-      <div className="h-full flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="h-full flex flex-col">
         <CashbookSheet 
           initialData={editingEntry} 
           existingEntries={entries}
@@ -180,7 +180,7 @@ const Cashbook = () => {
   const filteredEntries = entries.filter(e => String(e.date).includes(searchQuery));
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">

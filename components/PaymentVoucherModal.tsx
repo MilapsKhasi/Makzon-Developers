@@ -436,7 +436,7 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
         </div>
 
         {partyName && (
-          <div className="border border-slate-100 dark:border-slate-800 rounded-lg p-3.5 bg-slate-50/50 dark:bg-slate-900/50 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="border border-slate-100 dark:border-slate-800 rounded-lg p-3.5 bg-slate-50/50 dark:bg-slate-900/50 space-y-2.5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 {voucherType === 'Receipt' ? 'Pending Sales Invoices' : 'Pending Purchase Bills'}
