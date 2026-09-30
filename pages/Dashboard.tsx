@@ -7,6 +7,7 @@ import BillForm from '../components/BillForm';
 import SalesInvoiceForm from '../components/SalesInvoiceForm';
 import PaymentVoucherModal from '../components/PaymentVoucherModal';
 import NewVoucherDropdown from '../components/NewVoucherDropdown';
+import SalesPurchaseChart from '../components/SalesPurchaseChart';
 import { supabase } from '../lib/supabase';
 import { useLicense } from '../context/LicenseContext';
 
@@ -23,6 +24,8 @@ const Dashboard = () => {
     stockItems: 0
   });
   const [recentVouchers, setRecentVouchers] = useState<any[]>([]);
+  const [salesList, setSalesList] = useState<any[]>([]);
+  const [purchasesList, setPurchasesList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
@@ -104,6 +107,9 @@ const Dashboard = () => {
         totalCustomers: customerCount || 0,
         stockItems: itemCount || 0
       });
+
+      setSalesList(actualSales);
+      setPurchasesList(actualPurchases);
 
       const combined = [
         ...actualPurchases.map(p => ({ ...p, status: getInvoiceOutstanding(p) === 0 && Number(p.grand_total || 0) > 0 ? 'Paid' : 'Pending' })),
@@ -199,6 +205,13 @@ const Dashboard = () => {
         <StatBox label="Active Partners" value={stats.totalVendors + stats.totalCustomers} subLabel={`${stats.totalVendors} Vendors / ${stats.totalCustomers} Customers`} icon={Users} />
         <StatBox label="Inventory" value={stats.stockItems} subLabel="Registered SKU Items" icon={Package} />
       </div>
+
+      {/* Sales vs Purchases Comparison Graph */}
+      <SalesPurchaseChart 
+        sales={salesList} 
+        purchases={purchasesList} 
+        loading={loading} 
+      />
 
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/50">
