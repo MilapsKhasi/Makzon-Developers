@@ -9,10 +9,12 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import { supabase } from '../lib/supabase';
 import { useLicense } from '../context/LicenseContext';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 const Stock = () => {
   const location = useLocation();
   const { isReadOnly } = useLicense();
+  const { verifyAction } = useSecurityDemo();
   const cid = getActiveCompanyId();
   const [items, setItems] = useState<any[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
@@ -125,7 +127,7 @@ const Stock = () => {
         const nextItem = filteredItems[nextIdx];
         if (nextItem) {
           setSelectedId(String(nextItem.id));
-          setHighlightedId(String(nextItem.id));
+          setHighlightedId(null);
         }
       } else if (e.key === 'ArrowUp') {
         if (filteredItems.length === 0) return;
@@ -135,7 +137,7 @@ const Stock = () => {
         const prevItem = filteredItems[prevIdx];
         if (prevItem) {
           setSelectedId(String(prevItem.id));
-          setHighlightedId(String(prevItem.id));
+          setHighlightedId(null);
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         if (selectedItem && !isReadOnly) {
@@ -176,8 +178,14 @@ const Stock = () => {
 
   const confirmDelete = async () => {
     if (!deleteDialog.item) return;
-    await supabase.from('stock_items').update({ is_deleted: true }).eq('id', deleteDialog.item.id);
-    loadData(); if (selectedId === String(deleteDialog.item.id)) setSelectedId(null);
+    const itemToDelete = deleteDialog.item;
+    setDeleteDialog({ isOpen: false, item: null });
+
+    verifyAction('Delete Stock Item', async () => {
+      await supabase.from('stock_items').update({ is_deleted: true }).eq('id', itemToDelete.id);
+      loadData();
+      if (selectedId === String(itemToDelete.id)) setSelectedId(null);
+    });
   };
 
   const itemStats = useMemo(() => {
@@ -233,7 +241,14 @@ const Stock = () => {
         </div>
         <button
           disabled={isReadOnly}
-          onClick={() => { if (!isReadOnly) { setEditingItem(null); setIsModalOpen(true); } }}
+          onClick={() => {
+            if (!isReadOnly) {
+              verifyAction('Create Stock Item', () => {
+                setEditingItem(null);
+                setIsModalOpen(true);
+              });
+            }
+          }}
           className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
             isReadOnly
               ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
@@ -250,7 +265,7 @@ const Stock = () => {
           title="Inventory is Empty" 
           message="Take control of your warehouse! Register your stock items (SKUs) to track movements, quantities, and valuation." 
           actionLabel="Add First Stock Item" 
-          onAction={() => { setEditingItem(null); setIsModalOpen(true); }} 
+          onAction={() => verifyAction('Create Stock Item', () => { setEditingItem(null); setIsModalOpen(true); })} 
         />
       ) : (
         <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden min-h-0">
@@ -283,25 +298,19 @@ const Stock = () => {
                       }}
                       onClick={() => {
                         setSelectedId(String(item.id));
-                        setHighlightedId(String(item.id));
+                        setHighlightedId(null);
                       }} 
-                      onMouseEnter={() => {
-                        setSelectedId(String(item.id));
-                        setHighlightedId(String(item.id));
-                      }}
-                      className={`p-4 border rounded-[5px] cursor-pointer transition-all ${
-                        isHighlighted
-                          ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-500 ring-2 ring-amber-400 text-slate-900 dark:text-white font-semibold shadow-md'
-                          : isSelected 
-                            ? 'bg-primary border-transparent text-white' 
-                            : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                      className={`p-4 rounded-[6px] cursor-pointer transition-all ${
+                        isSelected 
+                          ? 'bg-blue-600 text-white border-0 shadow-sm' 
+                          : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-700/50'
                       }`}
                     >
-                        <h3 className={`font-medium capitalize text-[11px] truncate mb-1 ${isSelected && !isHighlighted ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{item.name}</h3>
+                        <h3 className={`font-medium capitalize text-[11px] truncate mb-1 ${isSelected ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{item.name}</h3>
                         <div className="flex justify-between items-end">
-                            <span className={`text-[10px] font-medium capitalize tracking-tighter ${isSelected && !isHighlighted ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`}>Hsn: {item.hsn || 'N/A'}</span>
-                            <span className={`font-mono text-lg font-bold leading-none ${isSelected && !isHighlighted ? 'text-white' : 'text-link dark:text-blue-400'}`}>
-                                {currentBalance.toFixed(0)} <span className={`text-[10px] opacity-60 font-sans ${isSelected && !isHighlighted ? 'text-white' : ''}`}>{item.unit || 'PCS'}</span>
+                            <span className={`text-[10px] font-medium capitalize tracking-tighter ${isSelected ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'}`}>Hsn: {item.hsn || 'N/A'}</span>
+                            <span className={`font-mono text-lg font-bold leading-none ${isSelected ? 'text-white' : 'text-blue-600 dark:text-blue-400'}`}>
+                                {currentBalance.toFixed(0)} <span className={`text-[10px] opacity-75 font-sans ${isSelected ? 'text-white' : ''}`}>{item.unit || 'PCS'}</span>
                             </span>
                         </div>
                     </div>
@@ -400,35 +409,35 @@ const Stock = () => {
                     <h4 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest flex items-center">
                         <History className="w-4 h-4 mr-2 text-slate-300 dark:text-slate-600" /> Stock Movement Log
                     </h4>
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-x-auto bg-white dark:bg-slate-900 shadow-sm">
-                        <table className="clean-table min-w-[600px]">
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-2xs">
+                        <table className="w-full text-left border-collapse min-w-[600px]">
                         <thead>
-                            <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-medium text-slate-400 dark:text-slate-500 capitalize tracking-widest border-b border-slate-200 dark:border-slate-800">
-                                <th className="font-medium capitalize">Date</th>
-                                <th className="font-medium capitalize">Voucher #</th>
-                                <th className="font-medium capitalize">Type</th>
-                                <th className="font-medium capitalize">Party</th>
-                                <th className="text-right font-medium capitalize">Quantity</th>
+                            <tr className="bg-[#F8FAFC] dark:bg-slate-800/60 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200/80 dark:border-slate-800">
+                                <th className="py-3.5 px-6">Date</th>
+                                <th className="py-3.5 px-6">Voucher #</th>
+                                <th className="py-3.5 px-6">Type</th>
+                                <th className="py-3.5 px-6">Party</th>
+                                <th className="py-3.5 px-6 text-right">Quantity</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm">
                             {itemStats.transactions.map((t, idx) => (
-                                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-none">
-                                    <td className="text-slate-500 dark:text-slate-400 font-medium">{formatDate(t.date)}</td>
-                                    <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{t.docNo}</td>
-                                    <td>
-                                        <span className={`text-[9px] font-medium capitalize px-2 py-0.5 rounded-sm ${t.type === 'Sale' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
+                                <tr key={idx} className="border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                                    <td className="py-4 px-6 text-slate-700 dark:text-slate-300 font-mono text-sm">{formatDate(t.date)}</td>
+                                    <td className="py-4 px-6 font-mono text-sm text-slate-700 dark:text-slate-300">{t.docNo}</td>
+                                    <td className="py-4 px-6 whitespace-nowrap">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${t.type === 'Sale' ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300' : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'}`}>
                                             {t.type}
                                         </span>
                                     </td>
-                                    <td className="capitalize font-medium text-slate-700 dark:text-slate-300 truncate max-w-[200px]">{t.party}</td>
-                                    <td className={`text-right font-bold font-mono ${t.type === 'Purchase' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                    <td className="py-4 px-6 font-bold text-slate-900 dark:text-white capitalize truncate max-w-[200px]">{t.party}</td>
+                                    <td className={`py-4 px-6 text-right font-bold font-mono text-base tabular-nums ${t.type === 'Purchase' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                         {t.type === 'Purchase' ? '+' : '-'}{t.qty}
                                     </td>
                                 </tr>
                             ))}
                             {itemStats.transactions.length === 0 && (
-                                <tr><td colSpan={5} className="py-24 text-center text-slate-300 dark:text-slate-700 italic">No inventory activity registered for this SKU.</td></tr>
+                                <tr><td colSpan={5} className="py-24 text-center text-slate-400 italic text-sm">No inventory activity registered for this SKU.</td></tr>
                             )}
                         </tbody>
                         </table>

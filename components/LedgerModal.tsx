@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, ArrowUpRight, ArrowDownLeft, Calculator, Printer, History, Loader2 } from 'lucide-react';
-import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
+import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill, getEffectiveCompanyInfo, isTransactionForParty } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 
 interface LedgerModalProps {
@@ -85,36 +85,51 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
     if (!party || !cid) return;
     setLoading(true);
     try {
-      // Fetch company details
-      const { data: company } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('id', cid)
-        .single();
+      const partyId = party.id ? String(party.id) : null;
+
+      // Fetch company details and latest party master (to ensure full alias/previous_names awareness)
+      const [{ data: company }, { data: freshParty }] = await Promise.all([
+        supabase.from('companies').select('*').eq('id', cid).single(),
+        partyId ? supabase.from('vendors').select('*').eq('id', partyId).single() : Promise.resolve({ data: null })
+      ]);
+
+      const activePartyRecord = freshParty || party;
+
       if (company) {
-        setCompanyInfo(company);
+        const effective = getEffectiveCompanyInfo(company);
+        setCompanyInfo({
+          ...company,
+          name: effective.name,
+          gstin: effective.gstin,
+          address: effective.address
+        });
       }
 
-      const { data: voucherData } = await supabase
-        .from('purchase_bills')
-        .select('*')
-        .eq('company_id', cid)
-        .eq('is_deleted', false);
-      
-      const { data: salesData } = await supabase
-        .from('sales_invoices')
-        .select('*')
-        .eq('company_id', cid)
-        .eq('is_deleted', false);
+      const [{ data: voucherData }, { data: salesData }] = await Promise.all([
+        supabase.from('purchase_bills').select('*').eq('company_id', cid).eq('is_deleted', false),
+        supabase.from('sales_invoices').select('*').eq('company_id', cid).eq('is_deleted', false)
+      ]);
 
       const allVouchers = [
         ...(voucherData || []).map((v: any) => ({ ...normalizeBill(v), source: 'purchase_bills' })),
         ...(salesData || []).map((v: any) => ({ ...normalizeBill(v), source: 'sales_invoices' }))
-      ];
+      ].filter(Boolean);
 
+      // Primary: Match strictly by permanent Party ID and historical linkages
       const partyTransactions = allVouchers.filter((v: any) => 
-        v.vendor_name?.toLowerCase().trim() === party.name?.toLowerCase().trim()
+        isTransactionForParty(v, activePartyRecord)
       );
+
+      // Auto-heal unlinked transactions so they permanently carry the party ID
+      if (partyId) {
+        for (const tx of partyTransactions) {
+          if (!tx.party_id && tx.id && tx.source) {
+            const table = tx.source === 'purchase_bills' ? 'purchase_bills' : 'sales_invoices';
+            const col = tx.source === 'purchase_bills' ? 'vendor_id' : 'customer_id';
+            supabase.from(table).update({ party_id: partyId, [col]: partyId }).eq('id', tx.id).then();
+          }
+        }
+      }
 
       setTransactions(partyTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     } catch (error) {

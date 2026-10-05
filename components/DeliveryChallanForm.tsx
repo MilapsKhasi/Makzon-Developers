@@ -480,30 +480,46 @@ export const DeliveryChallanForm: React.FC<DeliveryChallanFormProps> = ({
         return;
       }
 
+      const trimmedParty = partyName.trim().toUpperCase();
+      const matchedParty = parties.find(p => p.name?.trim().toUpperCase() === trimmedParty);
+      const partyId = matchedParty?.id || initialData?.party_id || initialData?.customer_id || null;
+
       // Auto register party & stock items
-      await ensureParty(partyName, 'customer', cid);
+      await ensureParty(trimmedParty, 'customer', cid, partyId || undefined);
       await ensureStockItems(validItems, cid);
 
       const itemsPayload = {
+        party_id: partyId,
+        customer_id: partyId,
         is_delivery_challan: true,
         vehicle_no: vehicleNo.trim(),
         driver_name: driverName.trim(),
         eway_bill_no: ewayBillNo.trim(),
         dispatch_destination: dispatchDestination.trim(),
-        line_items: validItems.map(i => ({
-          item_name: i.item_name,
-          hsn: i.hsn,
-          quantity: Number(i.quantity) || 0,
-          unit: i.unit,
-          rate: Number(i.rate) || 0,
-          tax_rate: 0,
-          amount: Number(i.amount) || 0
-        }))
+        line_items: validItems.map(i => {
+          const matchedStock = stockItemsList.find(s => s.name?.trim().toUpperCase() === (i.item_name || '').trim().toUpperCase());
+          const itemId = i.item_id || i.itemId || matchedStock?.id || null;
+          return {
+            item_id: itemId,
+            itemId: itemId,
+            stock_item_id: itemId,
+            item_name: i.item_name,
+            itemName: i.item_name,
+            hsn: i.hsn,
+            quantity: Number(i.quantity) || 0,
+            unit: i.unit,
+            rate: Number(i.rate) || 0,
+            tax_rate: 0,
+            amount: Number(i.amount) || 0
+          };
+        })
       };
 
       const payload = {
         company_id: cid,
-        customer_name: partyName.trim(),
+        party_id: partyId,
+        customer_id: partyId,
+        customer_name: trimmedParty,
         challan_number: challanNumber.trim(),
         invoice_number: challanNumber.trim(),
         date: date,

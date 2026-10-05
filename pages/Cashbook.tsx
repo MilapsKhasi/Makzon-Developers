@@ -8,10 +8,12 @@ import EmptyState from '../components/EmptyState';
 import { exportToCSV } from '../utils/exportHelper';
 import { useCompany } from '../context/CompanyContext';
 import { useLicense } from '../context/LicenseContext';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 const Cashbook = () => {
   const { activeCompany, loading: companyLoading } = useCompany();
   const { isReadOnly } = useLicense();
+  const { verifyAction } = useSecurityDemo();
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewState, setViewState] = useState<'list' | 'entry'>('list');
@@ -82,29 +84,32 @@ const Cashbook = () => {
 
   const handleExportCSV = async () => {
     if (!activeCompany?.id || entries.length === 0) return;
-    setExporting(true);
-    try {
-      const headers = ['Sr', 'Stmt Date', 'Income', 'Expense', 'Balance'];
-      const rows = entries.map((e, i) => [
-        i + 1,
-        formatDate(e.date),
-        (Number(e.income_total) || 0).toFixed(2),
-        (Number(e.expense_total) || 0).toFixed(2),
-        (Number(e.balance) || 0).toFixed(2)
-      ]);
-      const config = {
-        companyName: activeCompany.name || 'Cashbook Report',
-        gstin: activeCompany.gstin || 'N/A',
-        email: '', phone: '', address: activeCompany.address || 'N/A',
-        reportTitle: 'Cashbook Register',
-        dateRange: 'Full History'
-      };
-      exportToCSV(headers, rows, config);
-    } catch (err) {
-      alert("Export Failed.");
-    } finally {
-      setExporting(false);
-    }
+
+    verifyAction('Export Data', async () => {
+      setExporting(true);
+      try {
+        const headers = ['Sr', 'Stmt Date', 'Income', 'Expense', 'Balance'];
+        const rows = entries.map((e, i) => [
+          i + 1,
+          formatDate(e.date),
+          (Number(e.income_total) || 0).toFixed(2),
+          (Number(e.expense_total) || 0).toFixed(2),
+          (Number(e.balance) || 0).toFixed(2)
+        ]);
+        const config = {
+          companyName: activeCompany.name || 'Cashbook Report',
+          gstin: activeCompany.gstin || 'N/A',
+          email: '', phone: '', address: activeCompany.address || 'N/A',
+          reportTitle: 'Cashbook Register',
+          dateRange: 'Full History'
+        };
+        exportToCSV(headers, rows, config);
+      } catch (err) {
+        alert("Export Failed.");
+      } finally {
+        setExporting(false);
+      }
+    });
   };
 
   const handleSaveSheet = async (data: any) => {
@@ -143,13 +148,16 @@ const Cashbook = () => {
   const deleteEntry = async (id: string) => {
       if (isReadOnly) return;
       if (!confirm("Permanently delete this?")) return;
-      setLoading(true);
-      try {
-        await supabase.from('cashbooks').update({ is_deleted: true }).eq('id', id);
-        await loadData();
-      } finally {
-        setLoading(false);
-      }
+
+      verifyAction('Delete Cashbook Entry', async () => {
+        setLoading(true);
+        try {
+          await supabase.from('cashbooks').update({ is_deleted: true }).eq('id', id);
+          await loadData();
+        } finally {
+          setLoading(false);
+        }
+      });
   };
 
   if (companyLoading) return <div className="h-full flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -199,7 +207,7 @@ const Cashbook = () => {
 
         <div className="flex flex-wrap gap-2 justify-end w-full sm:w-auto">
           <button 
-            onClick={handleExportCSV}
+            onClick={() => verifyAction('Export Cashbook CSV', handleExportCSV)}
             disabled={exporting || entries.length === 0}
             className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all font-semibold flex items-center disabled:opacity-50 text-slate-700 dark:text-slate-300 shadow-xs cursor-pointer"
           >
@@ -207,7 +215,14 @@ const Cashbook = () => {
           </button>
           <button 
             disabled={isReadOnly}
-            onClick={() => { if (!isReadOnly) { setEditingEntry(null); setViewState('entry'); } }} 
+            onClick={() => {
+              if (!isReadOnly) {
+                verifyAction('Create Statement', () => {
+                  setEditingEntry(null);
+                  setViewState('entry');
+                });
+              }
+            }} 
             className={`px-5 py-2.5 rounded-md font-medium text-sm flex items-center shadow-sm ${
               isReadOnly
                 ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
@@ -225,7 +240,14 @@ const Cashbook = () => {
           title="No Records" 
           message="No cashbook records found." 
           actionLabel={isReadOnly ? undefined : "Create Statement"} 
-          onAction={() => { if (!isReadOnly) { setEditingEntry(null); setViewState('entry'); } }} 
+          onAction={() => {
+            if (!isReadOnly) {
+              verifyAction('Create Statement', () => {
+                setEditingEntry(null);
+                setViewState('entry');
+              });
+            }
+          }} 
         />
       ) : (
         <>
@@ -256,46 +278,46 @@ const Cashbook = () => {
                 />
                 </div>
 
-                <div className="border border-slate-200 dark:border-slate-700 rounded-md overflow-x-auto bg-white dark:bg-slate-900 shadow-sm">
+                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-2xs">
                 <table className="w-full text-left text-sm border-collapse min-w-[800px]">
                     <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                        <th className="w-16 py-4 px-6 text-center border-r border-slate-100 dark:border-slate-800">Sr</th>
-                        <th className="py-4 px-6 border-r border-slate-100 dark:border-slate-800">Statement Date</th>
-                        <th className="text-right py-4 px-6 border-r border-slate-100 dark:border-slate-800">Income</th>
-                        <th className="text-right py-4 px-6 border-r border-slate-100 dark:border-slate-800">Expense</th>
-                        <th className="text-right py-4 px-6 border-r border-slate-100 dark:border-slate-800">Balance</th>
-                        <th className="text-center py-4 px-6">Manage</th>
+                    <tr className="bg-[#F8FAFC] dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        <th className="w-16 py-3.5 px-6 text-center">Sr</th>
+                        <th className="py-3.5 px-6">Statement Date</th>
+                        <th className="text-right py-3.5 px-6">Income</th>
+                        <th className="text-right py-3.5 px-6">Expense</th>
+                        <th className="text-right py-3.5 px-6">Balance</th>
+                        <th className="text-center py-3.5 px-6 w-24">Manage</th>
                     </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm">
                     {loading ? (
                         <tr><td colSpan={6} className="text-center py-20 text-slate-400 dark:text-slate-500 text-xs uppercase font-bold">Loading...</td></tr>
                     ) : filteredEntries.map((e, i) => (
-                        <tr key={e.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                        <td className="py-3 px-6 text-center border-r border-slate-100 dark:border-slate-800 font-mono text-slate-400 dark:text-slate-500">{i + 1}</td>
-                        <td className="py-3 px-6 border-r border-slate-100 dark:border-slate-800">
-                            <div className="flex items-center text-slate-700 dark:text-slate-300 font-bold">
-                            <Calendar className="w-3.5 h-3.5 mr-2 text-slate-300 dark:text-slate-600" />
+                        <tr key={e.id} className="border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-4 px-6 text-center font-mono text-slate-400 dark:text-slate-500 text-xs">{i + 1}</td>
+                        <td className="py-4 px-6">
+                            <div className="flex items-center text-slate-900 dark:text-white font-bold">
+                            <Calendar className="w-4 h-4 mr-2 text-slate-400 dark:text-slate-500" />
                             {formatDate(e.date)}
                             </div>
                         </td>
-                        <td className="text-right py-3 px-6 border-r border-slate-100 dark:border-slate-800 font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                        <td className="text-right py-4 px-6 font-mono text-emerald-600 dark:text-emerald-400 font-bold text-base tabular-nums">
                             {formatCurrency(e.income_total, false)}
                         </td>
-                        <td className="text-right py-3 px-6 border-r border-slate-100 dark:border-slate-800 font-mono text-rose-600 dark:text-rose-400 font-bold">
+                        <td className="text-right py-4 px-6 font-mono text-rose-600 dark:text-rose-400 font-bold text-base tabular-nums">
                             {formatCurrency(e.expense_total, false)}
                         </td>
-                        <td className="text-right py-3 px-6 border-r border-slate-100 dark:border-slate-800 font-bold text-slate-900 dark:text-slate-100 font-mono">
+                        <td className="text-right py-4 px-6 font-bold text-slate-900 dark:text-white font-mono text-base tabular-nums">
                             {formatCurrency(e.balance, false)}
                         </td>
-                        <td className="text-center py-3 px-6">
+                        <td className="text-center py-4 px-6">
                             <div className="flex items-center justify-center space-x-2">
-                            <button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" title="View Statement"><Eye className="w-4 h-4" /></button>
+                            <button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-md transition-colors" title="View Statement"><Eye className="w-4 h-4" /></button>
                             {!isReadOnly && (
                               <>
-                                <button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" title="Edit Statement"><Edit className="w-4 h-4" /></button>
-                                <button onClick={() => deleteEntry(e.id)} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors" title="Delete Statement"><Trash2 className="w-4 h-4" /></button>
+                                <button onClick={() => { setEditingEntry(e); setViewState('entry'); }} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-md transition-colors" title="Edit Statement"><Edit className="w-4 h-4" /></button>
+                                <button onClick={() => deleteEntry(e.id)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-md transition-colors" title="Delete Statement"><Trash2 className="w-4 h-4" /></button>
                               </>
                             )}
                             </div>

@@ -11,10 +11,12 @@ import EmptyState from '../components/EmptyState';
 import { supabase } from '../lib/supabase';
 import { InvoicePrintModal } from '../components/InvoicePrintModal';
 import { useLicense } from '../context/LicenseContext';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 const Sales = () => {
   const location = useLocation();
   const { isReadOnly } = useLicense();
+  const { verifyAction } = useSecurityDemo();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -114,13 +116,17 @@ const Sales = () => {
 
   const confirmDelete = async () => {
     if (!deleteDialog.invoice) return;
-    const { error } = await supabase.from('sales_invoices').update({ is_deleted: true }).eq('id', deleteDialog.invoice.id);
-    if (!error) {
-        await unsyncTransactionFromCashbook(deleteDialog.invoice);
-        loadData();
-        window.dispatchEvent(new Event('appSettingsChanged'));
-    }
+    const inv = deleteDialog.invoice;
     setDeleteDialog({ isOpen: false, invoice: null });
+
+    verifyAction('Delete Sales Invoice', async () => {
+      const { error } = await supabase.from('sales_invoices').update({ is_deleted: true }).eq('id', inv.id);
+      if (!error) {
+          await unsyncTransactionFromCashbook(inv);
+          loadData();
+          window.dispatchEvent(new Event('appSettingsChanged'));
+      }
+    });
   };
 
   useEffect(() => {
@@ -235,7 +241,14 @@ const Sales = () => {
         <button
           ref={newSaleBtnRef}
           disabled={isReadOnly}
-          onClick={() => { if (!isReadOnly) { setEditingInvoice(null); setIsModalOpen(true); } }}
+          onClick={() => {
+            if (!isReadOnly) {
+              verifyAction('Create Sales Invoice', () => {
+                setEditingInvoice(null);
+                setIsModalOpen(true);
+              });
+            }
+          }}
           className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
             isReadOnly
               ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
@@ -289,21 +302,21 @@ const Sales = () => {
             onAction={() => { setEditingInvoice(null); setIsModalOpen(true); }} 
           />
         ) : (
-          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-lg">
+          <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-2xs">
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  <th className="py-3.5 px-4 w-12">Sr</th>
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Invoice #</th>
-                  <th className="py-3.5 px-4">Customer</th>
-                  <th className="py-3.5 px-4 text-right">Taxable</th>
-                  <th className="py-3.5 px-4 text-right">GST</th>
-                  <th className="py-3.5 px-4 text-right">Net Total</th>
-                  <th className="py-3.5 px-4 text-center w-24">Actions</th>
+                <tr className="bg-[#F8FAFC] dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-6 w-12 text-center">Sr</th>
+                  <th className="py-3.5 px-6">Date</th>
+                  <th className="py-3.5 px-6">Invoice #</th>
+                  <th className="py-3.5 px-6">Customer</th>
+                  <th className="py-3.5 px-6 text-right">Taxable</th>
+                  <th className="py-3.5 px-6 text-right">GST</th>
+                  <th className="py-3.5 px-6 text-right">Net Total</th>
+                  <th className="py-3.5 px-6 text-center w-24">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[12px] text-slate-700 dark:text-slate-300">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm text-slate-700 dark:text-slate-300">
                 {filtered.map((inv, i) => {
                   const isHighlighted = inv.id === highlightedId;
                   return (
@@ -314,34 +327,38 @@ const Sales = () => {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                       }}
-                      className={`transition-all cursor-pointer ${
+                      className={`border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer ${
                         isHighlighted
-                          ? 'bg-amber-100/90 dark:bg-amber-950/60 border-l-4 border-amber-500 ring-2 ring-amber-400/60 shadow-md font-semibold'
+                          ? 'bg-amber-50/80 dark:bg-amber-950/40 font-semibold'
                           : selectedRowIdx === i 
-                            ? 'bg-slate-50 dark:bg-slate-800 border-l-4 border-primary font-medium' 
-                            : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
+                            ? 'bg-blue-50/50 dark:bg-blue-950/20' 
+                            : ''
                       }`}
                       onClick={() => { setSelectedRowIdx(i); setHighlightedId(inv.id); }}
                     >
-                      <td className="py-3 px-4 text-slate-400 font-mono">{i + 1}</td>
-                      <td className="py-3 px-4 font-mono">{formatDate(inv.date)}</td>
-                      <td className="py-3 px-4 font-mono font-semibold text-slate-900 dark:text-white">{inv.bill_number}</td>
-                      <td className="py-3 px-4 font-medium text-slate-900 dark:text-white capitalize">{inv.vendor_name}</td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400">{formatCurrency(inv.total_without_gst)}</td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400">{formatCurrency(inv.total_gst)}</td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">{formatCurrency(inv.grand_total)}</td>
-                      <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-4 px-6 text-center text-slate-400 font-mono text-xs">{i + 1}</td>
+                      <td className="py-4 px-6 font-mono text-sm">{formatDate(inv.date)}</td>
+                      <td className="py-4 px-6 font-mono text-sm text-slate-700 dark:text-slate-300">{inv.bill_number}</td>
+                      <td className="py-4 px-6 font-bold text-slate-900 dark:text-white capitalize text-sm">{inv.vendor_name}</td>
+                      <td className="py-4 px-6 text-right font-mono text-slate-600 dark:text-slate-400 text-sm">{formatCurrency(inv.total_without_gst)}</td>
+                      <td className="py-4 px-6 text-right font-mono text-slate-600 dark:text-slate-400 text-sm">{formatCurrency(inv.total_gst)}</td>
+                      <td className="py-4 px-6 text-right font-mono font-bold text-slate-900 dark:text-white text-base tabular-nums">{formatCurrency(inv.grand_total)}</td>
+                      <td className="py-4 px-6 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center space-x-1">
-                          <button onClick={() => setPrintModalInvoice(inv)} className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded transition-colors" title="Print Invoice">
-                            <Printer className="w-3.5 h-3.5" />
+                          <button
+                            onClick={() => verifyAction('Print Invoice', () => setPrintModalInvoice(inv))}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-md transition-colors cursor-pointer"
+                            title="Print Invoice"
+                          >
+                            <Printer className="w-4 h-4" />
                           </button>
                           {!isReadOnly && (
                             <>
-                              <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-1 text-slate-400 hover:text-primary rounded transition-colors" title="Edit Invoice">
-                                <Edit className="w-3.5 h-3.5" />
+                              <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-primary rounded-md transition-colors" title="Edit Invoice">
+                                <Edit className="w-4 h-4" />
                               </button>
-                              <button onClick={() => setDeleteDialog({ isOpen: true, invoice: inv })} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors" title="Delete Invoice">
-                                <Trash2 className="w-3.5 h-3.5" />
+                              <button onClick={() => verifyAction('Delete Invoice', () => setDeleteDialog({ isOpen: true, invoice: inv }))} className="p-1.5 text-slate-400 hover:text-red-500 rounded-md transition-colors cursor-pointer" title="Delete Invoice">
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </>
                           )}

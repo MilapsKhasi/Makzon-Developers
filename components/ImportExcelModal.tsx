@@ -9,6 +9,7 @@ import Modal from './Modal';
 import { getActiveCompanyId, safeSupabaseSave, toStorageValue } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import { useLicense } from '../context/LicenseContext';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 interface ImportExcelModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ interface ConflictItem {
 
 export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { isReadOnly } = useLicense();
+  const { verifyAction } = useSecurityDemo();
   const [activeTab, setActiveTab] = useState<TabType>('customers');
   const [file, setFile] = useState<File | null>(null);
   const [parsedHeaders, setParsedHeaders] = useState<string[]>([]);
@@ -665,10 +667,12 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
       return;
     }
     if (parsedRows.length === 0) return;
-    setLoading(true);
-    setErrorMsg('');
 
-    try {
+    verifyAction('Import Data', async () => {
+      setLoading(true);
+      setErrorMsg('');
+
+      try {
       const cid = getActiveCompanyId();
       if (!cid) throw new Error("No active workspace selected.");
 
@@ -867,6 +871,7 @@ export const ImportExcelModal: React.FC<ImportExcelModalProps> = ({ isOpen, onCl
     } finally {
       setLoading(false);
     }
+    });
   };
 
   const tabs: { id: TabType; label: string; icon: any }[] = [

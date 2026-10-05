@@ -1,14 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Edit, Trash2, Loader2, Download, ReceiptText, Plus, Printer } from 'lucide-react';
-import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
+import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill, enrichTransactionsWithMasterData } from '../utils/helpers';
 import Modal from '../components/Modal';
 import SalesInvoiceForm from '../components/SalesInvoiceForm';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { supabase } from '../lib/supabase';
 import { InvoicePrintModal } from '../components/InvoicePrintModal';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 const Invoices = () => {
+  const { verifyAction } = useSecurityDemo();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,19 +28,24 @@ const Invoices = () => {
     const cid = getActiveCompanyId();
     if (!cid) return;
     
-    const { data } = await supabase
+    const [{ data }, { data: partyList }, { data: stockList }] = await Promise.all([
+      supabase
         .from('sales_invoices')
         .select('*')
         .eq('company_id', cid)
         .eq('is_deleted', false)
-        .order('date', { ascending: false });
+        .order('date', { ascending: false }),
+      supabase.from('vendors').select('*').eq('company_id', cid),
+      supabase.from('stock_items').select('*').eq('company_id', cid)
+    ]);
 
     const mappedData = (data || []).map((item: any) => {
         const norm = normalizeBill(item);
         return norm ? { ...norm, type: 'Sale' } : null;
     }).filter(Boolean) as any[];
 
-    setInvoices(mappedData);
+    const enriched = enrichTransactionsWithMasterData(mappedData, partyList || [], stockList || []);
+    setInvoices(enriched);
     setLoading(false);
   };
 
@@ -48,8 +55,13 @@ const Invoices = () => {
 
   const confirmDelete = async () => {
     if (!deleteDialog.invoice) return;
-    const { error } = await supabase.from('sales_invoices').update({ is_deleted: true }).eq('id', deleteDialog.invoice.id);
-    if (!error) { loadData(); window.dispatchEvent(new Event('appSettingsChanged')); }
+    const invId = deleteDialog.invoice.id;
+    setDeleteDialog({ isOpen: false, invoice: null });
+
+    verifyAction('Delete Sales Invoice', async () => {
+      const { error } = await supabase.from('sales_invoices').update({ is_deleted: true }).eq('id', invId);
+      if (!error) { loadData(); window.dispatchEvent(new Event('appSettingsChanged')); }
+    });
   };
 
   const filtered = invoices.filter(i => {
@@ -72,7 +84,7 @@ const Invoices = () => {
           <h1 className="text-xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Sales Invoice Register</h1>
         </div>
         <div className="flex items-center">
-          <button onClick={() => { setEditingInvoice(null); setIsModalOpen(true); }} className="bg-primary text-white px-6 sm:px-8 py-3 rounded-lg font-bold text-sm border border-primary hover:bg-primary-dark shadow-md transition-all active:scale-95 flex items-center justify-center w-full sm:w-auto">
+          <button onClick={() => verifyAction('Create Sales Invoice', () => { setEditingInvoice(null); setIsModalOpen(true); })} className="bg-primary text-white px-6 sm:px-8 py-3 rounded-lg font-bold text-sm border border-primary hover:bg-primary-dark shadow-md transition-all active:scale-95 flex items-center justify-center w-full sm:w-auto cursor-pointer">
             <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5 mr-2" /> Generate Sales Invoice
           </button>
         </div>
@@ -107,9 +119,9 @@ const Invoices = () => {
                     <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 text-right font-bold text-slate-900 dark:text-slate-100 text-lg">{formatCurrency(inv.grand_total)}</td>
                     <td className="py-5 px-8 text-center">
                       <div className="flex justify-center space-x-3 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setPrintModalInvoice(inv)} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all" title="Print Invoice"><Printer className="w-5 h-5" /></button>
+                          <button onClick={() => verifyAction('Print Invoice', () => setPrintModalInvoice(inv))} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all cursor-pointer" title="Print Invoice"><Printer className="w-5 h-5" /></button>
                           <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all" title="Edit Invoice"><Edit className="w-5 h-5" /></button>
-                          <button onClick={() => setDeleteDialog({ isOpen: true, invoice: inv })} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all" title="Delete Invoice"><Trash2 className="w-5 h-5" /></button>
+                          <button onClick={() => verifyAction('Delete Invoice', () => setDeleteDialog({ isOpen: true, invoice: inv }))} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all cursor-pointer" title="Delete Invoice"><Trash2 className="w-5 h-5" /></button>
                       </div>
                     </td>
                   </tr>

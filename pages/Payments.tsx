@@ -8,6 +8,7 @@ import EmptyState from '../components/EmptyState';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { supabase } from '../lib/supabase';
 import { useLicense } from '../context/LicenseContext';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 interface Voucher {
   id: string;
@@ -29,6 +30,7 @@ interface PaymentsProps {
 const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
   const location = useLocation();
   const { isReadOnly } = useLicense();
+  const { verifyAction } = useSecurityDemo();
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalReceivables, setTotalReceivables] = useState(0);
@@ -531,7 +533,9 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
   };
 
   const handleDeleteVoucher = (voucher: Voucher) => {
-    setDeleteDialog({ isOpen: true, voucher });
+    verifyAction('Delete Voucher', () => {
+      setDeleteDialog({ isOpen: true, voucher });
+    });
   };
 
   const confirmDelete = async () => {
@@ -636,7 +640,14 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
         </div>
         <button
           disabled={isReadOnly}
-          onClick={() => { if (!isReadOnly) { resetForm(); setIsModalOpen(true); } }}
+          onClick={() => {
+            if (!isReadOnly) {
+              verifyAction('Create ' + newButtonLabel, () => {
+                resetForm();
+                setIsModalOpen(true);
+              });
+            }
+          }}
           className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
             isReadOnly
               ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
@@ -775,21 +786,21 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
             }
           />
         ) : (
-          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-lg">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-2xs">
+            <table className="w-full text-left border-collapse min-w-[850px]">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Voucher No</th>
-                  {!typeFilter && <th className="py-3.5 px-4">Type</th>}
-                  <th className="py-3.5 px-4">Account (Bank/Cash)</th>
-                  <th className="py-3.5 px-4">{partyColumnHeader}</th>
-                  <th className="py-3.5 px-4 text-right">Amount</th>
-                  <th className="py-3.5 px-4">Narration</th>
-                  <th className="py-3.5 px-4 text-center w-20">Actions</th>
+                <tr className="bg-[#F8FAFC] dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-6">Date</th>
+                  <th className="py-3.5 px-6">Voucher No</th>
+                  {!typeFilter && <th className="py-3.5 px-6">Type</th>}
+                  <th className="py-3.5 px-6">Account (Bank/Cash)</th>
+                  <th className="py-3.5 px-6">{partyColumnHeader}</th>
+                  <th className="py-3.5 px-6 text-right">Amount</th>
+                  <th className="py-3.5 px-6">Narration</th>
+                  <th className="py-3.5 px-6 text-center w-24">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[12px] text-slate-700 dark:text-slate-300">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm text-slate-700 dark:text-slate-300">
                 {filteredVouchers.map((voucher) => {
                   const isHighlighted = voucher.id === highlightedId;
                   return (
@@ -800,36 +811,40 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                       }}
-                      className={`transition-all cursor-pointer ${
+                      className={`border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer ${
                         isHighlighted
-                          ? 'bg-amber-100/90 dark:bg-amber-950/60 border-l-4 border-amber-500 ring-2 ring-amber-400/60 shadow-md font-semibold'
-                          : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
+                          ? 'bg-amber-50/80 dark:bg-amber-950/40 font-semibold'
+                          : ''
                       }`}
                       onClick={() => setHighlightedId(voucher.id)}
                     >
-                      <td className="py-3 px-4 font-mono">{formatDate(voucher.date)}</td>
-                      <td className="py-3 px-4 font-semibold font-mono">{voucher.voucher_no}</td>
+                      <td className="py-4 px-6 font-mono text-sm text-slate-700 dark:text-slate-300">{formatDate(voucher.date)}</td>
+                      <td className="py-4 px-6 font-semibold font-mono text-sm text-slate-900 dark:text-white">{voucher.voucher_no}</td>
                       {!typeFilter && (
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${voucher.type === 'Receipt' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400'}`}>
+                        <td className="py-4 px-6 whitespace-nowrap">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
+                            voucher.type === 'Receipt' 
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-900/40' 
+                              : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-200/60 dark:border-rose-900/40'
+                          }`}>
                             {voucher.type === 'Receipt' ? (
-                              <ArrowDownCircle className="w-3 h-3 mr-1 shrink-0" />
+                              <ArrowDownCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             ) : (
-                              <ArrowUpCircle className="w-3 h-3 mr-1 shrink-0" />
+                              <ArrowUpCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
                             )}
                             {voucher.type}
                           </span>
                         </td>
                       )}
-                      <td className="py-3 px-4 capitalize">{voucher.account}</td>
-                      <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">{voucher.party_name}</td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">
+                      <td className="py-4 px-6 capitalize text-slate-700 dark:text-slate-300">{voucher.account}</td>
+                      <td className="py-4 px-6 font-bold text-slate-900 dark:text-white capitalize">{voucher.party_name}</td>
+                      <td className="py-4 px-6 text-right font-mono font-bold text-slate-900 dark:text-white text-base tabular-nums">
                         {formatCurrency(voucher.amount)}
                       </td>
-                      <td className="py-3 px-4 text-slate-400 max-w-xs truncate" title={voucher.description}>
-                        {voucher.description}
+                      <td className="py-4 px-6 text-slate-400 max-w-xs truncate text-xs" title={voucher.description}>
+                        {voucher.description || '—'}
                       </td>
-                      <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-4 px-6 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center space-x-1">
                           {!isReadOnly ? (
                             <>

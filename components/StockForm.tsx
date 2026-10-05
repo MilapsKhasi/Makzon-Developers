@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Package, Tag, Box, Hash, Scale, X, Loader2, FileText } from 'lucide-react';
+import { Save, Package, Tag, Box, Hash, Scale, X, Loader2, FileText, Fingerprint } from 'lucide-react';
 import { toDisplayValue, toStorageValue, getAppSettings, CURRENCIES, getActiveCompanyId } from '../utils/helpers';
 import { recordActivity } from '../utils/activityTracker';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { getDraft, saveDraft, clearDraft } from '../utils/draftManager';
+import { createNewMasterId, updateMasterIdOnEdit } from '../utils/masterIdHelper';
 
 interface StockFormProps {
   initialData?: any;
@@ -87,15 +88,88 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel, 
         const user = await getAuthUser();
         if (user) recordActivity(user.id, user.email || '');
 
+        const oldName = initialData?.name ? initialData.name.trim().toUpperCase() : null;
+        const newName = formData.name.trim().toUpperCase();
+
+        const existingPrevNames: string[] = Array.isArray(initialData?.previous_names) ? initialData.previous_names : [];
+        const updatedPrevNames = oldName && oldName !== newName && !existingPrevNames.includes(oldName)
+          ? [...existingPrevNames, oldName]
+          : existingPrevNames;
+
+        let finalMasterId = initialData?.master_id;
+        if (finalMasterId) {
+          finalMasterId = updateMasterIdOnEdit(finalMasterId);
+        } else if (cid) {
+          finalMasterId = await createNewMasterId(cid, 'stock_items');
+        }
+
         const storageData = { 
           ...formData, 
-          name: formData.name.trim().toUpperCase(),
+          ...(initialData?.id ? { id: initialData.id } : {}),
+          master_id: finalMasterId,
+          previous_names: updatedPrevNames,
+          name: newName,
           rate: toStorageValue(formData.rate), 
           selling_price: toStorageValue(formData.selling_price),
           in_stock: toStorageValue(formData.in_stock),
           kg_per_bag: toStorageValue(formData.kg_per_bag)
         };
         await onSubmit(storageData, isSaveAndNew);
+
+        // If editing an existing item, ensure historical vouchers line_items are stamped with item_id
+        if (initialData?.id && cid) {
+          try {
+            const [{ data: salesInvs }, { data: purchBills }] = await Promise.all([
+              supabase.from('sales_invoices').select('*').eq('company_id', cid).eq('is_deleted', false),
+              supabase.from('purchase_bills').select('*').eq('company_id', cid).eq('is_deleted', false)
+            ]);
+
+            for (const inv of (salesInvs || [])) {
+              if (inv.items) {
+                const isWrapped = inv.items && typeof inv.items === 'object' && Array.isArray(inv.items.line_items);
+                const lineItems: any[] = isWrapped ? inv.items.line_items : (Array.isArray(inv.items) ? inv.items : []);
+                let modified = false;
+                const updated = lineItems.map((li: any) => {
+                  const liItemId = li.item_id || li.itemId;
+                  const liName = (li.itemName || li.item_name || '').trim().toUpperCase();
+                  if ((liItemId && String(liItemId) === String(initialData.id)) || (oldName && liName === oldName)) {
+                    modified = true;
+                    return { ...li, item_id: initialData.id, itemId: initialData.id, stock_item_id: initialData.id };
+                  }
+                  return li;
+                });
+                if (modified) {
+                  const payloadItems = isWrapped ? { ...inv.items, line_items: updated } : updated;
+                  await supabase.from('sales_invoices').update({ items: payloadItems }).eq('id', inv.id);
+                }
+              }
+            }
+
+            for (const bill of (purchBills || [])) {
+              if (bill.items) {
+                const isWrapped = bill.items && typeof bill.items === 'object' && Array.isArray(bill.items.line_items);
+                const lineItems: any[] = isWrapped ? bill.items.line_items : (Array.isArray(bill.items) ? bill.items : []);
+                let modified = false;
+                const updated = lineItems.map((li: any) => {
+                  const liItemId = li.item_id || li.itemId;
+                  const liName = (li.itemName || li.item_name || '').trim().toUpperCase();
+                  if ((liItemId && String(liItemId) === String(initialData.id)) || (oldName && liName === oldName)) {
+                    modified = true;
+                    return { ...li, item_id: initialData.id, itemId: initialData.id, stock_item_id: initialData.id };
+                  }
+                  return li;
+                });
+                if (modified) {
+                  const payloadItems = isWrapped ? { ...bill.items, line_items: updated } : updated;
+                  await supabase.from('purchase_bills').update({ items: payloadItems }).eq('id', bill.id);
+                }
+              }
+            }
+          } catch (stkErr) {
+            console.warn('Error linking historical stock line items:', stkErr);
+          }
+        }
+
         clearDraft(draftKey);
         setIsDraftRestored(false);
         if (isSaveAndNew) {
@@ -153,6 +227,15 @@ const StockForm: React.FC<StockFormProps> = ({ initialData, onSubmit, onCancel, 
         )}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-8 bg-white dark:bg-slate-900 custom-scrollbar">
             <div className="space-y-6">
+                {initialData?.master_id && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Master ID:</span>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold bg-primary/10 text-primary border border-primary/20">
+                      <Fingerprint className="w-3 h-3 mr-1" />
+                      {initialData.master_id}
+                    </span>
+                  </div>
+                )}
                 <div className="space-y-1.5">
                     <label className="text-[14px] font-normal text-slate-900 dark:text-slate-300">Item / Product Name</label>
                     <input 

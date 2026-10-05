@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Trash2, Filter, ChevronDown, Loader2, ShoppingBag, Plus } from 'lucide-react';
+import { Search, Edit, Trash2, Filter, ChevronDown, Loader2, ShoppingBag, Plus, CheckCircle2, Clock } from 'lucide-react';
 import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { supabase } from '../lib/supabase';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 const Purchases = () => {
+  const { verifyAction } = useSecurityDemo();
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
@@ -68,9 +70,14 @@ const Purchases = () => {
 
   const confirmDelete = async () => {
     if (!deleteDialog.bill) return;
-    const { error } = await supabase.from('purchase_bills').update({ is_deleted: true }).eq('id', deleteDialog.bill.id);
-    if (error) alert('Error deleting: ' + error.message);
-    else loadData();
+    const billId = deleteDialog.bill.id;
+    setDeleteDialog({ isOpen: false, bill: null });
+
+    verifyAction('Delete Purchase Bill', async () => {
+      const { error } = await supabase.from('purchase_bills').update({ is_deleted: true }).eq('id', billId);
+      if (error) alert('Error deleting: ' + error.message);
+      else loadData();
+    });
   };
 
   const filtered = bills.filter(b => {
@@ -105,7 +112,7 @@ const Purchases = () => {
           </div>
         </div>
         <button
-          onClick={() => { setEditingBill(null); setIsModalOpen(true); }}
+          onClick={() => verifyAction('Create Purchase Bill', () => { setEditingBill(null); setIsModalOpen(true); })}
           className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
         >
           <Plus className="w-4 h-4 mr-2" /> New Purchase
@@ -169,36 +176,44 @@ const Purchases = () => {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-lg">
+          <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-2xs">
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Bill No</th>
-                  <th className="py-3.5 px-4">Vendor Name</th>
-                  <th className="py-3.5 px-4 text-right">Taxable</th>
-                  <th className="py-3.5 px-4 text-right">Grand Total</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                  <th className="py-3.5 px-4 text-center w-20">Actions</th>
+                <tr className="bg-[#F8FAFC] dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-6">Date</th>
+                  <th className="py-3.5 px-6">Bill No</th>
+                  <th className="py-3.5 px-6">Vendor Name</th>
+                  <th className="py-3.5 px-6 text-right">Taxable</th>
+                  <th className="py-3.5 px-6 text-right">Grand Total</th>
+                  <th className="py-3.5 px-6 text-center">Status</th>
+                  <th className="py-3.5 px-6 text-center w-24">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[12px] text-slate-700 dark:text-slate-300">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm text-slate-700 dark:text-slate-300">
                 {filtered.map(b => (
-                  <tr key={b.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
-                    <td className="py-3 px-4 font-mono">{formatDate(b.date)}</td>
-                    <td className="py-3 px-4 font-mono font-semibold text-slate-900 dark:text-white">{b.bill_number}</td>
-                    <td className="py-3 px-4 font-medium text-slate-900 dark:text-white capitalize">{b.vendor_name}</td>
-                    <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400">{formatCurrency(b.total_without_gst)}</td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">{formatCurrency(b.grand_total)}</td>
-                    <td className="py-3 px-4 text-center">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${b.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-900/20 dark:text-rose-400'}`}>
-                        {b.status}
-                      </span>
+                  <tr key={b.id} className="border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="py-4 px-6 font-mono text-sm text-slate-700 dark:text-slate-300">{formatDate(b.date)}</td>
+                    <td className="py-4 px-6 font-mono text-sm text-slate-700 dark:text-slate-300">{b.bill_number}</td>
+                    <td className="py-4 px-6 font-bold text-slate-900 dark:text-white capitalize text-sm">{b.vendor_name}</td>
+                    <td className="py-4 px-6 text-right font-mono text-slate-600 dark:text-slate-400 text-sm">{formatCurrency(b.total_without_gst)}</td>
+                    <td className="py-4 px-6 text-right font-mono font-bold text-slate-900 dark:text-white text-base tabular-nums">{formatCurrency(b.grand_total)}</td>
+                    <td className="py-4 px-6 text-center whitespace-nowrap">
+                      {b.status === 'Paid' ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200/60 dark:border-emerald-900/40">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          Paid
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-xs font-semibold border border-amber-200/60 dark:border-amber-900/40">
+                          <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          Pending
+                        </span>
+                      )}
                     </td>
-                    <td className="py-3 px-4 text-center">
+                    <td className="py-4 px-6 text-center">
                       <div className="flex items-center justify-center space-x-1">
-                        <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="p-1 text-slate-400 hover:text-primary rounded transition-colors" title="Edit Bill"><Edit className="w-3.5 h-3.5" /></button>
-                        <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors" title="Delete Bill"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <button onClick={() => { setEditingBill(b); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-primary rounded-md transition-colors" title="Edit Bill"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => setDeleteDialog({ isOpen: true, bill: b })} className="p-1.5 text-slate-400 hover:text-red-500 rounded-md transition-colors" title="Delete Bill"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </td>
                   </tr>

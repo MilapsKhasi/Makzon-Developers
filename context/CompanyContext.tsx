@@ -3,11 +3,13 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { migrateCustomersToParties } from '../utils/partiesMigration';
 
-interface Company {
+export interface Company {
   id: string;
   name: string;
   gstin?: string;
   address?: string;
+  phone?: string;
+  partner_company_id?: string;
 }
 
 interface CompanyContextType {
@@ -18,6 +20,23 @@ interface CompanyContextType {
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
+
+const saveCompanyToStorage = (company: Company | null) => {
+  if (company) {
+    localStorage.setItem('activeCompanyId', company.id);
+    localStorage.setItem('activeCompanyName', company.name);
+    localStorage.setItem('activeCompanyGstin', company.gstin || '');
+    localStorage.setItem('activeCompanyAddress', company.address || '');
+    localStorage.setItem(`company_gstin_${company.id}`, company.gstin || '');
+    localStorage.setItem(`company_name_${company.id}`, company.name || '');
+    localStorage.setItem(`company_address_${company.id}`, company.address || '');
+  } else {
+    localStorage.removeItem('activeCompanyId');
+    localStorage.removeItem('activeCompanyName');
+    localStorage.removeItem('activeCompanyGstin');
+    localStorage.removeItem('activeCompanyAddress');
+  }
+};
 
 export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeCompany, setActiveCompany] = useState<Company | null>(null);
@@ -81,8 +100,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         if (company && (!isRealUser || company.id !== 'local-company-1')) {
           setActiveCompany(company);
-          localStorage.setItem('activeCompanyId', company.id);
-          localStorage.setItem('activeCompanyName', company.name);
+          saveCompanyToStorage(company);
           setLoading(false);
           return;
         }
@@ -102,15 +120,13 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (filtered.length > 0) {
         const firstComp = filtered[0];
         setActiveCompany(firstComp);
-        localStorage.setItem('activeCompanyId', firstComp.id);
-        localStorage.setItem('activeCompanyName', firstComp.name);
+        saveCompanyToStorage(firstComp);
         if (isRealUser) {
           await supabase.from('profiles').upsert({ id: session.user.id, active_company_id: firstComp.id });
         }
       } else {
         setActiveCompany(null);
-        localStorage.removeItem('activeCompanyId');
-        localStorage.removeItem('activeCompanyName');
+        saveCompanyToStorage(null);
       }
     } catch (err: any) {
       if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {
@@ -138,8 +154,7 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
         .from('profiles')
         .upsert({ id: session.user.id, active_company_id: company.id });
 
-      localStorage.setItem('activeCompanyId', company.id);
-      localStorage.setItem('activeCompanyName', company.name);
+      saveCompanyToStorage(company);
       setActiveCompany(company);
     } catch (err) {
       console.error("Context setCompany error:", err);
@@ -148,11 +163,17 @@ export const CompanyProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => {
     refresh();
+    const handleCompanyUpdate = () => refresh();
+    window.addEventListener('companyUpdated', handleCompanyUpdate);
+    return () => window.removeEventListener('companyUpdated', handleCompanyUpdate);
   }, []);
 
   useEffect(() => {
     if (activeCompany?.id) {
-      migrateCustomersToParties(activeCompany.id);
+      migrateCustomersToParties(activeCompany.id).then(() => {
+        window.dispatchEvent(new Event('partiesUpdated'));
+        window.dispatchEvent(new Event('stockUpdated'));
+      });
     }
   }, [activeCompany?.id]);
 

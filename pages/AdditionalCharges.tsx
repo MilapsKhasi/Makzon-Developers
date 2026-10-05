@@ -244,52 +244,58 @@ const AdditionalCharges = () => {
           onAction={() => { if (!isReadOnly) { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); } }} 
         />
       ) : (
-        <div className="border border-slate-200 rounded-md overflow-hidden bg-white overflow-x-auto">
-            <table className="clean-table min-w-[600px]">
+        <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-2xs overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
-                <tr>
-                <th className="w-20 text-center font-medium capitalize">Select</th>
-                <th className="font-medium capitalize">Name</th>
-                <th className="font-medium capitalize">Type</th>
-                <th className="font-medium capitalize">Applicable To</th>
-                <th className="font-medium capitalize">Calculation</th>
-                <th className="font-medium capitalize">Value</th>
-                <th className="text-right font-medium capitalize">Actions</th>
+                <tr className="bg-[#F8FAFC] dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="w-20 py-3.5 px-6 text-center">Select</th>
+                <th className="py-3.5 px-6">Name</th>
+                <th className="py-3.5 px-6">Type</th>
+                <th className="py-3.5 px-6">Applicable To</th>
+                <th className="py-3.5 px-6">Calculation</th>
+                <th className="py-3.5 px-6">Value</th>
+                <th className="py-3.5 px-6 text-right">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm">
                 {loading ? (
                 <tr><td colSpan={7} className="text-center py-20 text-slate-400">Loading charges...</td></tr>
                 ) : taxes.map((tax) => {
                 const isSelected = selectedIds.includes(tax.id) || tax.is_default;
                 return (
-                    <tr key={tax.id} className="hover:bg-slate-50/50">
-                    <td className="text-center">
+                    <tr key={tax.id} className="border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="py-4 px-6 text-center">
                         <button onClick={async () => {
                             if (isReadOnly) return;
                             const nextIds = toggleSelectedLedgerId(tax.id);
                             setSelectedIds(nextIds);
                             window.dispatchEvent(new Event('appSettingsChanged'));
-                        }} className={`w-4 h-4 rounded border ${isSelected ? 'bg-primary border-slate-900' : 'bg-white border-slate-300'} mx-auto transition-none ${isReadOnly ? 'cursor-not-allowed opacity-50' : ''}`} />
+                        }} className={`w-4 h-4 rounded border ${isSelected ? 'bg-primary border-slate-900 dark:border-white' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'} mx-auto transition-none ${isReadOnly ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`} />
                     </td>
-                    <td className="font-medium text-slate-700">
+                    <td className="py-4 px-6 font-bold text-slate-900 dark:text-white">
                       <span>{tax.name}</span>
                     </td>
-                    <td className="text-[11px] font-medium capitalize">
-                      {tax.type === 'Deduction' ? 'Deduction (-)' : 'Charge (+)'}
+                    <td className="py-4 px-6 text-xs whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-semibold ${
+                        tax.type === 'Deduction' 
+                          ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400' 
+                          : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
+                      }`}>
+                        {tax.type === 'Deduction' ? 'Deduction (-)' : 'Charge (+)'}
+                      </span>
                     </td>
-                    <td className="text-[11px] font-medium text-slate-600 dark:text-slate-300">
-                      <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    <td className="py-4 px-6 text-xs text-slate-600 dark:text-slate-300">
+                      <span className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
                         {tax.applicable_to || 'Both'}
                       </span>
                     </td>
-                    <td className="text-[11px] text-slate-400 capitalize">{tax.calc_method}</td>
-                    <td className="font-mono text-[13px]">{tax.calc_method === 'Percentage' ? `${tax.rate}%` : tax.fixed_amount.toFixed(2)}</td>
-                    <td className="text-right">
+                    <td className="py-4 px-6 text-xs text-slate-500 capitalize">{tax.calc_method}</td>
+                    <td className="py-4 px-6 font-mono font-bold text-sm text-slate-900 dark:text-white tabular-nums">{tax.calc_method === 'Percentage' ? `${tax.rate}%` : tax.fixed_amount.toFixed(2)}</td>
+                    <td className="py-4 px-6 text-right">
                         {!isReadOnly ? (
-                          <div className="flex justify-end space-x-2">
-                            <button onClick={() => { setEditingTax(tax); setFormData({ ...tax, applicable_to: tax.applicable_to || 'Both' }); setIsModalOpen(true); }} className="text-slate-400 hover:text-slate-900 transition-none" title="Edit Charge"><Edit className="w-4 h-4" /></button>
-                            <button onClick={() => setDeleteDialog({ isOpen: true, tax })} className="text-slate-400 hover:text-red-500 transition-none" title="Delete Charge"><Trash2 className="w-4 h-4" /></button>
+                          <div className="flex justify-end space-x-1">
+                            <button onClick={() => { setEditingTax(tax); setFormData({ ...tax, applicable_to: tax.applicable_to || 'Both' }); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-primary rounded-md transition-colors" title="Edit Charge"><Edit className="w-4 h-4" /></button>
+                            <button onClick={() => setDeleteDialog({ isOpen: true, tax })} className="p-1.5 text-slate-400 hover:text-red-500 rounded-md transition-colors" title="Delete Charge"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         ) : (
                           <span className="text-xs text-slate-400 font-mono italic">Read Only</span>

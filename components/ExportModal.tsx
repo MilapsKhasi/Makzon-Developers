@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, FileSpreadsheet, FileText, Printer, FileDown } from 'lucide-react';
 import Modal from './Modal';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -44,6 +45,14 @@ const ExportOption = ({
 );
 
 const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onExport, reportName }) => {
+  const { verifyAction } = useSecurityDemo();
+
+  const handleTriggerExport = (type: 'excel' | 'csv' | 'pdf') => {
+    verifyAction('Export Data', () => {
+      onExport(type);
+    });
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Export Document" maxWidth="max-w-md">
         <div className="p-6 space-y-6">
@@ -57,7 +66,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onExport, re
                     icon={FileSpreadsheet} 
                     title="Microsoft Excel (.xlsx)" 
                     desc="Full ledger with company branding and formatting." 
-                    onClick={() => onExport('excel')} 
+                    onClick={() => handleTriggerExport('excel')} 
                     variant="primary"
                 />
                 
@@ -65,14 +74,14 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onExport, re
                     icon={FileText} 
                     title="Comma Separated (.csv)" 
                     desc="Raw data table for external analysis." 
-                    onClick={() => onExport('csv')} 
+                    onClick={() => handleTriggerExport('csv')} 
                 />
                 
                 <ExportOption 
                     icon={Printer} 
                     title="Print / Save as PDF" 
                     desc="Generate a professional printable statement." 
-                    onClick={() => onExport('pdf')} 
+                    onClick={() => handleTriggerExport('pdf')} 
                 />
             </div>
 

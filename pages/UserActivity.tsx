@@ -71,33 +71,33 @@ const UserActivity = () => {
           </span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
-                <th className="px-6 py-4 capitalize font-bold">Email Address</th>
-                <th className="px-6 py-4 capitalize font-bold">Last Activity At</th>
-                <th className="px-6 py-4 capitalize font-bold">Status</th>
-                <th className="px-6 py-4 capitalize font-bold">Raw Timestamp</th>
+              <tr className="bg-[#F8FAFC] dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-3.5">Email Address</th>
+                <th className="px-6 py-3.5">Last Activity At</th>
+                <th className="px-6 py-3.5">Status</th>
+                <th className="px-6 py-3.5">Raw Timestamp</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm">
               {activities.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic">No user activity recorded yet.</td>
                 </tr>
               ) : (
                 activities.map((item) => (
-                  <tr key={item.userId} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">{item.email}</td>
-                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400 flex items-center">
-                      <Clock className="w-3.5 h-3.5 mr-2 opacity-50" />
+                  <tr key={item.userId} className="border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">{item.email}</td>
+                    <td className="px-6 py-4 text-slate-700 dark:text-slate-300 flex items-center">
+                      <Clock className="w-4 h-4 mr-2 text-slate-400" />
                       {formatLastSeen(item.lastActivityAt)}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
                         item.status === 'active' 
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' 
-                          : 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-900/40' 
+                          : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-200/60 dark:border-rose-900/40'
                       }`}>
                         {item.status}
                       </span>

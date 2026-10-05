@@ -10,10 +10,12 @@ import EmptyState from '../components/EmptyState';
 import { supabase } from '../lib/supabase';
 import { InvoicePrintModal } from '../components/InvoicePrintModal';
 import { useLicense } from '../context/LicenseContext';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 export const DeliveryChallans = () => {
   const location = useLocation();
   const { isReadOnly } = useLicense();
+  const { verifyAction } = useSecurityDemo();
   const [challans, setChallans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -199,8 +201,10 @@ export const DeliveryChallans = () => {
           disabled={isReadOnly}
           onClick={() => {
             if (!isReadOnly) {
-              setEditingChallan(null);
-              setIsModalOpen(true);
+              verifyAction('Create Delivery Challan', () => {
+                setEditingChallan(null);
+                setIsModalOpen(true);
+              });
             }
           }}
           className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
@@ -269,59 +273,59 @@ export const DeliveryChallans = () => {
             }}
           />
         ) : (
-          <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-lg">
+          <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900 shadow-2xs">
             <table className="w-full text-left border-collapse min-w-[850px]">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  <th className="py-3.5 px-4 w-12 text-center">Sr</th>
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Challan #</th>
-                  <th className="py-3.5 px-4">Customer Name</th>
-                  <th className="py-3.5 px-4">Vehicle / Transport</th>
-                  <th className="py-3.5 px-4 text-right">Subtotal</th>
-                  <th className="py-3.5 px-4 text-right">Total Value</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                  <th className="py-3.5 px-4 text-center w-24">Actions</th>
+                <tr className="bg-[#F8FAFC] dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-6 w-12 text-center">Sr</th>
+                  <th className="py-3.5 px-6">Date</th>
+                  <th className="py-3.5 px-6">Challan #</th>
+                  <th className="py-3.5 px-6">Customer Name</th>
+                  <th className="py-3.5 px-6">Vehicle / Transport</th>
+                  <th className="py-3.5 px-6 text-right">Subtotal</th>
+                  <th className="py-3.5 px-6 text-right">Total Value</th>
+                  <th className="py-3.5 px-6 text-center">Status</th>
+                  <th className="py-3.5 px-6 text-center w-24">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-[12px] text-slate-700 dark:text-slate-300">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm text-slate-700 dark:text-slate-300">
                 {filtered.map((c, i) => {
                   const veh = c.items_raw?.vehicle_no || '—';
                   return (
                     <tr
                       key={c.id}
-                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all cursor-pointer"
+                      className="border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
                     >
-                      <td className="py-3 px-4 text-center text-slate-400 font-mono">{i + 1}</td>
-                      <td className="py-3 px-4 font-mono">{formatDate(c.date)}</td>
-                      <td className="py-3 px-4 font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                      <td className="py-4 px-6 text-center text-slate-400 font-mono text-xs">{i + 1}</td>
+                      <td className="py-4 px-6 font-mono text-sm">{formatDate(c.date)}</td>
+                      <td className="py-4 px-6 font-mono text-sm text-slate-700 dark:text-slate-300">
                         {c.invoice_number || c.bill_number}
                       </td>
-                      <td className="py-3 px-4 font-medium text-slate-900 dark:text-white capitalize">
+                      <td className="py-4 px-6 font-bold text-slate-900 dark:text-white capitalize text-sm">
                         {c.customer_name || c.vendor_name}
                       </td>
-                      <td className="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                      <td className="py-4 px-6 font-mono text-xs text-slate-600 dark:text-slate-400">
                         {veh}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400">
+                      <td className="py-4 px-6 text-right font-mono text-slate-600 dark:text-slate-400 text-sm">
                         {formatCurrency(c.total_without_gst)}
                       </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">
+                      <td className="py-4 px-6 text-right font-mono font-bold text-slate-900 dark:text-white text-base tabular-nums">
                         {formatCurrency(c.grand_total)}
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400">
+                      <td className="py-4 px-6 text-center whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200/60 dark:border-emerald-900/40">
                           {c.status || 'Dispatched'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-4 px-6 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center space-x-1">
                           <button
-                            onClick={() => setPrintModalChallan(c)}
-                            className="p-1 text-slate-400 hover:text-emerald-600 rounded transition-colors"
+                            onClick={() => verifyAction('Print Delivery Challan', () => setPrintModalChallan(c))}
+                            className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-md transition-colors cursor-pointer"
                             title="Print Delivery Challan"
                           >
-                            <Printer className="w-3.5 h-3.5" />
+                            <Printer className="w-4 h-4" />
                           </button>
                           {!isReadOnly && (
                             <>
@@ -336,8 +340,8 @@ export const DeliveryChallans = () => {
                                 <Edit className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                onClick={() => setDeleteDialog({ isOpen: true, challan: c })}
-                                className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
+                                onClick={() => verifyAction('Delete Challan', () => setDeleteDialog({ isOpen: true, challan: c }))}
+                                className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors cursor-pointer"
                                 title="Delete Challan"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />

@@ -9,7 +9,6 @@ import Sales from './pages/Sales';
 import Stock from './pages/Stock';
 import Masters from './pages/Masters';
 import Reports from './pages/Reports';
-import Settings from './pages/Settings';
 import Purchases from './pages/Purchases';
 import AdditionalCharges from './pages/AdditionalCharges';
 import Cashbook from './pages/Cashbook';
@@ -20,6 +19,7 @@ import UserActivity from './pages/UserActivity';
 import DeliveryChallans from './pages/DeliveryChallans';
 import { CompanyProvider, useCompany } from './context/CompanyContext';
 import { LicenseProvider } from './context/LicenseContext';
+import { SecurityDemoProvider } from './context/SecurityDemoContext';
 import { supabase } from './lib/supabase';
 import { Database, AlertCircle, Copy, Check } from 'lucide-react';
 import { processInactivity, recordActivity } from './utils/activityTracker';
@@ -311,7 +311,6 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
           <Route path="stock" element={<Stock />} />
           <Route path="reports" element={<Reports />} />
           <Route path="user-activity" element={<UserActivity />} />
-          <Route path="settings" element={<Settings />} />
         </Route>
         
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -322,11 +321,13 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
 
 const App = () => (
   <Router>
-    <LicenseProvider>
-      <CompanyProvider>
-        <AppContent />
-      </CompanyProvider>
-    </LicenseProvider>
+    <SecurityDemoProvider>
+      <LicenseProvider>
+        <CompanyProvider>
+          <AppContent />
+        </CompanyProvider>
+      </LicenseProvider>
+    </SecurityDemoProvider>
   </Router>
 );
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Loader2, ShoppingCart, Package, Users, Receipt, Clock, BadgeIndianRupee, LayoutDashboard } from 'lucide-react';
+import { Search, Loader2, ShoppingCart, Package, Users, Receipt, Clock, BadgeIndianRupee, LayoutDashboard, ShieldAlert, X, Menu, ArrowUp, ArrowDown, CheckCircle2 } from 'lucide-react';
 import { getActiveCompanyId, formatDate, normalizeBill, formatCurrency } from '../utils/helpers';
 import DateFilter from '../components/DateFilter';
 import Modal from '../components/Modal';
@@ -10,9 +10,11 @@ import NewVoucherDropdown from '../components/NewVoucherDropdown';
 import SalesPurchaseChart from '../components/SalesPurchaseChart';
 import { supabase } from '../lib/supabase';
 import { useLicense } from '../context/LicenseContext';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 const Dashboard = () => {
   const { isReadOnly } = useLicense();
+  const { investigationMode, isBannerDismissed, dismissBanner, verifyAction } = useSecurityDemo();
   const [stats, setStats] = useState({ 
     totalSales: 0,
     totalPurchases: 0, 
@@ -178,6 +180,33 @@ const Dashboard = () => {
         onSuccess={loadData}
       />
 
+      {/* Part 2: Dashboard Investigation Warning Banner */}
+      {investigationMode && !isBannerDismissed && (
+        <div className="flex items-start justify-between p-4 rounded-xl border border-amber-300 dark:border-amber-700/80 bg-amber-50 dark:bg-amber-950/40 text-amber-950 dark:text-amber-100 shadow-xs">
+          <div className="flex items-start space-x-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center text-amber-700 dark:text-amber-300 shrink-0 mt-0.5">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold tracking-tight text-amber-900 dark:text-amber-200">
+                Unknown Device Investigation Active
+              </h3>
+              <p className="text-xs text-amber-800/90 dark:text-amber-300/80 mt-0.5 leading-relaxed">
+                This session is being treated as a new or untrusted device. Sensitive actions require Z-PIN verification.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={dismissBanner}
+            className="p-1 rounded-md text-amber-600 hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-100 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 transition-colors shrink-0 ml-3"
+            title="Dismiss banner"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
@@ -191,10 +220,10 @@ const Dashboard = () => {
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
           <DateFilter onFilterChange={setDateRange} />
           <NewVoucherDropdown
-            onSelectSalesInvoice={() => { if (!isReadOnly) setIsSalesModalOpen(true); }}
-            onSelectPurchaseBill={() => { if (!isReadOnly) setIsPurchaseModalOpen(true); }}
-            onSelectReceivePayment={() => { if (!isReadOnly) { setPaymentVoucherType('Receipt'); setIsPaymentModalOpen(true); } }}
-            onSelectMakePayment={() => { if (!isReadOnly) { setPaymentVoucherType('Payment'); setIsPaymentModalOpen(true); } }}
+            onSelectSalesInvoice={() => { if (!isReadOnly) verifyAction('Create Sales Invoice', () => setIsSalesModalOpen(true)); }}
+            onSelectPurchaseBill={() => { if (!isReadOnly) verifyAction('Create Purchase Bill', () => setIsPurchaseModalOpen(true)); }}
+            onSelectReceivePayment={() => { if (!isReadOnly) verifyAction('Create Receipt Voucher', () => { setPaymentVoucherType('Receipt'); setIsPaymentModalOpen(true); }); }}
+            onSelectMakePayment={() => { if (!isReadOnly) verifyAction('Create Payment Voucher', () => { setPaymentVoucherType('Payment'); setIsPaymentModalOpen(true); }); }}
           />
         </div>
       </div>
@@ -213,44 +242,86 @@ const Dashboard = () => {
         loading={loading} 
       />
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/50">
-          <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300 capitalize">Recent Transactions</h2>
-          <div className="relative w-full sm:w-48">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 w-3.5 h-3.5" />
-            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Filter list..." className="pl-7 pr-3 py-1 border border-slate-200 dark:border-slate-700 rounded text-xs outline-none focus:border-slate-300 dark:focus:border-slate-600 w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
+        <div className="p-4 px-6 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900">
+          <div className="flex items-center space-x-3">
+            <Menu className="w-5 h-5 text-slate-900 dark:text-white stroke-[2.5]" />
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Recent Transactions</h2>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4" />
+            <input 
+              type="text" 
+              value={searchQuery} 
+              onChange={(e) => setSearchQuery(e.target.value)} 
+              placeholder="Filter list..." 
+              className="pl-9 pr-3.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:border-slate-400 dark:focus:border-slate-600 w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400" 
+            />
           </div>
         </div>
         
         <div className="overflow-x-auto">
-          <table className="clean-table min-w-[800px] sm:min-w-full">
+          <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
-              <tr>
-                <th className="font-medium capitalize">Date</th>
-                <th className="font-medium capitalize">Type</th>
-                <th className="font-medium capitalize">Document #</th>
-                <th className="font-medium capitalize">Party Name</th>
-                <th className="text-right font-medium capitalize">Total Amount</th>
-                <th className="text-center font-medium capitalize">Status</th>
+              <tr className="bg-[#F8FAFC] dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="py-3.5 px-6">Date</th>
+                <th className="py-3.5 px-6">Type</th>
+                <th className="py-3.5 px-6">Document #</th>
+                <th className="py-3.5 px-6">Party Name</th>
+                <th className="py-3.5 px-6 text-right">Total Amount</th>
+                <th className="py-3.5 px-6 text-center">Status</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-20 text-slate-400 capitalize text-[10px] font-medium tracking-widest">Refreshing Data...</td></tr>
-              ) : filteredVouchers.map((v) => (
-                <tr key={v.id}>
-                  <td className="text-slate-500 dark:text-slate-400">{formatDate(v.date)}</td>
-                  <td className={`text-[10px] font-medium capitalize ${v.type === 'Sale' ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}>{v.type}</td>
-                  <td className="font-mono font-medium text-slate-900 dark:text-slate-100">{v.bill_number}</td>
-                  <td className="capitalize font-medium text-slate-700 dark:text-slate-300">{v.vendor_name || v.customer_name}</td>
-                  <td className="text-right font-mono font-medium text-slate-900 dark:text-slate-100">{formatCurrency(v.grand_total, false)}</td>
-                  <td className="text-center">
-                    <span className={`text-[9px] px-2 py-0.5 rounded-sm font-medium capitalize ${v.status === 'Paid' ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>{v.status}</span>
-                  </td>
-                </tr>
-              ))}
+                <tr><td colSpan={6} className="text-center py-20 text-slate-400 capitalize text-xs font-medium">Refreshing Data...</td></tr>
+              ) : filteredVouchers.map((v) => {
+                const isPaid = v.status === 'Paid';
+                const isSale = v.type === 'Sale';
+                const amt = Number(v.grand_total || 0);
+                const wholeStr = Math.floor(amt).toLocaleString('en-IN');
+                const decimalStr = (amt % 1).toFixed(2).substring(1);
+
+                return (
+                  <tr key={v.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="py-4 px-6 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap">{formatDate(v.date)}</td>
+                    <td className="py-4 px-6 whitespace-nowrap">
+                      {isSale ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-xs font-semibold">
+                          <ArrowUp className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 stroke-[2.5]" />
+                          Sale
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-semibold">
+                          <ArrowDown className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 stroke-[2.5]" />
+                          Purchase
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-4 px-6 text-sm text-slate-700 dark:text-slate-300 whitespace-nowrap font-normal font-mono">{v.bill_number}</td>
+                    <td className="py-4 px-6 text-sm font-bold text-slate-900 dark:text-white capitalize whitespace-nowrap">{v.vendor_name || v.customer_name}</td>
+                    <td className="py-4 px-6 text-right whitespace-nowrap font-mono tabular-nums">
+                      <span className="font-bold text-slate-900 dark:text-white text-base">₹{wholeStr}</span>
+                      <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">{decimalStr}</span>
+                    </td>
+                    <td className="py-4 px-6 text-center whitespace-nowrap">
+                      {isPaid ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-xs font-semibold border border-emerald-200/60 dark:border-emerald-900/40">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          Paid
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-xs font-semibold border border-amber-200/60 dark:border-amber-900/40">
+                          <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          Pending
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {!loading && filteredVouchers.length === 0 && (
-                <tr><td colSpan={6} className="py-20 text-center text-slate-300 italic">No transactions found for the selected period.</td></tr>
+                <tr><td colSpan={6} className="py-20 text-center text-slate-400 italic text-sm">No transactions found for the selected period.</td></tr>
               )}
             </tbody>
           </table>

@@ -5,8 +5,10 @@ import ExportModal from '../components/ExportModal';
 import { getActiveCompanyId, formatDate, normalizeBill } from '../utils/helpers';
 import { exportToExcel, exportToCSV, triggerPrint } from '../utils/exportHelper';
 import { supabase } from '../lib/supabase';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 const Reports = () => {
+  const { verifyAction } = useSecurityDemo();
   const [activeTab, setActiveTab] = useState('Purchases');
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,7 +183,7 @@ const Reports = () => {
         <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
           <DateFilter onFilterChange={setDateRange} />
           <button 
-            onClick={() => setIsExportModalOpen(true)}
+            onClick={() => verifyAction('Export Statement', () => setIsExportModalOpen(true))}
             disabled={reportTableData.length === 0}
             className="w-full sm:w-auto px-4 py-2.5 bg-primary text-white font-medium text-sm hover:bg-primary-dark rounded-md shadow-sm transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer"
           >
@@ -232,19 +234,19 @@ const Reports = () => {
                   <p className="text-slate-400 dark:text-slate-600 italic text-xs capitalize">Report set is currently empty.</p>
                 </div>
               ) : (
-                <table className="w-full text-left border-collapse text-xs min-w-[800px]">
+                <table className="w-full text-left border-collapse text-sm min-w-[800px]">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                    <tr className="bg-[#F8FAFC] dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       {Object.keys(reportTableData[0] || {}).map(h => (
-                        <th key={h} className="py-3.5 px-4 whitespace-nowrap">{h}</th>
+                        <th key={h} className="py-3.5 px-6 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm text-slate-700 dark:text-slate-300">
                     {reportTableData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
+                      <tr key={idx} className="border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                         {Object.values(row).map((val: any, vIdx) => (
-                          <td key={vIdx} className="py-3 px-4 whitespace-nowrap font-mono">{val}</td>
+                          <td key={vIdx} className="py-4 px-6 whitespace-nowrap font-mono">{val}</td>
                         ))}
                       </tr>
                     ))}

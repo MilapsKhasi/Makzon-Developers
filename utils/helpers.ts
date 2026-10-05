@@ -11,33 +11,220 @@ export const getActiveCompanyId = () => {
   return id && id !== 'undefined' ? id : '';
 };
 
-export const getAppSettings = () => {
+export const isGstRegistered = (gstin?: string | null): boolean => {
+  return Boolean(gstin && typeof gstin === 'string' && gstin.trim().length > 0);
+};
+
+export interface AppSettings {
+  currency: string;
+  borderStyle: string;
+  dateFormat: string;
+  gstEnabled: boolean;
+  gstType: string;
+  invoicePrefix: string;
+  companyGstin?: string;
+  partnerCompanyId?: string;
+  partnerCompanyName?: string;
+  partnerCompanyGstin?: string;
+  partnerCompanyAddress?: string;
+}
+
+export const getAppSettings = (): AppSettings => {
   const cid = getActiveCompanyId();
-  const defaultSettings = { 
+  const defaultSettings: AppSettings = { 
     currency: 'INR', 
     borderStyle: 'rounded', 
     dateFormat: 'DD/MM/YY',
-    gstEnabled: true,
+    gstEnabled: false,
     gstType: 'CGST - SGST',
-    invoicePrefix: '2026-27-000'
+    invoicePrefix: '2026-27-000',
+    partnerCompanyId: '',
+    partnerCompanyName: '',
+    partnerCompanyGstin: '',
+    partnerCompanyAddress: ''
   };
   
   if (!cid) return defaultSettings;
   
   const s = localStorage.getItem(`appSettings_${cid}`);
   try {
-    if (!s) return defaultSettings;
-    const parsed = JSON.parse(s);
+    const parsed = s ? JSON.parse(s) : {};
+    
+    // Check if the current company is registered with its own GSTIN
+    const activeGstin = (
+      parsed.companyGstin ||
+      localStorage.getItem(`company_gstin_${cid}`) ||
+      localStorage.getItem('activeCompanyGstin') ||
+      ''
+    ).trim();
+
+    // Check if connected with a registered partner company (RD firm)
+    const partnerGstin = (parsed.partnerCompanyGstin || '').trim();
+    const isPartnerRegistered = Boolean(parsed.partnerCompanyId && partnerGstin.length > 0);
+    const isOwnRegistered = Boolean(activeGstin.length > 0);
+
+    // Business Rule:
+    // If the company is not registered under GST (URD) and has no registered partner firm connected,
+    // do not let them enter sales or purchase invoices enabled with GST.
+    const canUseGst = isOwnRegistered || isPartnerRegistered;
+
+    let isGstEnabled = false;
+    if (canUseGst) {
+      isGstEnabled = parsed.gstEnabled !== undefined 
+        ? (parsed.gstEnabled !== false && parsed.gstEnabled !== 'false') 
+        : true;
+    } else {
+      isGstEnabled = false;
+    }
+
     return {
       ...defaultSettings,
       ...parsed,
-      // Default to true unless explicitly disabled (false or 'false') for this workspace
-      gstEnabled: parsed.gstEnabled !== undefined ? (parsed.gstEnabled !== false && parsed.gstEnabled !== 'false') : true,
+      gstEnabled: isGstEnabled,
       invoicePrefix: parsed.invoicePrefix || '2026-27-000'
     };
   } catch (e) {
     return defaultSettings;
   }
+};
+
+export interface EffectiveCompanyInfo {
+  id: string;
+  name: string;
+  gstin: string;
+  address: string;
+  isUrd: boolean;
+  isPartnered: boolean;
+  canUseGst: boolean;
+  partnerCompany: {
+    id: string;
+    name: string;
+    gstin: string;
+    address: string;
+  } | null;
+  originalCompany: {
+    id: string;
+    name: string;
+    gstin: string;
+    address: string;
+  };
+}
+
+export const getEffectiveCompanyInfo = (activeCompanyObj?: any): EffectiveCompanyInfo => {
+  const cid = activeCompanyObj?.id || getActiveCompanyId();
+  const origName = activeCompanyObj?.name || localStorage.getItem('activeCompanyName') || '';
+  const origGstin = (
+    activeCompanyObj?.gstin ||
+    localStorage.getItem(`company_gstin_${cid}`) ||
+    localStorage.getItem('activeCompanyGstin') ||
+    ''
+  ).trim();
+  const origAddress = activeCompanyObj?.address || localStorage.getItem(`company_address_${cid}`) || localStorage.getItem('activeCompanyAddress') || '';
+  
+  const settings = getAppSettings();
+  const isOriginalUrd = !origGstin;
+  const hasPartner = Boolean(settings.partnerCompanyId && settings.partnerCompanyGstin && settings.partnerCompanyGstin.trim().length > 0);
+  
+  const partnerCompany = hasPartner ? {
+    id: settings.partnerCompanyId!,
+    name: settings.partnerCompanyName || '',
+    gstin: settings.partnerCompanyGstin || '',
+    address: settings.partnerCompanyAddress || ''
+  } : null;
+  
+  const isPartnered = Boolean(hasPartner);
+  const canUseGst = !isOriginalUrd || isPartnered;
+  
+  // If connected to a registered firm, make our-side business company information use that RD company's information!
+  if (isPartnered && partnerCompany) {
+    return {
+      id: cid,
+      name: partnerCompany.name,
+      gstin: partnerCompany.gstin,
+      address: partnerCompany.address,
+      isUrd: isOriginalUrd,
+      isPartnered: true,
+      canUseGst: true,
+      partnerCompany,
+      originalCompany: {
+        id: cid,
+        name: origName,
+        gstin: origGstin,
+        address: origAddress
+      }
+    };
+  }
+  
+  return {
+    id: cid,
+    name: origName,
+    gstin: origGstin,
+    address: origAddress,
+    isUrd: isOriginalUrd,
+    isPartnered: false,
+    canUseGst,
+    partnerCompany: null,
+    originalCompany: {
+      id: cid,
+      name: origName,
+      gstin: origGstin,
+      address: origAddress
+    }
+  };
+};
+
+export const linkPartnerCompany = async (
+  cid: string, 
+  partner: { id: string; name: string; gstin: string; address?: string }
+) => {
+  const currentSettings = getAppSettings();
+  const updatedSettings = {
+    ...currentSettings,
+    gstEnabled: true,
+    partnerCompanyId: partner.id,
+    partnerCompanyName: partner.name,
+    partnerCompanyGstin: partner.gstin,
+    partnerCompanyAddress: partner.address || ''
+  };
+  localStorage.setItem(`appSettings_${cid}`, JSON.stringify(updatedSettings));
+  
+  try {
+    await supabase.from('companies').update({ partner_company_id: partner.id }).eq('id', cid);
+  } catch (err) {
+    console.warn("Could not save partner_company_id to database table:", err);
+  }
+  
+  window.dispatchEvent(new Event('appSettingsChanged'));
+  window.dispatchEvent(new Event('companyUpdated'));
+};
+
+export const unlinkPartnerCompany = async (cid: string) => {
+  const currentSettings = getAppSettings();
+  const activeGstin = (
+    localStorage.getItem(`company_gstin_${cid}`) ||
+    localStorage.getItem('activeCompanyGstin') ||
+    ''
+  ).trim();
+  const isOriginalRegistered = Boolean(activeGstin.length > 0);
+  
+  const updatedSettings = {
+    ...currentSettings,
+    gstEnabled: isOriginalRegistered ? currentSettings.gstEnabled : false,
+    partnerCompanyId: '',
+    partnerCompanyName: '',
+    partnerCompanyGstin: '',
+    partnerCompanyAddress: ''
+  };
+  localStorage.setItem(`appSettings_${cid}`, JSON.stringify(updatedSettings));
+  
+  try {
+    await supabase.from('companies').update({ partner_company_id: null }).eq('id', cid);
+  } catch (err) {
+    console.warn("Could not remove partner_company_id from database table:", err);
+  }
+  
+  window.dispatchEvent(new Event('appSettingsChanged'));
+  window.dispatchEvent(new Event('companyUpdated'));
 };
 
 export const filterActualSalesInvoices = (invoices: any[]) => {
@@ -457,3 +644,44 @@ export const unsyncTransactionFromCashbook = async (transaction: any) => {
     console.error("Cashbook Unsync Error:", err);
   }
 };
+
+export const validateGstin = (gstin: string): boolean => {
+  if (!gstin || typeof gstin !== 'string') return false;
+  const clean = gstin.trim().toUpperCase();
+  if (clean === '' || clean === 'URD' || clean === 'N/A') return true;
+
+  // 1. Standard Indian GSTIN Regex: 2 digits state code, 10 chars PAN, 1 entity code, Z, 1 checksum
+  const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+  if (!gstinRegex.test(clean)) return false;
+
+  // 2. State code validation (01 to 37, 97, 99)
+  const stateCode = parseInt(clean.substring(0, 2), 10);
+  if ((stateCode < 1 || stateCode > 37) && stateCode !== 97 && stateCode !== 99) {
+    return false;
+  }
+
+  // 3. Modulo 36 checksum algorithm validation
+  try {
+    const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let sum = 0;
+    const modulus = 36;
+    const length = clean.length;
+    
+    for (let i = 0; i < length - 1; i++) {
+      const charValue = chars.indexOf(clean[i]);
+      if (charValue === -1) return false;
+      let product = charValue * (i % 2 === 0 ? 1 : 2);
+      product = Math.floor(product / modulus) + (product % modulus);
+      sum += product;
+    }
+    
+    const checksum = (modulus - (sum % modulus)) % modulus;
+    const expectedChar = chars[checksum];
+    const actualChar = clean[length - 1];
+    
+    return expectedChar === actualChar;
+  } catch (e) {
+    return false;
+  }
+};
+

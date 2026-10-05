@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Database, AlertCircle, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useSecurityDemo, validateZPin } from '../context/SecurityDemoContext';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -12,7 +13,11 @@ const Auth = () => {
   const [error, setError] = useState<string | null>(null);
   const [showSqlHelp, setShowSqlHelp] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [signupZPin, setSignupZPin] = useState('');
+  const [signupPinError, setSignupPinError] = useState('');
   const navigate = useNavigate();
+
+  const { investigationMode, setInvestigationMode, setDemoZPin } = useSecurityDemo();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +65,16 @@ const Auth = () => {
         // On success, navigate to companies selection immediately
         navigate('/companies');
       } else {
+        // Part 3: Validate Z-PIN before creating account
+        const pinValidation = validateZPin(signupZPin, password);
+        if (!pinValidation.isValid) {
+          setSignupPinError(pinValidation.error || 'Choose a stronger Z-PIN.');
+          setLoading(false);
+          return;
+        }
+        // Store inside localStorage / state only. Never send to Supabase.
+        setDemoZPin(signupZPin.trim());
+
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
         if (signUpError) throw signUpError;
         
@@ -170,6 +185,71 @@ const Auth = () => {
                   placeholder="Your Password"
                 />
               </div>
+
+              {/* Part 1: Login Investigation Toggle (Login page only) */}
+              {isLogin && (
+                <div className="pt-1 pb-1">
+                  <div className="flex items-center justify-between p-3 rounded-[10px] bg-slate-50 border border-slate-200/80">
+                    <div className="pr-3">
+                      <div className="flex items-center space-x-1.5">
+                        <span className="text-xs font-semibold text-slate-900">
+                          Activate Investigation
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                        Developer testing mode. Simulates login from an unknown device.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={investigationMode}
+                      onClick={() => setInvestigationMode(!investigationMode)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        investigationMode ? 'bg-primary' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                          investigationMode ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Part 3: Create your Z-PIN (Signup Demo only) */}
+              {!isLogin && (
+                <div className="pt-2 pb-1 space-y-2 border-t border-slate-100">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 ml-1">Create your Z-PIN</h3>
+                    <p className="text-xs text-slate-500 ml-1">
+                      A separate security PIN used to verify sensitive actions.
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={signupZPin}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setSignupZPin(val);
+                        if (signupPinError) setSignupPinError('');
+                      }}
+                      className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-primary font-mono tracking-widest text-slate-900 text-sm shadow-none placeholder:font-sans placeholder:tracking-normal"
+                      placeholder="•••• (4–6 digits)"
+                    />
+                    {signupPinError && (
+                      <p className="text-[11px] font-semibold text-rose-600 ml-1">
+                        {signupPinError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="pt-2 space-y-4">

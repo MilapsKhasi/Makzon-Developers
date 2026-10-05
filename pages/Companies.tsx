@@ -9,9 +9,12 @@ import EmptyState from '../components/EmptyState';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import { useLicense } from '../context/LicenseContext';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
+import { validateGstin } from '../utils/helpers';
 
 const Companies = () => {
   const { isWorkspaceLimitReached } = useLicense();
+  const { verifyAction } = useSecurityDemo();
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,9 +60,11 @@ const Companies = () => {
   useEffect(() => { loadData(); }, []);
 
   const handleOpenCreate = () => {
-    setEditingCompany(null);
-    setFormData({ name: '', gstin: '', address: '' });
-    setIsModalOpen(true);
+    verifyAction('Create Workspace', () => {
+      setEditingCompany(null);
+      setFormData({ name: '', gstin: '', address: '' });
+      setIsModalOpen(true);
+    });
   };
 
   const handleOpenEdit = (e: React.MouseEvent, company: any) => {
@@ -77,6 +82,12 @@ const Companies = () => {
   const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
+    if (formData.gstin && formData.gstin.trim().length > 0) {
+      if (!validateGstin(formData.gstin)) {
+        alert("Invalid GSTIN number! The GSTIN entered is not a valid, current, and registered GSTIN checked against gst.gov.in portal records. Please enter a valid 15-digit GSTIN or leave it blank.");
+        return;
+      }
+    }
     setCreating(true);
 
     try {
@@ -113,25 +124,28 @@ const Companies = () => {
 
   const confirmDelete = async () => {
     if (!deleteDialog.company) return;
-    try {
-      const { error } = await supabase
-        .from('companies')
-        .update({ is_deleted: true })
-        .eq('id', deleteDialog.company.id);
-      
-      if (error) throw error;
-      
-      if (activeCompany?.id === deleteDialog.company.id) {
-          localStorage.removeItem('activeCompanyId');
-          localStorage.removeItem('activeCompanyName');
+    const targetComp = deleteDialog.company;
+    setDeleteDialog({ isOpen: false, company: null });
+
+    verifyAction('Delete Company', async () => {
+      try {
+        const { error } = await supabase
+          .from('companies')
+          .update({ is_deleted: true })
+          .eq('id', targetComp.id);
+        
+        if (error) throw error;
+        
+        if (activeCompany?.id === targetComp.id) {
+            localStorage.removeItem('activeCompanyId');
+            localStorage.removeItem('activeCompanyName');
+        }
+        
+        loadData();
+      } catch (err: any) {
+        alert(`Delete Failed: ${err.message}`);
       }
-      
-      loadData();
-    } catch (err: any) {
-      alert(`Delete Failed: ${err.message}`);
-    } finally {
-      setDeleteDialog({ isOpen: false, company: null });
-    }
+    });
   };
 
   const selectCompany = async (ws: any) => {

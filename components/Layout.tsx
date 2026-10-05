@@ -14,8 +14,10 @@ import GlobalSearchModal from './GlobalSearchModal';
 import ImportExcelModal from './ImportExcelModal';
 import LicenseSummaryBadge from './LicenseSummaryBadge';
 import ActivationScreen from './ActivationScreen';
+import Settings from '../pages/Settings';
 import { getUserActivity } from '../utils/activityTracker';
 import { processOfflineSyncQueue } from '../lib/syncEngine';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
@@ -26,14 +28,18 @@ const Layout = () => {
   const [quickCreateType, setQuickCreateType] = useState<string | null>(null);
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
   const [isImportExcelOpen, setIsImportExcelOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const { activeCompany, setCompany } = useCompany();
   const { isWorkspaceLimitReached, devMode, isReadOnly } = useLicense();
+  const { verifyAction } = useSecurityDemo();
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleQuickCreate = (type: string) => {
-    setQuickCreateType(type);
-    setIsCreateNewModalOpen(true);
+    verifyAction('Create Document', () => {
+      setQuickCreateType(type);
+      setIsCreateNewModalOpen(true);
+    });
   };
 
   const [user, setUser] = useState<any>(null);
@@ -374,12 +380,6 @@ const Layout = () => {
         { icon: BarChart3, label: 'Reports', path: '/reports' },
         { icon: MonitorPlay, label: 'User Activity', path: '/user-activity' },
       ]
-    },
-    {
-      groupName: '',
-      items: [
-        { icon: SettingsIcon, label: 'Settings', path: '/settings' },
-      ]
     }
   ];
 
@@ -623,7 +623,11 @@ const Layout = () => {
             </button>
             <button
               disabled={isReadOnly}
-              onClick={() => { if (!isReadOnly) setIsImportExcelOpen(true); }}
+              onClick={() => {
+                if (!isReadOnly) {
+                  verifyAction('Import Excel Data', () => setIsImportExcelOpen(true));
+                }
+              }}
               className={`px-3.5 py-1.5 font-medium text-xs rounded capitalize flex items-center gap-1.5 shadow-sm transition-all ${
                 isReadOnly
                   ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 border border-slate-300 dark:border-slate-700 cursor-not-allowed'
@@ -638,8 +642,10 @@ const Layout = () => {
               disabled={isReadOnly}
               onClick={() => {
                 if (!isReadOnly) {
-                  setQuickCreateType(null);
-                  setIsCreateNewModalOpen(true);
+                  verifyAction('Create Document', () => {
+                    setQuickCreateType(null);
+                    setIsCreateNewModalOpen(true);
+                  });
                 }
               }}
               className={`px-3.5 py-1.5 font-semibold text-xs rounded-md capitalize flex items-center gap-1.5 shadow-xs transition-all ${
@@ -660,8 +666,24 @@ const Layout = () => {
             >
               {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
             </button>
+            <button
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="p-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+              title="Workspace Settings"
+              aria-label="Workspace Settings"
+            >
+              <SettingsIcon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            </button>
           </div>
         </header>
+
+        {isSettingsModalOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+            <div className="w-full max-w-[1000px] h-[640px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-none overflow-hidden flex flex-col">
+              <Settings onClose={() => setIsSettingsModalOpen(false)} />
+            </div>
+          </div>
+        )}
 
         <ActivationScreen />
 

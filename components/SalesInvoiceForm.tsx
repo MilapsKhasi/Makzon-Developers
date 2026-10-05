@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, ToggleLeft, ToggleRight, Printer, FileText } from 'lucide-react';
-import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS, fetchStockItemsWithBalance, calculateNextInvoiceNumber, filterActualSalesInvoices } from '../utils/helpers';
+import { Trash2, Loader2, ChevronDown, UserPlus, UserRoundPen, Undo2, Redo2, ToggleLeft, ToggleRight, Printer, FileText, Lock, Building2, Handshake } from 'lucide-react';
+import { getActiveCompanyId, formatDate, parseDateFromInput, safeSupabaseSave, getSelectedLedgerIds, syncTransactionToCashbook, ensureStockItems, ensureParty, normalizeBill, getAppSettings, formatCurrency, toDisplayValue, READONLY_LEDGERS, fetchStockItemsWithBalance, calculateNextInvoiceNumber, filterActualSalesInvoices, getEffectiveCompanyInfo } from '../utils/helpers';
 import { supabase, getAuthUser } from '../lib/supabase';
 import Modal from './Modal';
 import PartyForm from './PartyForm';
@@ -20,16 +20,20 @@ interface SalesInvoiceFormProps {
 const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubmit, onCancel }) => {
   const cid = getActiveCompanyId();
   const appSettings = getAppSettings();
+  const effectiveCompany = getEffectiveCompanyInfo();
+  const canUseGst = effectiveCompany.canUseGst;
   const today = new Date().toISOString().split('T')[0];
   const manualOverrides = useRef<Set<string>>(new Set());
 
   const getInitialState = () => ({
+    party_id: null,
+    customer_id: null,
     customer_name: '', 
     invoice_number: '', 
     date: today, 
     displayDate: formatDate(today), 
     gst_type: appSettings.gstType === 'IGST' ? 'Inter-State' : 'Intra-State',
-    items: [{ id: Date.now().toString(), itemName: '', hsnCode: '', qty: '', rate: '', discount: 0, discount_type: 'Percentage', tax_rate: 0, taxableAmount: 0, itemTotal: 0 }],
+    items: [{ id: Date.now().toString(), item_id: null, itemId: null, itemName: '', hsnCode: '', qty: '', rate: '', discount: 0, discount_type: 'Percentage', tax_rate: 0, taxableAmount: 0, itemTotal: 0 }],
     total_without_gst: 0, 
     total_gst: 0, 
     duties_and_taxes: [], 
@@ -44,7 +48,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   const [formData, setFormData] = useState<any>(getInitialState());
   const [history, setHistory] = useState<any[]>([]);
   const [future, setFuture] = useState<any[]>([]);
-  const [isGstEnabled, setIsGstEnabled] = useState(appSettings.gstEnabled);
+  const [isGstEnabled, setIsGstEnabled] = useState(canUseGst && appSettings.gstEnabled);
   const [isSaveAndNew, setIsSaveAndNew] = useState(false);
   const [isDraftRestored, setIsDraftRestored] = useState(false);
 
@@ -166,7 +170,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
   };
 
   const recalculate = (state: any, sourceField?: string, sourceDutyId?: string, sourceVal?: any, overrideGstEnabled?: boolean) => {
-    const currentGstEnabled = overrideGstEnabled !== undefined ? overrideGstEnabled : isGstEnabled;
+    const currentGstEnabled = canUseGst && (overrideGstEnabled !== undefined ? overrideGstEnabled : isGstEnabled);
     let taxable = state.total_without_gst;
     let gst = state.total_gst;
     let autoGstSum = gst;
@@ -352,7 +356,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         normalized?.items_raw?.duties_and_taxes?.forEach((d:any) => { if(d.amount !== 0) manualOverrides.current.add(d.id); });
         
         const hasGstInSavedItems = normalized.items?.some((it: any) => parseFloat(it.tax_rate) > 0) || normalized.total_gst > 0;
-        const isGst = appSettings.gstEnabled && (hasGstInSavedItems || normalized.total_gst > 0);
+        const isGst = canUseGst && appSettings.gstEnabled && (hasGstInSavedItems || normalized.total_gst > 0);
         setIsGstEnabled(isGst);
 
         // Map old or saved gst_type if they are in older formats like 'CGST - SGST' or 'IGST' to the new 'Intra-State' / 'Inter-State' modes
@@ -389,6 +393,9 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
 
     newItems[idx] = {
       ...newItems[idx],
+      item_id: selected.id,
+      itemId: selected.id,
+      stock_item_id: selected.id,
       itemName: selected.name || '',
       hsnCode: selected.hsn || '',
       rate: salesRate,
@@ -461,13 +468,40 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
     e.preventDefault();
     if (loading) return;
     if (!formData.customer_name || !formData.invoice_number) return alert("Required: Customer Name and Invoice No");
+    if (!canUseGst && (isGstEnabled || formData.total_gst > 0)) {
+      alert("Notice: As an Unregistered (URD) firm without a registered partner, you cannot issue invoices enabled with GST. Please partner with a registered firm in Settings or enter a GSTIN.");
+      return;
+    }
     setLoading(true);
     try {
       const user = await getAuthUser();
       if (user) recordActivity(user.id, user.email || '');
 
+      const trimmedCustomerName = (formData.customer_name || '').trim().toUpperCase();
+      const selectedParty = customers.find(c => 
+        c.name?.trim().toUpperCase() === trimmedCustomerName || 
+        (formData.customer_id && String(c.id) === String(formData.customer_id))
+      );
+      const resolvedPartyId = formData.customer_id || selectedParty?.id || null;
+
+      const normalizedLineItems = formData.items.map((it: any) => {
+        const matchingStock = stockItems.find(s => 
+          s.name?.trim().toUpperCase() === (it.itemName || '').trim().toUpperCase() || 
+          (it.item_id && String(s.id) === String(it.item_id))
+        );
+        const itemId = it.item_id || it.itemId || matchingStock?.id || null;
+        return {
+          ...it,
+          item_id: itemId,
+          itemId: itemId,
+          stock_item_id: itemId
+        };
+      });
+
       const payload: any = {
-          customer_name: (formData.customer_name || '').trim().toUpperCase(),
+          party_id: resolvedPartyId,
+          customer_id: resolvedPartyId,
+          customer_name: trimmedCustomerName,
           invoice_number: formData.invoice_number,
           date: formData.date,
           total_without_gst: formData.total_without_gst,
@@ -478,16 +512,19 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
           description: formData.description,
           round_off: formData.round_off,
           items: {
-              line_items: formData.items,
+              party_id: resolvedPartyId,
+              customer_id: resolvedPartyId,
+              line_items: normalizedLineItems,
               duties_and_taxes: formData.duties_and_taxes,
               gst_type: formData.gst_type,
-              payment_details: formData.payment_details
+              payment_details: formData.payment_details,
+              partner_company: effectiveCompany.partnerCompany
           }
       };
       
       const savedRes = await safeSupabaseSave('sales_invoices', payload, initialData?.id);
-      await ensureStockItems(formData.items, cid);
-      await ensureParty(formData.customer_name, 'customer', cid);
+      await ensureStockItems(normalizedLineItems, cid);
+      await ensureParty(trimmedCustomerName, 'customer', cid, resolvedPartyId || undefined);
       if (payload.status === 'Paid' && savedRes.data) await syncTransactionToCashbook(savedRes.data[0]);
       clearDraft(draftKey);
       setIsDraftRestored(false);
@@ -496,7 +533,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
       onSubmit(finalInv, shouldPrintRef.current, isSaveAndNew);
       if (isSaveAndNew) {
         setFormData(getInitialState());
-        setIsGstEnabled(appSettings.gstEnabled);
+        setIsGstEnabled(canUseGst && appSettings.gstEnabled);
         manualOverrides.current = new Set();
         loadDependencies();
       }
@@ -559,8 +596,20 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
         )}
 
         <div className="flex items-center justify-between p-3 rounded-lg liquid-glass-box sticky top-0 z-20">
-          <div className="flex items-center space-x-4">
-            {appSettings.gstEnabled && (
+          <div className="flex items-center space-x-3 flex-wrap gap-y-2">
+            {!canUseGst ? (
+              <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-md text-xs font-semibold text-amber-800 dark:text-amber-300 shadow-2xs" title="This company is an Unregistered (URD) firm. Invoices are issued without GST.">
+                <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>Non-GST Invoice (URD Firm)</span>
+              </div>
+            ) : effectiveCompany.isPartnered ? (
+              <div className="flex items-center space-x-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-md text-xs font-semibold text-emerald-800 dark:text-emerald-300 shadow-2xs" title="Connected with Registered Partner firm">
+                <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>RD Partner: <strong>{effectiveCompany.partnerCompany?.name}</strong> (GSTIN: {effectiveCompany.partnerCompany?.gstin})</span>
+              </div>
+            ) : null}
+
+            {canUseGst && appSettings.gstEnabled && (
               <>
                 <button type="button" onClick={() => {
                   const nextVal = !isGstEnabled;
@@ -582,10 +631,10 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
           </div>
         </div>
         <div className="border border-slate-200 dark:border-slate-800 rounded-md p-4 sm:p-8 bg-white dark:bg-slate-900 space-y-6 shadow-sm">
-            <div className={`grid grid-cols-1 ${appSettings.gstEnabled ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-6`}>
+            <div className={`grid grid-cols-1 ${canUseGst && appSettings.gstEnabled ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-6`}>
                 <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Date</label><input required type="date" value={formData.date || ''} onChange={e => { const d = e.target.value; updateFormData({...formData, date: d, displayDate: formatDate(d)}); }} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px]" /></div>
                 <div className="space-y-1.5"><label className="text-[14px] font-medium dark:text-slate-300 capitalize">Invoice No</label><input required value={toDisplayValue(formData.invoice_number)} onChange={e => updateFormData({...formData, invoice_number: e.target.value})} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded outline-none text-[14px] font-mono uppercase" /></div>
-                {appSettings.gstEnabled && (
+                {canUseGst && appSettings.gstEnabled && (
                   <div className="space-y-1.5">
                     <label className="text-[14px] font-medium dark:text-slate-300 capitalize">GST Mode</label>
                     <div className="relative">
@@ -624,7 +673,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                             <th className="p-3 text-right w-32 border-r border-slate-200 dark:border-slate-700 capitalize">Rate</th>
                             <th className="p-3 text-center w-24 border-r border-slate-200 dark:border-slate-700 capitalize">QTY</th>
                             <th className="p-3 text-center w-40 border-r border-slate-200 dark:border-slate-700 capitalize">Discount</th>
-                            {isGstEnabled && appSettings.gstEnabled && <th className="p-3 text-center w-24 border-r border-slate-200 dark:border-slate-700 capitalize">GST %</th>}
+                            {isGstEnabled && canUseGst && appSettings.gstEnabled && <th className="p-3 text-center w-24 border-r border-slate-200 dark:border-slate-700 capitalize">GST %</th>}
                             <th className="p-3 text-right w-32 capitalize">Subtotal</th>
                             <th className="w-10"></th>
                         </tr>
@@ -665,7 +714,7 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                                             </div>
                                         )}
                                     </td>
-                                    {isGstEnabled && appSettings.gstEnabled && (
+                                    {isGstEnabled && canUseGst && appSettings.gstEnabled && (
                                         <td className="p-0 border-r border-slate-100 dark:border-slate-800 text-center">
                                             <select value={it.tax_rate} onChange={e => updateItemRow(idx, 'tax_rate', e.target.value)} className="w-full h-10 px-2 outline-none bg-transparent dark:text-white appearance-none text-center cursor-pointer">
                                                 <option value="0" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">0%</option>
@@ -715,8 +764,8 @@ const SalesInvoiceForm: React.FC<SalesInvoiceFormProps> = ({ initialData, onSubm
                               onFocus={(e) => { e.target.value = d.amount.toString(); e.target.select(); }} 
                               onBlur={(e) => { e.target.value = formatWhileTyping(d.amount.toString()) }} 
                               onChange={e => updateFormData(recalculate({...formData}, undefined, d.id, e.target.value))} 
-                              className={`px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-right w-40 sm:w-48 ${(d.is_readonly || (isGstEnabled && appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST'))) ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed text-slate-500' : 'bg-white dark:bg-slate-800'}`}
-                              readOnly={d.is_readonly || (isGstEnabled && appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST'))}
+                              className={`px-4 py-2 border border-slate-200 dark:border-slate-700 rounded outline-none text-[14px] font-mono font-bold text-right w-40 sm:w-48 ${(d.is_readonly || (isGstEnabled && canUseGst && appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST'))) ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed text-slate-500' : 'bg-white dark:bg-slate-800'}`}
+                              readOnly={d.is_readonly || (isGstEnabled && canUseGst && appSettings.gstEnabled && (d.name === 'CGST' || d.name === 'SGST' || d.name === 'IGST'))}
                             />
                         </div>
                     ))}

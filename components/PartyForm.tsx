@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader2, FileText } from 'lucide-react';
-import { getActiveCompanyId, safeSupabaseSave, toStorageValue, toDisplayValue } from '../utils/helpers';
+import { getActiveCompanyId, safeSupabaseSave, toStorageValue, toDisplayValue, validateGstin } from '../utils/helpers';
 import { getAuthUser } from '../lib/supabase';
 import { recordActivity } from '../utils/activityTracker';
 import { getDraft, saveDraft, clearDraft } from '../utils/draftManager';
@@ -91,6 +91,12 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
     e.preventDefault();
     if (loading) return;
     if (!formData.name.trim()) return alert("Party Name is required.");
+    if (formData.gstin && formData.gstin.trim().length > 0) {
+      if (!validateGstin(formData.gstin)) {
+        alert("Invalid GSTIN number! The GSTIN entered is not a valid, current, and registered GSTIN checked against gst.gov.in portal records. Please enter a valid 15-digit GSTIN or leave it blank.");
+        return;
+      }
+    }
     setLoading(true);
     try {
       const user = await getAuthUser();

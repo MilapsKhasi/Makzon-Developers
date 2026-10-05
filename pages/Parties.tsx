@@ -13,10 +13,12 @@ import PartyForm from '../components/PartyForm';
 import LedgerModal from '../components/LedgerModal';
 import EmptyState from '../components/EmptyState';
 import { useLicense } from '../context/LicenseContext';
+import { useSecurityDemo } from '../context/SecurityDemoContext';
 
 const Parties = () => {
   const location = useLocation();
   const { isReadOnly } = useLicense();
+  const { verifyAction } = useSecurityDemo();
   const cid = getActiveCompanyId();
   const [loading, setLoading] = useState(true);
   const [parties, setParties] = useState<any[]>([]);
@@ -147,25 +149,29 @@ const Parties = () => {
 
   const confirmDeleteParty = async () => {
     if (!deleteDialog.party) return;
-    try {
-      const { error } = await supabase
-        .from('vendors')
-        .update({ is_deleted: true })
-        .eq('id', deleteDialog.party.id);
+    const targetParty = deleteDialog.party;
+    setDeleteDialog({ isOpen: false, party: null });
 
-      if (error) throw error;
-      
-      // If deleted party was selected, clear selection
-      if (selectedPartyId === String(deleteDialog.party.id)) {
-        setSelectedPartyId(null);
+    verifyAction('Delete Party', async () => {
+      try {
+        const { error } = await supabase
+          .from('vendors')
+          .update({ is_deleted: true })
+          .eq('id', targetParty.id);
+
+        if (error) throw error;
+        
+        // If deleted party was selected, clear selection
+        if (selectedPartyId === String(targetParty.id)) {
+          setSelectedPartyId(null);
+        }
+        
+        loadData();
+        window.dispatchEvent(new Event('appSettingsChanged'));
+      } catch (err: any) {
+        alert('Error deleting party: ' + err.message);
       }
-      
-      setDeleteDialog({ isOpen: false, party: null });
-      loadData();
-      window.dispatchEvent(new Event('appSettingsChanged'));
-    } catch (err: any) {
-      alert('Error deleting party: ' + err.message);
-    }
+    });
   };
 
   // Filter parties based on search and selected group filter
@@ -370,7 +376,14 @@ const Parties = () => {
         </div>
         <button 
           disabled={isReadOnly}
-          onClick={() => { if (!isReadOnly) { setEditingParty(null); setIsFormOpen(true); } }} 
+          onClick={() => {
+            if (!isReadOnly) {
+              verifyAction('Create Party Account', () => {
+                setEditingParty(null);
+                setIsFormOpen(true);
+              });
+            }
+          }} 
           className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
             isReadOnly
               ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
@@ -388,7 +401,7 @@ const Parties = () => {
           title="No Party Accounts Created" 
           message="You haven't added any ledger accounts yet. Manage your business sales, purchases, payments, and receipts under a single unified party register!" 
           actionLabel="Create Party Account" 
-          onAction={() => { setEditingParty(null); setIsFormOpen(true); }} 
+          onAction={() => verifyAction('Create Party Account', () => { setEditingParty(null); setIsFormOpen(true); })} 
         />
       ) : (
         <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0 overflow-hidden">
@@ -453,28 +466,26 @@ const Parties = () => {
                       }}
                       onClick={() => {
                         setSelectedPartyId(String(party.id));
-                        setHighlightedId(String(party.id));
+                        setHighlightedId(null);
                       }} 
-                      className={`p-4 border rounded-[5px] cursor-pointer transition-all group ${
-                        isHighlighted
-                          ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-500 ring-2 ring-amber-400 text-slate-900 dark:text-white font-semibold shadow-md'
-                          : isSelected 
-                            ? 'bg-primary border-transparent text-white' 
-                            : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                      className={`p-4 rounded-[6px] cursor-pointer transition-all group ${
+                        isSelected 
+                          ? 'bg-blue-600 text-white border-0 shadow-sm' 
+                          : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-700/50'
                       }`}
                     >
                       <div className="flex justify-between items-start mb-1 gap-2">
-                        <h3 className="text-xs font-bold capitalize truncate">{party.name}</h3>
+                        <h3 className={`text-xs font-bold capitalize truncate ${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{party.name}</h3>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-medium leading-none tracking-tight shrink-0 ${
-                          isSelected && !isHighlighted ? 'bg-white/20 text-white' : (isDebtor ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30')
+                          isSelected ? 'bg-white/20 text-white' : (isDebtor ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30')
                         }`}>
                           {isDebtor ? 'DR' : 'CR'}
                         </span>
                       </div>
                       
                       <div className="flex justify-between items-center text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-2">
-                        <span className={isSelected && !isHighlighted ? 'text-white/80' : ''}>{party.gstin || 'No GSTIN'}</span>
-                        <span className={`font-mono font-bold ${isSelected && !isHighlighted ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}>
+                        <span className={isSelected ? 'text-white/80' : ''}>{party.gstin || 'No GSTIN'}</span>
+                        <span className={`font-mono font-bold ${isSelected ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}>
                           ₹{absBal.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {drCrTag}
                         </span>
                       </div>

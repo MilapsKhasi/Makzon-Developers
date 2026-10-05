@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Save, Loader2, Check } from 'lucide-react';
+import { Save, Loader2, Check, Lock } from 'lucide-react';
 // Fixed: Removed non-existent getDatePlaceholder from imports
-import { getActiveCompanyId, formatCurrency, parseDateFromInput, formatDate } from '../utils/helpers';
+import { getActiveCompanyId, formatCurrency, parseDateFromInput, formatDate, getEffectiveCompanyInfo } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import { getDraft, saveDraft, clearDraft } from '../utils/draftManager';
 
@@ -14,6 +14,8 @@ interface SimplifiedPurchaseFormProps {
 
 const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initialData, onSubmit, onCancel }) => {
   const cid = getActiveCompanyId();
+  const effectiveCompany = getEffectiveCompanyInfo();
+  const canUseGst = effectiveCompany.canUseGst;
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<any>({
     date: '', displayDate: '', bill_number: '', vendor_name: '',
@@ -50,10 +52,11 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
   }, [formData, draftKey, cid]);
 
   const updateAmounts = (taxable: number, gst: number) => {
-      const rawTotal = taxable + gst;
+      const effectiveGst = canUseGst ? gst : 0;
+      const rawTotal = taxable + effectiveGst;
       const rounded = Math.round(rawTotal);
       const ro = parseFloat((rounded - rawTotal).toFixed(2));
-      setFormData((prev: any) => ({ ...prev, total_without_gst: taxable, total_gst: gst, round_off: ro, grand_total: rounded }));
+      setFormData((prev: any) => ({ ...prev, total_without_gst: taxable, total_gst: effectiveGst, round_off: ro, grand_total: rounded }));
   };
 
   const handleDateBlur = () => {
@@ -64,6 +67,7 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.date || !formData.bill_number || !formData.vendor_name) return alert("Fill all mandatory fields.");
+    if (!canUseGst && formData.total_gst > 0) return alert("Unregistered (URD) firms cannot enter purchase bills enabled with GST.");
     
     if (!cid) return alert("No active workspace selected.");
 
@@ -71,9 +75,21 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
     try {
       // Logic refined: Data is stored against company_id. 
       // RLS policies on the 'bills' table should grant access based on companies_users membership.
+      const trimmedVendor = (formData.vendor_name || '').trim().toUpperCase();
+      const { data: existingVendors } = await supabase
+        .from('vendors')
+        .select('id, name')
+        .eq('company_id', cid)
+        .eq('is_deleted', false);
+      
+      const matchedParty = (existingVendors || []).find((v: any) => v.name?.trim().toUpperCase() === trimmedVendor);
+      const partyId = matchedParty?.id || initialData?.party_id || initialData?.vendor_id || null;
+
       const payload = {
         company_id: cid,
-        vendor_name: formData.vendor_name,
+        party_id: partyId,
+        vendor_id: partyId,
+        vendor_name: trimmedVendor,
         bill_number: formData.bill_number,
         date: formData.date,
         items: [],
@@ -100,7 +116,7 @@ const SimplifiedPurchaseForm: React.FC<SimplifiedPurchaseFormProps> = ({ initial
       
       clearDraft(draftKey);
       window.dispatchEvent(new Event('appSettingsChanged'));
-      onSubmit(payload);
+      onSubmit({ ...payload, id: initialData?.id });
     } catch (err: any) {
       alert("Error saving: " + err.message);
     } finally {
