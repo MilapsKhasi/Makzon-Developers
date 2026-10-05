@@ -685,3 +685,20 @@ export const validateGstin = (gstin: string): boolean => {
   }
 };
 
+/**
+ * Checks if a voucher or ledger transaction belongs to a given party.
+ */
+export const isTransactionForParty = (tx: any, partyName: string): boolean => {
+  if (!tx || !partyName) return false;
+  const target = partyName.trim().toLowerCase();
+  const txParty = (
+    tx.party_name ||
+    tx.party ||
+    tx.customer_name ||
+    tx.vendor_name ||
+    tx.name ||
+    ''
+  ).trim().toLowerCase();
+  return txParty === target;
+};
+

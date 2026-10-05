@@ -3,6 +3,7 @@ import { Loader2, Calendar, CreditCard, FileText, ArrowDownCircle, ArrowUpCircle
 import Modal from './Modal';
 import { supabase } from '../lib/supabase';
 import { getActiveCompanyId, formatDate, normalizeBill, safeSupabaseSave, syncTransactionToCashbook, formatCurrency, isTransactionForParty } from '../utils/helpers';
+export { isTransactionForParty };
 import { getDraft, saveDraft, clearDraft } from '../utils/draftManager';
 
 interface PaymentVoucherModalProps {
@@ -149,18 +150,13 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
 
         setAlreadyPaidBillIds(paidIds);
 
-        // Filter bills for the selected party using permanent ID resolution
-        const currentList = voucherType === 'Receipt' ? customers : vendors;
-        const targetParty = currentList.find(p => 
-          (p.id && String(p.id) === String(partyName)) ||
-          p.name?.trim().toUpperCase() === partyName.trim().toUpperCase() ||
-          (Array.isArray(p.previous_names) && p.previous_names.map((n: string) => String(n).trim().toUpperCase()).includes(partyName.trim().toUpperCase()))
-        ) || { name: partyName };
-
-        const bills = (data || []).map(normalizeBill).filter((item: any) => {
-          if (!item) return false;
-          const isVoucher = item.items_raw?.is_payment_voucher === true;
-          return !isVoucher && isTransactionForParty(item, targetParty);
+        // Filter bills for the selected party using case-insensitive matching
+        const pNameLower = partyName.trim().toLowerCase();
+        const bills = (data || []).filter((item: any) => {
+          const isVoucher = item.items && (item.items as any).is_payment_voucher === true;
+          const itemParty = (voucherType === 'Receipt' ? item.customer_name : item.vendor_name) || '';
+          const nameMatch = itemParty.trim().toLowerCase() === pNameLower;
+          return !isVoucher && nameMatch;
         });
 
         setPartyBills(bills);
@@ -173,7 +169,7 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
     };
 
     fetchPartyBills();
-  }, [isOpen, partyName, voucherType, customers, vendors]);
+  }, [isOpen, partyName, voucherType]);
 
   const handleBillToggle = (billId: string) => {
     setSelectedBillIds(prev => {
@@ -226,10 +222,6 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
       const isReceipt = voucherType === 'Receipt';
       const table = isReceipt ? 'sales_invoices' : 'purchase_bills';
 
-      const currentList = isReceipt ? customers : vendors;
-      const targetParty = currentList.find(p => p.name?.trim().toUpperCase() === partyName.trim().toUpperCase());
-      const resolvedPartyId = targetParty?.id || null;
-
       const { data: existingVVs } = await supabase
         .from(table)
         .select('*')
@@ -263,7 +255,6 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
 
       const payload: any = {
         company_id: cid,
-        party_id: resolvedPartyId,
         date: date,
         total_without_gst: 0,
         total_gst: 0,
@@ -272,9 +263,6 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
         is_deleted: false,
         description: finalDesc,
         items: {
-          party_id: resolvedPartyId,
-          customer_id: isReceipt ? resolvedPartyId : undefined,
-          vendor_id: !isReceipt ? resolvedPartyId : undefined,
           line_items: [],
           is_payment_voucher: true,
           payment_details: [{
@@ -287,12 +275,10 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
       };
 
       if (isReceipt) {
-        payload.customer_id = resolvedPartyId;
-        payload.customer_name = partyName.trim().toUpperCase();
+        payload.customer_name = partyName;
         payload.invoice_number = generatedNo;
       } else {
-        payload.vendor_id = resolvedPartyId;
-        payload.vendor_name = partyName.trim().toUpperCase();
+        payload.vendor_name = partyName;
         payload.bill_number = generatedNo;
       }
 
@@ -313,7 +299,6 @@ export const PaymentVoucherModal: React.FC<PaymentVoucherModalProps> = ({
       clearDraft(draftKey);
       setIsDraftRestored(false);
       window.dispatchEvent(new Event('appSettingsChanged'));
-      window.dispatchEvent(new Event('partiesUpdated'));
 
       if (onSuccess) onSuccess();
 
