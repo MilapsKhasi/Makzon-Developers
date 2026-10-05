@@ -17,7 +17,7 @@ const Auth = () => {
   const [signupPinError, setSignupPinError] = useState('');
   const navigate = useNavigate();
 
-  const { investigationMode, setInvestigationMode, setDemoZPin } = useSecurityDemo();
+  const { setDemoZPin } = useSecurityDemo();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +30,7 @@ const Auth = () => {
     localStorage.removeItem('zenter_trial_created_at');
     localStorage.removeItem('zenter_trial_expires_at');
     localStorage.removeItem('zenter_license_type');
+    localStorage.removeItem('zenter_investigation_mode');
     if (localStorage.getItem('activeCompanyId') === 'local-company-1') {
       localStorage.removeItem('activeCompanyId');
       localStorage.removeItem('activeCompanyName');
@@ -185,39 +186,6 @@ const Auth = () => {
                   placeholder="Your Password"
                 />
               </div>
-
-              {/* Part 1: Login Investigation Toggle (Login page only) */}
-              {isLogin && (
-                <div className="pt-1 pb-1">
-                  <div className="flex items-center justify-between p-3 rounded-[10px] bg-slate-50 border border-slate-200/80">
-                    <div className="pr-3">
-                      <div className="flex items-center space-x-1.5">
-                        <span className="text-xs font-semibold text-slate-900">
-                          Activate Investigation
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">
-                        Developer testing mode. Simulates login from an unknown device.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={investigationMode}
-                      onClick={() => setInvestigationMode(!investigationMode)}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        investigationMode ? 'bg-primary' : 'bg-slate-300'
-                      }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                          investigationMode ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {/* Part 3: Create your Z-PIN (Signup Demo only) */}
               {!isLogin && (
