@@ -336,8 +336,13 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
                 <History className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div className="truncate">
-                <h2 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white capitalize tracking-tight truncate">{party.name} - Ledger</h2>
-                <p className="text-[9px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Statement of Accounts</p>
+                <h2 
+                  style={{ fontFamily: 'Ubuntu', fontWeight: 'normal', lineHeight: '30px' }}
+                  className="text-base sm:text-xl font-normal text-slate-900 dark:text-white capitalize tracking-tight truncate"
+                >
+                  {party.name} - Ledger
+                </h2>
+                <p className="text-[9px] sm:text-[11px] font-normal text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5 sm:mt-1">Statement of Accounts</p>
               </div>
             </div>
             <div className="flex items-center space-x-2 sm:space-x-3">

@@ -165,7 +165,12 @@ const PartyForm: React.FC<PartyFormProps> = ({ initialData, prefilledName, defau
     <div className="bg-white dark:bg-slate-900 w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden rounded-md border border-slate-300 dark:border-slate-800">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 liquid-glass-header shrink-0 sticky top-0 z-10">
-        <h2 className="text-[18px] font-normal text-slate-900 dark:text-white">Party Master</h2>
+        <h2 
+          style={{ fontFamily: 'Ubuntu', fontWeight: 'normal', lineHeight: '30px' }}
+          className="text-[18px] font-normal text-slate-900 dark:text-white"
+        >
+          Party Master
+        </h2>
         <button type="button" onClick={onCancel} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-none">
           <X className="w-5 h-5" />
         </button>

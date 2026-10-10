@@ -555,7 +555,12 @@ const Parties = () => {
                       <Landmark className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                     </div>
                     <div className="truncate">
-                      <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white capitalize leading-none truncate">{selectedParty.name}</h2>
+                      <h2 
+                        style={{ fontFamily: 'Ubuntu', fontWeight: 'normal', lineHeight: '30px' }}
+                        className="text-base sm:text-lg font-normal text-slate-900 dark:text-white capitalize leading-none truncate"
+                      >
+                        {selectedParty.name}
+                      </h2>
                       <p className="text-[10px] font-mono font-semibold text-slate-400 dark:text-slate-500 tracking-tighter mt-1.5">ID: {selectedParty.id.split('-')[0]}</p>
                     </div>
                   </div>

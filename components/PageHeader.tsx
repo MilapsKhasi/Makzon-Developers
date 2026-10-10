@@ -44,7 +44,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         )}
         <div className="min-w-0">
           <div className="flex items-center space-x-2 flex-wrap">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight capitalize truncate">
+            <h1 
+              style={{ fontFamily: 'Ubuntu', fontWeight: 'normal', lineHeight: '30px' }}
+              className="text-xl font-normal text-slate-900 dark:text-white tracking-tight capitalize truncate"
+            >
               {title}
             </h1>
             {badge}

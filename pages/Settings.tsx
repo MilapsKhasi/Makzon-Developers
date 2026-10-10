@@ -353,7 +353,12 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
       {/* Modal Header */}
       <div className="flex items-center justify-between px-6 py-4 bg-slate-50 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 shrink-0">
         <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">Workspace Settings</h2>
+          <h2 
+            style={{ fontFamily: 'Ubuntu', fontWeight: 'normal', lineHeight: '30px' }}
+            className="text-base font-normal text-slate-900 dark:text-white"
+          >
+            Workspace Settings
+          </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">Configure your business ledger, GST taxation, automated backups, and theme preferences.</p>
         </div>
         <button 

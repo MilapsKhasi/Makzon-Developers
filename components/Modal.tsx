@@ -206,7 +206,12 @@ const Modal: React.FC<ModalProps> = ({
         className={`relative bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 w-full ${maxWidth} flex flex-col overflow-hidden rounded-lg shadow-2xl max-h-[90vh] z-10`}
       >
         <div className="flex items-center justify-between px-6 py-4 liquid-glass-header shrink-0 border-b border-slate-100 dark:border-slate-800 z-10">
-          <h3 className="text-[18px] font-medium text-slate-900 dark:text-slate-100 capitalize">{title}</h3>
+          <h3 
+            style={{ fontFamily: 'Ubuntu', fontWeight: 'normal', lineHeight: '30px' }}
+            className="text-[18px] font-normal text-slate-900 dark:text-slate-100 capitalize"
+          >
+            {title}
+          </h3>
           <button 
             type="button" 
             aria-label="Close"

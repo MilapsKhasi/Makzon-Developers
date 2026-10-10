@@ -185,7 +185,10 @@ export const ReportViewHeader: React.FC<ReportViewHeaderProps> = ({
         )}
         <div className="min-w-0">
           <div className="flex items-center space-x-2 flex-wrap">
-            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide truncate">
+            <h2 
+              style={{ fontFamily: 'Ubuntu', fontWeight: 'normal' }}
+              className="text-sm font-normal text-slate-800 dark:text-slate-100 uppercase tracking-wide truncate"
+            >
               {title}
             </h2>
             {badge}

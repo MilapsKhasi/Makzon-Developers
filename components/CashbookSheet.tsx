@@ -297,7 +297,10 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex flex-col">
-            <h2 className="text-[14px] font-bold text-slate-900 dark:text-slate-100 uppercase tracking-tight truncate max-w-[150px] sm:max-w-none">
+            <h2 
+              style={{ fontFamily: 'Ubuntu', fontWeight: 'normal', lineHeight: '30px' }}
+              className="text-[14px] font-normal text-slate-900 dark:text-slate-100 uppercase tracking-tight truncate max-w-[150px] sm:max-w-none"
+            >
               {localStorage.getItem('activeCompanyName') || 'Workspace'}
             </h2>
             <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
