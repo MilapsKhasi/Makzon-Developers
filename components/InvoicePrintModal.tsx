@@ -220,8 +220,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   const blankRowsNeeded = Math.max(0, 8 - calculatedItems.length);
 
   const handlePrint = () => {
-    if (!invoiceRef.current) return;
-    window.print();
+    // Print feature disabled: not available on this device
   };
 
   return (
@@ -656,13 +655,21 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
           
           <div className="flex items-center gap-4">
             <span className="text-base font-semibold text-slate-800 dark:text-slate-100">Print Preview</span>
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 bg-[#D32F2F] hover:bg-red-700 text-white px-5 py-2 rounded-md font-semibold text-sm transition-all shadow-sm active:scale-95 cursor-pointer"
-            >
-              <span>Print Invoice</span>
-              <Printer className="w-4 h-4" />
-            </button>
+            <div className="relative group inline-flex items-center">
+              <button
+                type="button"
+                disabled
+                className="flex items-center gap-2 bg-[#D32F2F]/70 text-white px-5 py-2 rounded-md font-semibold text-sm cursor-not-allowed shadow-none select-none transition-all"
+                title="Print feature is currently not available in this device"
+              >
+                <span>Print Invoice</span>
+                <Printer className="w-4 h-4" />
+              </button>
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900/95 text-white text-xs font-normal rounded-md shadow-xl whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50 border border-slate-700">
+                Print feature is currently not available in this device
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900/95" />
+              </div>
+            </div>
           </div>
 
           <div className="flex-1 flex justify-end">
