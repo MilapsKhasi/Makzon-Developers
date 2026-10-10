@@ -148,6 +148,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   const invoiceNo = invoice.invoice_number || invoice.bill_number || '';
   const invoiceDate = invoice.date ? formatInvoiceDate(invoice.date) : '';
   const poNumber = payment?.po_number || invoice.po_number || itemsRaw?.po_number || '';
+  const docTitle = itemsRaw?.is_delivery_challan || invoice?.is_delivery_challan ? 'Delivery Challan' : (hasGstin ? 'Tax Invoice' : 'Bill of Supply');
 
   // GST & Tax Calculations
   const gstType = itemsRaw?.gst_type || invoice.gst_type || 'Intra-State';
@@ -223,7 +224,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   const bankAccount = payment?.account_number || company?.account_number || company?.raw_data?.account_number || '';
   const bankIfsc = payment?.ifsc || company?.ifsc_code || company?.ifsc || company?.raw_data?.ifsc || '';
 
-  const blankRowsNeeded = Math.max(0, 10 - calculatedItems.length);
+  const blankRowsNeeded = Math.max(0, 8 - calculatedItems.length);
 
   const handlePrint = () => {
     if (!invoiceRef.current) return;
@@ -231,40 +232,440 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-fadeIn print:p-0 print:bg-white print:static print:inset-auto print:z-auto">
-      {/* Print Stylesheet injection */}
+    <div className="invoice-print-backdrop fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-fadeIn print:p-0 print:bg-white print:static print:inset-auto print:z-auto">
+      {/* Exact CSS Print Architecture from template for pixel-perfect A4 printing & PDF export */}
       <style dangerouslySetInnerHTML={{ __html: `
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+
         @media print {
-          @page {
-            size: A4 portrait;
-            margin: 8mm;
+          html, body {
+            width: 210mm !important;
+            height: 297mm !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
           }
-          body {
-            background: white !important;
-            color: black !important;
+
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
-          header, nav, aside, .print-modal-header, .print\\:hidden {
+
+          header, nav, aside, footer, .sidebar, .liquid-glass-header, .print-modal-header, .print\\:hidden, .toolbar, .no-print {
             display: none !important;
           }
-          .printable-invoice-sheet {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            border: none !important;
-            box-shadow: none !important;
+
+          .invoice-print-backdrop {
+            position: static !important;
+            background: transparent !important;
             padding: 0 !important;
             margin: 0 !important;
-            min-height: auto !important;
+            inset: auto !important;
+            z-index: auto !important;
+            overflow: visible !important;
+            display: block !important;
+            height: auto !important;
+            max-height: none !important;
           }
+
+          .invoice-print-container {
+            position: static !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            max-height: none !important;
+            height: auto !important;
+            overflow: visible !important;
+            background: transparent !important;
+            width: 210mm !important;
+            max-width: 210mm !important;
+          }
+
+          .invoice-print-scroll {
+            overflow: visible !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: transparent !important;
+            display: block !important;
+          }
+
+          .exact-a4-page {
+            box-shadow: none !important;
+            margin: 0 !important;
+            border: none !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            min-height: 297mm !important;
+            max-height: 297mm !important;
+            padding: 10mm !important;
+            box-sizing: border-box !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            overflow: hidden !important;
+            background: #ffffff !important;
+          }
+
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+        }
+
+        /* Screen & Print Container Styles */
+        .exact-a4-page {
+          width: 210mm;
+          min-height: 297mm;
+          height: 297mm;
+          padding: 10mm;
+          background: #ffffff;
+          box-sizing: border-box;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+          font-size: 11px;
+          line-height: 1.35;
+          color: #1e293b;
+        }
+
+        /* Two-Column Master Header */
+        .exact-a4-page .header-grid {
+          display: table;
+          width: 100%;
+          border-bottom: 1px solid #e2e8f0;
+          padding-bottom: 14px;
+          margin-bottom: 14px;
+        }
+
+        .exact-a4-page .header-col-left {
+          display: table-cell;
+          width: 50%;
+          vertical-align: top;
+          padding-right: 16px;
+        }
+
+        .exact-a4-page .header-col-right {
+          display: table-cell;
+          width: 50%;
+          vertical-align: top;
+          padding-left: 20px;
+          border-left: 1px solid #e2e8f0;
+        }
+
+        .exact-a4-page .company-title {
+          font-size: 20px;
+          font-weight: 800;
+          color: #D32F2F;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 8px;
+          line-height: 1.15;
+        }
+
+        .exact-a4-page .doc-title {
+          font-size: 20px;
+          font-weight: 800;
+          color: #0f172a;
+          letter-spacing: -0.2px;
+          margin-bottom: 8px;
+          line-height: 1.15;
+        }
+
+        .exact-a4-page .info-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .exact-a4-page .info-table td {
+          padding: 2px 0;
+          font-size: 10.5px;
+          vertical-align: top;
+        }
+
+        .exact-a4-page .info-label {
+          color: #64748b;
+          font-weight: 400;
+          width: 38%;
+        }
+
+        .exact-a4-page .info-value {
+          color: #0f172a;
+          font-weight: 500;
+          text-align: right;
+        }
+
+        .exact-a4-page .info-value.bold {
+          font-weight: 700;
+          font-family: 'Roboto Mono', ui-monospace, monospace;
+        }
+
+        /* Billed To & Shipped To Section */
+        .exact-a4-page .party-card {
+          border: 1px solid #D5E0EB;
+          margin-bottom: 14px;
+          background: #ffffff;
+        }
+
+        .exact-a4-page .party-card-header {
+          display: table;
+          width: 100%;
+          background-color: #F4F8FA;
+          border-bottom: 1px solid #D5E0EB;
+        }
+
+        .exact-a4-page .party-card-cell-header {
+          display: table-cell;
+          width: 50%;
+          padding: 5px 10px;
+          vertical-align: middle;
+        }
+
+        .exact-a4-page .party-card-cell-header:first-child {
+          border-right: 1px solid #D5E0EB;
+        }
+
+        .exact-a4-page .party-card-header-inner {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .exact-a4-page .party-tag {
+          color: #64748b;
+          font-size: 10px;
+        }
+
+        .exact-a4-page .party-name {
+          font-weight: 700;
+          color: #0f172a;
+          text-transform: uppercase;
+          font-size: 11px;
+        }
+
+        .exact-a4-page .party-card-body {
+          display: table;
+          width: 100%;
+        }
+
+        .exact-a4-page .party-card-cell-body {
+          display: table-cell;
+          width: 50%;
+          padding: 8px 10px;
+          vertical-align: top;
+        }
+
+        .exact-a4-page .party-card-cell-body:first-child {
+          border-right: 1px solid #D5E0EB;
+        }
+
+        /* Fixed Items Table */
+        .exact-a4-page .items-container {
+          width: 100%;
+          margin-bottom: 12px;
+        }
+
+        .exact-a4-page .items-table {
+          width: 100%;
+          table-layout: fixed;
+          border-collapse: collapse;
+        }
+
+        .exact-a4-page .items-table th {
+          background-color: #D32F2F !important;
+          color: #ffffff !important;
+          font-weight: 600;
+          font-size: 10px;
+          text-transform: uppercase;
+          padding: 7px 4px;
+          letter-spacing: 0.3px;
+          border: none;
+        }
+
+        .exact-a4-page .items-table td {
+          padding: 5.5px 4px;
+          font-size: 10.5px;
+          color: #1e293b;
+          vertical-align: middle;
+          border-bottom: 1px solid #f1f5f9;
+        }
+
+        .exact-a4-page .col-sr        { width: 5%;  text-align: center; }
+        .exact-a4-page .col-desc      { width: 27%; text-align: left; }
+        .exact-a4-page .col-hsn       { width: 9%;  text-align: center; font-family: monospace; }
+        .exact-a4-page .col-qty       { width: 7%;  text-align: center; font-family: monospace; }
+        .exact-a4-page .col-rate      { width: 9%;  text-align: right;  font-family: monospace; }
+        .exact-a4-page .col-amt       { width: 11%; text-align: right;  font-family: monospace; }
+        .exact-a4-page .col-tax       { width: 7%;  text-align: center; font-family: monospace; }
+        .exact-a4-page .col-cgst      { width: 8%;  text-align: right;  font-family: monospace; }
+        .exact-a4-page .col-sgst      { width: 8%;  text-align: right;  font-family: monospace; }
+        .exact-a4-page .col-subtotal  { width: 9%;  text-align: right;  font-family: monospace; }
+
+        .exact-a4-page .items-table tbody tr.empty-row td {
+          border-bottom: 1px solid #f8fafc;
+          height: 22px;
+        }
+
+        .exact-a4-page .items-table tfoot tr {
+          background-color: #EBF3FA !important;
+          border-top: 1px solid #D5E0EB;
+          border-bottom: 1px solid #D5E0EB;
+          font-weight: 700;
+          color: #0f172a;
+        }
+
+        .exact-a4-page .items-table tfoot td {
+          padding: 6px 4px;
+          font-size: 10.5px;
+          font-weight: 700;
+          color: #0f172a;
+          border: none;
+        }
+
+        /* Calculation Summary & Total in Words */
+        .exact-a4-page .calc-section {
+          display: table;
+          width: 100%;
+          margin-bottom: 12px;
+        }
+
+        .exact-a4-page .calc-left {
+          display: table-cell;
+          width: 50%;
+          vertical-align: top;
+          padding-right: 18px;
+        }
+
+        .exact-a4-page .calc-right {
+          display: table-cell;
+          width: 50%;
+          vertical-align: top;
+          padding-left: 18px;
+        }
+
+        .exact-a4-page .section-label-italic {
+          font-size: 10px;
+          font-style: italic;
+          color: #94a3b8;
+          margin-bottom: 3px;
+        }
+
+        .exact-a4-page .section-divider-line {
+          border-bottom: 1px solid #e2e8f0;
+          margin-bottom: 6px;
+        }
+
+        .exact-a4-page .words-container {
+          font-size: 10.5px;
+          font-weight: 700;
+          color: #0f172a;
+          line-height: 1.45;
+        }
+
+        .exact-a4-page .calc-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .exact-a4-page .calc-table td {
+          padding: 2.5px 0;
+          font-size: 10.5px;
+        }
+
+        .exact-a4-page .calc-table .label {
+          color: #475569;
+          font-weight: 500;
+        }
+
+        .exact-a4-page .calc-table .val {
+          text-align: right;
+          font-weight: 600;
+          font-family: 'Roboto Mono', ui-monospace, monospace;
+          color: #0f172a;
+        }
+
+        .exact-a4-page .grand-total-banner {
+          background-color: #EBF3FA !important;
+          border: 1px solid #D5E0EB;
+          padding: 6px 12px;
+          margin-top: 6px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-weight: 700;
+          font-size: 12px;
+          color: #0f172a;
+        }
+
+        .exact-a4-page .grand-total-amount {
+          font-size: 13px;
+          font-weight: 800;
+          font-family: 'Roboto Mono', ui-monospace, monospace;
+        }
+
+        /* Footer Section */
+        .exact-a4-page .footer-section {
+          display: table;
+          width: 100%;
+          border-top: 1px solid #e2e8f0;
+          padding-top: 10px;
+          margin-top: auto;
+        }
+
+        .exact-a4-page .footer-left {
+          display: table-cell;
+          width: 50%;
+          vertical-align: top;
+          padding-right: 18px;
+        }
+
+        .exact-a4-page .footer-right {
+          display: table-cell;
+          width: 50%;
+          vertical-align: bottom;
+          text-align: right;
+          padding-left: 18px;
+        }
+
+        .exact-a4-page .signatory-box {
+          display: inline-block;
+          text-align: center;
+          width: 180px;
+        }
+
+        .exact-a4-page .signatory-company {
+          font-size: 10px;
+          font-style: italic;
+          color: #64748b;
+          margin-bottom: 34px;
+          text-align: right;
+        }
+
+        .exact-a4-page .signatory-line {
+          border-bottom: 1px solid #cbd5e1;
+          margin-bottom: 4px;
+        }
+
+        .exact-a4-page .signatory-text {
+          font-size: 10px;
+          font-style: italic;
+          color: #64748b;
         }
       `}} />
 
       {/* Modal Popup Container */}
-      <div className="w-full max-w-[950px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] print:max-h-none print:border-none print:shadow-none print:rounded-none">
+      <div className="invoice-print-container w-full max-w-[950px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] print:max-h-none print:border-none print:shadow-none print:rounded-none">
         
-        {/* Top Control Bar matching the design in the image */}
+        {/* Top Control Bar */}
         <div className="print-modal-header flex items-center justify-between px-6 py-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 print:hidden">
           <div className="flex-1" />
           
@@ -291,259 +692,271 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         </div>
 
         {/* Scrollable Preview Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100/80 dark:bg-slate-950 flex justify-center print:p-0 print:bg-white print:overflow-visible">
-          {/* Printable Sheet */}
+        <div className="invoice-print-scroll flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100/80 dark:bg-slate-950 flex justify-center print:p-0 print:bg-white print:overflow-visible">
+          {/* Exact A4 Sheet Page */}
           <div
             ref={invoiceRef}
-            className="printable-invoice-sheet bg-white text-slate-900 w-full max-w-[800px] p-8 sm:p-10 border border-slate-200 shadow-sm flex flex-col justify-between font-sans text-xs leading-snug min-h-[1080px] print:min-h-0 print:border-none print:shadow-none print:p-0 print:m-0"
+            className="exact-a4-page shadow-lg print:shadow-none"
           >
             <div>
-              {/* 1. Top Header Grid */}
-              <div className="grid grid-cols-2 gap-8 border-b border-slate-200 pb-5 mb-5">
-                {/* Left Column: Company Info */}
-                <div className="pr-4 space-y-2">
-                  <h1 className="text-2xl font-bold text-[#D32F2F] tracking-wide uppercase leading-tight">
-                    {companyName}
-                  </h1>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-normal">Phone</span>
-                      <span className="font-medium text-slate-800">{companyPhone}</span>
+              {/* 1. Header Grid */}
+              <div className="header-grid">
+                {/* Company Left Column */}
+                <div className="header-col-left">
+                  <div className="company-title">{companyName}</div>
+                  <table className="info-table">
+                    <tbody>
+                      <tr>
+                        <td className="info-label">Phone</td>
+                        <td className="info-value">{companyPhone || '—'}</td>
+                      </tr>
+                      <tr>
+                        <td className="info-label">GSTIN</td>
+                        <td className="info-value bold">{companyGstin || 'URD'}</td>
+                      </tr>
+                      <tr>
+                        <td className="info-label">Address</td>
+                        <td className="info-value">{companyAddress || '—'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Document Right Column */}
+                <div className="header-col-right">
+                  <div className="doc-title">{docTitle}</div>
+                  <table className="info-table">
+                    <tbody>
+                      <tr>
+                        <td className="info-label">Invoice Number</td>
+                        <td className="info-value bold">{invoiceNo || '—'}</td>
+                      </tr>
+                      <tr>
+                        <td className="info-label">Invoice Date</td>
+                        <td className="info-value bold">{invoiceDate || '—'}</td>
+                      </tr>
+                      <tr>
+                        <td className="info-label">Purchase Order Number</td>
+                        <td className="info-value bold">{poNumber || '—'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 2. Billed To & Shipped To Box */}
+              <div className="party-card">
+                <div className="party-card-header">
+                  <div className="party-card-cell-header">
+                    <div className="party-card-header-inner">
+                      <span className="party-tag">Billed to</span>
+                      <span className="party-name">{customerName}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-normal">GSTIN</span>
-                      <span className="font-semibold text-slate-900 font-mono">{companyGstin || '24FJWK1245Q1ZD'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-normal">Address</span>
-                      <span className="font-medium text-slate-800 text-right max-w-[240px]">{companyAddress}</span>
+                  </div>
+                  <div className="party-card-cell-header">
+                    <div className="party-card-header-inner">
+                      <span className="party-tag">Shipped to</span>
+                      <span className="party-name">{shipToName}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Right Column: Invoice Info */}
-                <div className="pl-8 border-l border-slate-200 space-y-2">
-                  <h2 className="text-2xl font-bold text-slate-900 tracking-tight leading-tight">
-                    {itemsRaw?.is_delivery_challan || invoice?.is_delivery_challan ? 'Delivery Challan' : (companyGstin ? 'Tax Invoice' : 'Bill of Supply')}
-                  </h2>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-normal">Invoice Number</span>
-                      <span className="font-medium text-slate-800 font-mono">{invoiceNo || '2026/27/006'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-normal">Invoice Date</span>
-                      <span className="font-medium text-slate-800 font-mono">{invoiceDate || '06/08/26'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-normal">Purchase Order Number</span>
-                      <span className="font-medium text-slate-800 font-mono">{poNumber || ''}</span>
-                    </div>
+                <div className="party-card-body">
+                  <div className="party-card-cell-body">
+                    <table className="info-table">
+                      <tbody>
+                        <tr>
+                          <td className="info-label">GSTIN</td>
+                          <td className="info-value bold">{customerGstin || '—'}</td>
+                        </tr>
+                        <tr>
+                          <td className="info-label">Phone</td>
+                          <td className="info-value">{customerPhone || '—'}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="party-card-cell-body">
+                    <table className="info-table">
+                      <tbody>
+                        <tr>
+                          <td className="info-label">Address</td>
+                          <td className="info-value">{shipToAddress || '—'}</td>
+                        </tr>
+                        <tr>
+                          <td className="info-label">State & Country</td>
+                          <td className="info-value bold">{customerStateCountry}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
 
-              {/* 2. Billed To / Shipped To Box */}
-              <div className="mb-5 border border-[#D5E0EB] rounded-xs overflow-hidden text-xs">
-                {/* Header row */}
-                <div className="grid grid-cols-2 bg-[#F4F8FA] border-b border-[#D5E0EB] px-4 py-2">
-                  <div className="flex justify-between items-center pr-4">
-                    <span className="text-slate-500">Billed to</span>
-                    <span className="font-bold text-slate-900 uppercase">{customerName}</span>
-                  </div>
-                  <div className="flex justify-between items-center pl-4 border-l border-[#D5E0EB]">
-                    <span className="text-slate-500">Shipped to</span>
-                    <span className="font-bold text-slate-900 uppercase">{shipToName}</span>
-                  </div>
-                </div>
-
-                {/* Details row */}
-                <div className="grid grid-cols-2 px-4 py-2.5 bg-white">
-                  <div className="pr-4 space-y-1.5">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">GSTIN</span>
-                      <span className="font-medium text-slate-800 font-mono">{customerGstin || ''}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Phone</span>
-                      <span className="font-medium text-slate-800">{customerPhone || ''}</span>
-                    </div>
-                  </div>
-                  <div className="pl-4 border-l border-[#D5E0EB] space-y-1.5">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Address</span>
-                      <span className="font-medium text-slate-800 text-right max-w-[220px]">{shipToAddress || ''}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">State & Country</span>
-                      <span className="font-semibold text-slate-900">{customerStateCountry}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. Items Table */}
-              <div className="mb-5">
-                <table className="w-full text-left text-xs border-collapse">
+              {/* 3. Fixed Table Items */}
+              <div className="items-container">
+                <table className="items-table">
                   <thead>
-                    <tr className="bg-[#D32F2F] text-white">
-                      <th className="py-2.5 px-2 text-center w-[5%] font-semibold">Sr</th>
-                      <th className="py-2.5 px-3 text-left w-[27%] font-semibold">Particulars</th>
-                      <th className="py-2.5 px-2 text-center w-[9%] font-semibold">HSN</th>
-                      <th className="py-2.5 px-2 text-center w-[7%] font-semibold">QTY</th>
-                      <th className="py-2.5 px-2 text-right w-[9%] font-semibold">Rate</th>
-                      <th className="py-2.5 px-2 text-right w-[11%] font-semibold">Amount</th>
-                      {hasGstin && (
+                    <tr>
+                      <th className="col-sr">Sr</th>
+                      <th className="col-desc">Particulars</th>
+                      <th className="col-hsn">HSN</th>
+                      <th className="col-qty">QTY</th>
+                      <th className="col-rate">Rate</th>
+                      <th className="col-amt">Amount</th>
+                      {hasGstin ? (
                         <>
-                          <th className="py-2.5 px-2 text-center w-[7%] font-semibold">Tax %</th>
-                          <th className="py-2.5 px-2 text-right w-[8%] font-semibold">{isInterState ? 'IGST' : 'CGST'}</th>
-                          <th className="py-2.5 px-2 text-right w-[8%] font-semibold">{isInterState ? '—' : 'SGST'}</th>
+                          <th className="col-tax">Tax %</th>
+                          <th className="col-cgst">{isInterState ? 'IGST' : 'CGST'}</th>
+                          <th className="col-sgst">{isInterState ? '—' : 'SGST'}</th>
+                        </>
+                      ) : (
+                        <>
+                          <th className="col-tax">—</th>
+                          <th className="col-cgst">—</th>
+                          <th className="col-sgst">—</th>
                         </>
                       )}
-                      <th className="py-2.5 px-2 text-right w-[9%] font-semibold">Subtotal</th>
+                      <th className="col-subtotal">Subtotal</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-800">
+                  <tbody>
                     {calculatedItems.map((item: any, idx: number) => (
-                      <tr key={`item-${idx}`} className="h-8">
-                        <td className="py-2 px-2 text-center text-slate-600">{idx + 1}</td>
-                        <td className="py-2 px-3 text-left font-bold text-slate-900 uppercase">{item.name}</td>
-                        <td className="py-2 px-2 text-center text-slate-600 font-mono">{item.hsn || '—'}</td>
-                        <td className="py-2 px-2 text-center font-medium font-mono">{item.qty}</td>
-                        <td className="py-2 px-2 text-right font-mono">{item.rate.toFixed(2)}</td>
-                        <td className="py-2 px-2 text-right font-mono">{item.amount.toFixed(2)}</td>
-                        {hasGstin && (
+                      <tr key={`item-${idx}`}>
+                        <td className="col-sr">{idx + 1}</td>
+                        <td className="col-desc" style={{ fontWeight: 700 }}>{item.name}</td>
+                        <td className="col-hsn">{item.hsn || '—'}</td>
+                        <td className="col-qty">{item.qty}</td>
+                        <td className="col-rate">{item.rate.toFixed(2)}</td>
+                        <td className="col-amt">{item.amount.toFixed(2)}</td>
+                        {hasGstin ? (
                           <>
-                            <td className="py-2 px-2 text-center font-mono">{item.taxRate}%</td>
-                            <td className="py-2 px-2 text-right font-mono">{item.cgst.toFixed(2)}</td>
-                            <td className="py-2 px-2 text-right font-mono">{item.sgst.toFixed(2)}</td>
+                            <td className="col-tax">{item.taxRate}%</td>
+                            <td className="col-cgst">{isInterState ? item.igst.toFixed(2) : item.cgst.toFixed(2)}</td>
+                            <td className="col-sgst">{isInterState ? '—' : item.sgst.toFixed(2)}</td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="col-tax">—</td>
+                            <td className="col-cgst">—</td>
+                            <td className="col-sgst">—</td>
                           </>
                         )}
-                        <td className="py-2 px-2 text-right font-semibold font-mono text-slate-900">{item.subtotal.toFixed(2)}</td>
+                        <td className="col-subtotal" style={{ fontWeight: 700 }}>{item.subtotal.toFixed(2)}</td>
                       </tr>
                     ))}
                     {Array.from({ length: blankRowsNeeded }).map((_, idx) => (
-                      <tr key={`blank-${idx}`} className="h-8 border-b border-slate-100/60">
-                        <td colSpan={hasGstin ? 10 : 7} className="py-2">&nbsp;</td>
+                      <tr key={`blank-${idx}`} className="empty-row">
+                        <td colSpan={10}>&nbsp;</td>
                       </tr>
                     ))}
                   </tbody>
-                  {/* Total Row */}
                   <tfoot>
-                    <tr className="bg-[#EBF3FA] font-bold text-slate-900 text-xs border-t border-b border-[#D5E0EB]">
-                      <td className="py-2.5 px-2"></td>
-                      <td className="py-2.5 px-3 text-left font-bold">Total</td>
-                      <td className="py-2.5 px-2"></td>
-                      <td className="py-2.5 px-2 text-center font-mono font-bold">{totalQty}</td>
-                      <td className="py-2.5 px-2"></td>
-                      <td className="py-2.5 px-2 text-right font-mono font-bold">{totalAmount.toFixed(2)}</td>
-                      {hasGstin && (
+                    <tr>
+                      <td className="col-sr"></td>
+                      <td className="col-desc" style={{ fontWeight: 700 }}>Total</td>
+                      <td className="col-hsn"></td>
+                      <td className="col-qty">{totalQty}</td>
+                      <td className="col-rate"></td>
+                      <td className="col-amt">{totalAmount.toFixed(2)}</td>
+                      {hasGstin ? (
                         <>
-                          <td className="py-2.5 px-2"></td>
-                          <td className="py-2.5 px-2 text-right font-mono font-bold">{isInterState ? totalIgst.toFixed(2) : totalCgst.toFixed(2)}</td>
-                          <td className="py-2.5 px-2 text-right font-mono font-bold">{isInterState ? '—' : totalSgst.toFixed(2)}</td>
+                          <td className="col-tax"></td>
+                          <td className="col-cgst">{isInterState ? totalIgst.toFixed(2) : totalCgst.toFixed(2)}</td>
+                          <td className="col-sgst">{isInterState ? '—' : totalSgst.toFixed(2)}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="col-tax"></td>
+                          <td className="col-cgst"></td>
+                          <td className="col-sgst"></td>
                         </>
                       )}
-                      <td className="py-2.5 px-2 text-right font-mono font-bold">{totalSubtotal.toFixed(2)}</td>
+                      <td className="col-subtotal">{totalSubtotal.toFixed(2)}</td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
 
-              {/* 4. Grand Total in Words & Calculations Grid */}
-              <div className="grid grid-cols-2 gap-8 mb-6 pt-2">
-                {/* Left: Grand Total in Words */}
-                <div className="pr-4">
-                  <div className="text-xs italic text-slate-400 mb-1">
-                    Grand Total in words
-                  </div>
-                  <div className="border-b border-slate-200 pb-1 mb-2"></div>
-                  <div className="text-xs font-bold text-slate-900 leading-relaxed">
+              {/* 4. Calculations & Grand Total in Words Grid */}
+              <div className="calc-section">
+                <div className="calc-left">
+                  <div className="section-label-italic">Grand Total in words</div>
+                  <div className="section-divider-line"></div>
+                  <div className="words-container">
                     {numberToWords(grandTotalVal)}
                   </div>
                 </div>
 
-                {/* Right: Amounts & Additional Charges */}
-                <div className="pl-4 space-y-1.5 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-600 font-medium">Taxable Amount</span>
-                    <span className="text-slate-900 font-mono font-semibold">{taxableVal.toFixed(2)}</span>
-                  </div>
-                  {hasGstin && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-600 font-medium">GST Amount</span>
-                      <span className="text-slate-900 font-mono font-semibold">{gstVal.toFixed(2)}</span>
-                    </div>
-                  )}
+                <div className="calc-right">
+                  <table className="calc-table">
+                    <tbody>
+                      <tr>
+                        <td className="label">Taxable Amount</td>
+                        <td className="val">{taxableVal.toFixed(2)}</td>
+                      </tr>
+                      {hasGstin && (
+                        <tr>
+                          <td className="label">GST Amount</td>
+                          <td className="val">{gstVal.toFixed(2)}</td>
+                        </tr>
+                      )}
+                      {appliedCharges.map((ch: any, idx: number) => (
+                        <tr key={idx}>
+                          <td className="label">{ch.name}</td>
+                          <td className="val">
+                            {ch.type === 'Deduction' ? `-${Math.abs(ch.amount).toFixed(2)}` : parseFloat(ch.amount || 0).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
 
-                  {/* Additional Charges Block */}
-                  {appliedCharges.length > 0 && (
-                    <div className="pt-2">
-                      <div className="font-semibold text-slate-800 mb-1">
-                        Additional Charges
-                      </div>
-                      <div className="border-b border-slate-200 mb-2"></div>
-                      <div className="space-y-1">
-                        {appliedCharges.map((ch: any, idx: number) => (
-                          <div key={idx} className="flex justify-between text-xs">
-                            <span className="text-slate-600">{ch.name}</span>
-                            <span className="text-slate-900 font-mono font-semibold">
-                              {ch.type === 'Deduction' ? `-${Math.abs(ch.amount).toFixed(2)}` : parseFloat(ch.amount || 0).toFixed(2)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Grand Total Bar */}
-                  <div className="bg-[#EBF3FA] px-4 py-2 flex justify-between font-bold text-sm text-slate-900 border border-[#D5E0EB] mt-2 rounded-xs">
+                  <div className="grand-total-banner">
                     <span>Grand Total</span>
-                    <span className="font-mono">{grandTotalVal.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 5. Footer: Bank Details & Authorized Signatory */}
-            <div className="grid grid-cols-2 gap-8 border-t border-slate-200 pt-5 mt-auto text-xs">
-              {/* Left: Bank Details */}
-              <div className="pr-4 space-y-1.5">
-                <div className="text-xs italic text-slate-400 mb-1">
-                  Bank Details
-                </div>
-                <div className="border-b border-slate-200 pb-0.5 mb-1.5"></div>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Bank</span>
-                    <span className="font-medium text-slate-800">{bankName || '—'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">A/c Holder</span>
-                    <span className="font-medium text-slate-800">{bankHolder || '—'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">A/c Number</span>
-                    <span className="font-medium text-slate-800 font-mono">{bankAccount || '—'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">IFSC Code</span>
-                    <span className="font-medium text-slate-800 font-mono">{bankIfsc || '—'}</span>
+                    <span className="grand-total-amount">{grandTotalVal.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Right: Authorized Signatory */}
-              <div className="pl-4 flex flex-col justify-between items-end text-right">
-                <div className="text-xs italic text-slate-500">
-                  for {companyName}
-                </div>
-                <div className="w-48 border-b border-slate-300 mt-10 mb-1"></div>
-                <div className="text-[11px] italic text-slate-500 w-48 text-center">
-                  Authorized Signatory
+            </div>
+
+            {/* 5. Footer Section: Bank Details & Authorized Signatory */}
+            <div className="footer-section">
+              <div className="footer-left">
+                <div className="section-label-italic">Bank Details</div>
+                <div className="section-divider-line"></div>
+                <table className="info-table">
+                  <tbody>
+                    <tr>
+                      <td className="info-label">Bank</td>
+                      <td className="info-value">{bankName || '—'}</td>
+                    </tr>
+                    <tr>
+                      <td className="info-label">A/c Holder</td>
+                      <td className="info-value">{bankHolder || companyName || '—'}</td>
+                    </tr>
+                    <tr>
+                      <td className="info-label">A/c Number</td>
+                      <td className="info-value bold">{bankAccount || '—'}</td>
+                    </tr>
+                    <tr>
+                      <td className="info-label">IFSC Code</td>
+                      <td className="info-value bold">{bankIfsc || '—'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="footer-right">
+                <div className="signatory-company">for {companyName}</div>
+                <div className="signatory-box">
+                  <div className="signatory-line"></div>
+                  <div className="signatory-text">Authorized Signatory</div>
                 </div>
               </div>
             </div>
+
           </div>
         </div>
       </div>

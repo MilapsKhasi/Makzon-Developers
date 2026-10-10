@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tax Invoice - A4 Print Template</title>
+  <style>
+    /* =========================================================
+       CSS PRINT ARCHITECTURE - PIXEL-PERFECT A4 SPECIFICATION
+       ========================================================= */
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    @media print {
+      html, body {
+        width: 210mm !important;
+        height: 297mm !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .invoice-page {
+        box-shadow: none !important;
+        margin: 0 !important;
+        border: none !important;
+      }
+
+      tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+    }
+
+    /* Screen Preview Wrapper */
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      line-height: 1.35;
+      color: #1e293b;
+      background-color: #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 0;
+    }
+
+    /* Action Toolbar for browser testing */
+    .toolbar {
+      width: 210mm;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .btn-print {
+      background-color: #D32F2F;
+      color: #ffffff;
+      border: none;
+      padding: 8px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-print:hover {
+      background-color: #b71c1c;
+    }
+
+    /* Strict A4 Container */
+    .invoice-page {
+      width: 210mm;
+      min-height: 297mm;
+      height: 297mm;
+      padding: 10mm;
+      background: #ffffff;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    /* =========================================================
+       1. HEADER LAYOUT (Two-Column Master Grid)
+       ========================================================= */
+    .header-grid {
+      display: table;
+      width: 100%;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+    }
+
+    .header-col-left {
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
+      padding-right: 16px;
+    }
+
+    .header-col-right {
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
+      padding-left: 20px;
+      border-left: 1px solid #e2e8f0;
+    }
+
+    .company-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #D32F2F;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      line-height: 1.15;
+    }
+
+    .doc-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.2px;
+      margin-bottom: 8px;
+      line-height: 1.15;
+    }
+
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .info-table td {
+      padding: 2px 0;
+      font-size: 10.5px;
+      vertical-align: top;
+    }
+
+    .info-label {
+      color: #64748b;
+      font-weight: 400;
+      width: 38%;
+    }
+
+    .info-value {
+      color: #0f172a;
+      font-weight: 500;
+      text-align: right;
+    }
+
+    .info-value.bold {
+      font-weight: 700;
+      font-family: 'Roboto Mono', ui-monospace, monospace;
+    }
+
+    /* =========================================================
+       2. BILLED TO & SHIPPED TO SECTION
+       ========================================================= */
+    .party-card {
+      border: 1px solid #D5E0EB;
+      margin-bottom: 14px;
+      background: #ffffff;
+    }
+
+    .party-card-header {
+      display: table;
+      width: 100%;
+      background-color: #F4F8FA;
+      border-bottom: 1px solid #D5E0EB;
+    }
+
+    .party-card-cell-header {
+      display: table-cell;
+      width: 50%;
+      padding: 5px 10px;
+      vertical-align: middle;
+    }
+
+    .party-card-cell-header:first-child {
+      border-right: 1px solid #D5E0EB;
+    }
+
+    .party-card-header-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .party-tag {
+      color: #64748b;
+      font-size: 10px;
+    }
+
+    .party-name {
+      font-weight: 700;
+      color: #0f172a;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    .party-card-body {
+      display: table;
+      width: 100%;
+    }
+
+    .party-card-cell-body {
+      display: table-cell;
+      width: 50%;
+      padding: 8px 10px;
+      vertical-align: top;
+    }
+
+    .party-card-cell-body:first-child {
+      border-right: 1px solid #D5E0EB;
+    }
+
+    /* =========================================================
+       3. STRICT ITEMS TABLE WITH FIXED COLUMN WIDTHS
+       ========================================================= */
+    .items-container {
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    .items-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+    }
+
+    .items-table th {
+      background-color: #D32F2F;
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 10px;
+      text-transform: uppercase;
+      padding: 7px 4px;
+      letter-spacing: 0.3px;
+      border: none;
+    }
+
+    .items-table td {
+      padding: 5.5px 4px;
+      font-size: 10.5px;
+      color: #1e293b;
+      vertical-align: middle;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    /* Column Widths (Sum = 100%) */
+    .col-sr        { width: 5%;  text-align: center; }
+    .col-desc      { width: 27%; text-align: left; }
+    .col-hsn       { width: 9%;  text-align: center; font-family: monospace; }
+    .col-qty       { width: 7%;  text-align: center; font-family: monospace; }
+    .col-rate      { width: 9%;  text-align: right;  font-family: monospace; }
+    .col-amt       { width: 11%; text-align: right;  font-family: monospace; }
+    .col-tax       { width: 7%;  text-align: center; font-family: monospace; }
+    .col-cgst      { width: 8%;  text-align: right;  font-family: monospace; }
+    .col-sgst      { width: 8%;  text-align: right;  font-family: monospace; }
+    .col-subtotal  { width: 9%;  text-align: right;  font-family: monospace; }
+
+    .items-table tbody tr.empty-row td {
+      border-bottom: 1px solid #f8fafc;
+      height: 22px;
+    }
+
+    /* Footer Totals Row */
+    .items-table tfoot tr {
+      background-color: #EBF3FA;
+      border-top: 1px solid #D5E0EB;
+      border-bottom: 1px solid #D5E0EB;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .items-table tfoot td {
+      padding: 6px 4px;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #0f172a;
+      border: none;
+    }
+
+    /* =========================================================
+       4. CALCULATION SUMMARY & TOTAL IN WORDS
+       ========================================================= */
+    .calc-section {
+      display: table;
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    .calc-left {
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
+      padding-right: 18px;
+    }
+
+    .calc-right {
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
+      padding-left: 18px;
+    }
+
+    .section-label-italic {
+      font-size: 10px;
+      font-style: italic;
+      color: #94a3b8;
+      margin-bottom: 3px;
+    }
+
+    .section-divider-line {
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 6px;
+    }
+
+    .words-container {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.45;
+    }
+
+    .calc-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .calc-table td {
+      padding: 2.5px 0;
+      font-size: 10.5px;
+    }
+
+    .calc-table .label {
+      color: #475569;
+      font-weight: 500;
+    }
+
+    .calc-table .val {
+      text-align: right;
+      font-weight: 600;
+      font-family: 'Roboto Mono', ui-monospace, monospace;
+      color: #0f172a;
+    }
+
+    .grand-total-banner {
+      background-color: #EBF3FA;
+      border: 1px solid #D5E0EB;
+      padding: 6px 12px;
+      margin-top: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+      font-size: 12px;
+      color: #0f172a;
+    }
+
+    .grand-total-amount {
+      font-size: 13px;
+      font-weight: 800;
+      font-family: 'Roboto Mono', ui-monospace, monospace;
+    }
+
+    /* =========================================================
+       5. FOOTER: BANK DETAILS & SIGNATURE
+       ========================================================= */
+    .footer-section {
+      display: table;
+      width: 100%;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 10px;
+      margin-top: auto;
+    }
+
+    .footer-left {
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
+      padding-right: 18px;
+    }
+
+    .footer-right {
+      display: table-cell;
+      width: 50%;
+      vertical-align: bottom;
+      text-align: right;
+      padding-left: 18px;
+    }
+
+    .signatory-box {
+      display: inline-block;
+      text-align: center;
+      width: 180px;
+    }
+
+    .signatory-company {
+      font-size: 10px;
+      font-style: italic;
+      color: #64748b;
+      margin-bottom: 34px;
+      text-align: right;
+    }
+
+    .signatory-line {
+      border-bottom: 1px solid #cbd5e1;
+      margin-bottom: 4px;
+    }
+
+    .signatory-text {
+      font-size: 10px;
+      font-style: italic;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Screen Toolbar for Printing -->
+  <div class="toolbar no-print">
+    <button class="btn-print" onclick="window.print()">Print to PDF / A4 Paper</button>
+  </div>
+
+  <!-- Main Exact A4 Page Wrapper -->
+  <div class="invoice-page">
+    <div>
+
+      <!-- 1. Header Grid -->
+      <div class="header-grid">
+        <!-- Company Left Column -->
+        <div class="header-col-left">
+          <div class="company-title">JAGRUTI</div>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Phone</td>
+              <td class="info-value">8153093202</td>
+            </tr>
+            <tr>
+              <td class="info-label">GSTIN</td>
+              <td class="info-value bold">24FJWK1245Q1ZD</td>
+            </tr>
+            <tr>
+              <td class="info-label">Address</td>
+              <td class="info-value">Shop No 28, Shiv Om Circle, Golden Point, GIDC, Jamnagar</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Document Right Column -->
+        <div class="header-col-right">
+          <div class="doc-title">Tax Invoice</div>
+          <table class="info-table">
+            <tr>
+              <td class="info-label">Invoice Number</td>
+              <td class="info-value bold">2026/27/006</td>
+            </tr>
+            <tr>
+              <td class="info-label">Invoice Date</td>
+              <td class="info-value bold">06/08/26</td>
+            </tr>
+            <tr>
+              <td class="info-label">Purchase Order Number</td>
+              <td class="info-value bold">PO-8849</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. Billed To & Shipped To Box -->
+      <div class="party-card">
+        <div class="party-card-header">
+          <div class="party-card-cell-header">
+            <div class="party-card-header-inner">
+              <span class="party-tag">Billed to</span>
+              <span class="party-name">KARAN</span>
+            </div>
+          </div>
+          <div class="party-card-cell-header">
+            <div class="party-card-header-inner">
+              <span class="party-tag">Shipped to</span>
+              <span class="party-name">KARAN</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="party-card-body">
+          <div class="party-card-cell-body">
+            <table class="info-table">
+              <tr>
+                <td class="info-label">GSTIN</td>
+                <td class="info-value bold">24AAFCD5882K1Z9</td>
+              </tr>
+              <tr>
+                <td class="info-label">Phone</td>
+                <td class="info-value">9825012345</td>
+              </tr>
+            </table>
+          </div>
+          <div class="party-card-cell-body">
+            <table class="info-table">
+              <tr>
+                <td class="info-label">Address</td>
+                <td class="info-value">Plot 45, Phase II, Dared, Jamnagar</td>
+              </tr>
+              <tr>
+                <td class="info-label">State & Country</td>
+                <td class="info-value bold">Gujarat, India</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Fixed Table Items -->
+      <div class="items-container">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th class="col-sr">Sr</th>
+              <th class="col-desc">Particulars</th>
+              <th class="col-hsn">HSN</th>
+              <th class="col-qty">QTY</th>
+              <th class="col-rate">Rate</th>
+              <th class="col-amt">Amount</th>
+              <th class="col-tax">Tax %</th>
+              <th class="col-cgst">CGST</th>
+              <th class="col-sgst">SGST</th>
+              <th class="col-subtotal">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-sr">1</td>
+              <td class="col-desc" style="font-weight: 700;">BRASS INSERT 1/2 INCH</td>
+              <td class="col-hsn">7419</td>
+              <td class="col-qty">500</td>
+              <td class="col-rate">45.00</td>
+              <td class="col-amt">22500.00</td>
+              <td class="col-tax">18%</td>
+              <td class="col-cgst">2025.00</td>
+              <td class="col-sgst">2025.00</td>
+              <td class="col-subtotal" style="font-weight: 700;">26550.00</td>
+            </tr>
+            <tr>
+              <td class="col-sr">2</td>
+              <td class="col-desc" style="font-weight: 700;">BRASS HEX NIPPLE 3/4</td>
+              <td class="col-hsn">7419</td>
+              <td class="col-qty">300</td>
+              <td class="col-rate">65.00</td>
+              <td class="col-amt">19500.00</td>
+              <td class="col-tax">18%</td>
+              <td class="col-cgst">1755.00</td>
+              <td class="col-sgst">1755.00</td>
+              <td class="col-subtotal" style="font-weight: 700;">23010.00</td>
+            </tr>
+            <tr>
+              <td class="col-sr">3</td>
+              <td class="col-desc" style="font-weight: 700;">BRASS BUSH HEAVY TYPE</td>
+              <td class="col-hsn">7419</td>
+              <td class="col-qty">150</td>
+              <td class="col-rate">88.00</td>
+              <td class="col-amt">13200.00</td>
+              <td class="col-tax">18%</td>
+              <td class="col-cgst">1188.00</td>
+              <td class="col-sgst">1188.00</td>
+              <td class="col-subtotal" style="font-weight: 700;">15576.00</td>
+            </tr>
+            <!-- Blank Alignment Fillers -->
+            <tr class="empty-row"><td colspan="10">&nbsp;</td></tr>
+            <tr class="empty-row"><td colspan="10">&nbsp;</td></tr>
+            <tr class="empty-row"><td colspan="10">&nbsp;</td></tr>
+            <tr class="empty-row"><td colspan="10">&nbsp;</td></tr>
+            <tr class="empty-row"><td colspan="10">&nbsp;</td></tr>
+            <tr class="empty-row"><td colspan="10">&nbsp;</td></tr>
+            <tr class="empty-row"><td colspan="10">&nbsp;</td></tr>
+            <tr class="empty-row"><td colspan="10">&nbsp;</td></tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td class="col-sr"></td>
+              <td class="col-desc" style="font-weight: 700;">Total</td>
+              <td class="col-hsn"></td>
+              <td class="col-qty">950</td>
+              <td class="col-rate"></td>
+              <td class="col-amt">55200.00</td>
+              <td class="col-tax"></td>
+              <td class="col-cgst">4968.00</td>
+              <td class="col-sgst">4968.00</td>
+              <td class="col-subtotal">65136.00</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- 4. Calculations & Grand Total in Words Grid -->
+      <div class="calc-section">
+        <div class="calc-left">
+          <div class="section-label-italic">Grand Total in words</div>
+          <div class="section-divider-line"></div>
+          <div class="words-container">
+            Rupees Sixty-Five Thousand One Hundred Thirty-Six only...
+          </div>
+        </div>
+
+        <div class="calc-right">
+          <table class="calc-table">
+            <tr>
+              <td class="label">Taxable Amount</td>
+              <td class="val">55200.00</td>
+            </tr>
+            <tr>
+              <td class="label">GST Amount</td>
+              <td class="val">9936.00</td>
+            </tr>
+          </table>
+
+          <div class="grand-total-banner">
+            <span>Grand Total</span>
+            <span class="grand-total-amount">65136.00</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 5. Footer Section: Bank Details & Authorized Signatory -->
+    <div class="footer-section">
+      <div class="footer-left">
+        <div class="section-label-italic">Bank Details</div>
+        <div class="section-divider-line"></div>
+        <table class="info-table">
+          <tr>
+            <td class="info-label">Bank</td>
+            <td class="info-value">STATE BANK OF INDIA</td>
+          </tr>
+          <tr>
+            <td class="info-label">A/c Holder</td>
+            <td class="info-value">JAGRUTI ENTERPRISE</td>
+          </tr>
+          <tr>
+            <td class="info-label">A/c Number</td>
+            <td class="info-value bold">38492019482</td>
+          </tr>
+          <tr>
+            <td class="info-label">IFSC Code</td>
+            <td class="info-value bold">SBIN0060124</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="footer-right">
+        <div class="signatory-company">for JAGRUTI</div>
+        <div class="signatory-box">
+          <div class="signatory-line"></div>
+          <div class="signatory-text">Authorized Signatory</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, ArrowUpRight, ArrowDownLeft, Calculator, Printer, History, Loader2 } from 'lucide-react';
 import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill, getEffectiveCompanyInfo, isTransactionForParty } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
+import PartyLedgerPrintModal from './PartyLedgerPrintModal';
 
 interface LedgerModalProps {
   isOpen: boolean;
@@ -14,71 +15,11 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [companyInfo, setCompanyInfo] = useState<any>(null);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const cid = getActiveCompanyId();
-  const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
-    if (!printRef.current) return;
-    const htmlContent = printRef.current.outerHTML;
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>${party?.name || 'Party'} - Ledger Statement</title>
-            <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
-            <script src="https://cdn.tailwindcss.com"></script>
-            <style>
-              @import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
-              
-              * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                box-sizing: border-box;
-                font-family: 'Ubuntu', sans-serif !important;
-              }
-              .font-extrabold, .font-black {
-                font-weight: 500 !important;
-              }
-              
-              body {
-                font-family: 'Ubuntu', sans-serif !important;
-                margin: 0;
-                padding: 0;
-                background-color: #ffffff;
-                color: #000000;
-              }
-
-              @page {
-                size: A4 portrait;
-              }
-
-              @media print {
-                body {
-                  background: white !important;
-                  color: black !important;
-                }
-              }
-            </style>
-          </head>
-          <body class="p-4 bg-white">
-            <div class="max-w-[850px] mx-auto bg-white">
-              ${htmlContent}
-            </div>
-            <script>
-              window.addEventListener('load', () => {
-                setTimeout(() => {
-                  window.print();
-                  window.close();
-                }, 600);
-              });
-            </script>
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
-    }
+    setIsPrintModalOpen(true);
   };
 
   const loadLedgerData = async () => {
@@ -500,170 +441,14 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         </div>
       </div>
 
-      {/* EXACT ACCURATE PRINT LAYOUT (print:block hidden) */}
-      <div className="hidden print:block fixed inset-0 bg-white text-black z-[99999] p-0 m-0 font-sans leading-normal">
-        <style dangerouslySetInnerHTML={{ __html: `
-          @media print {
-            body {
-              background: white !important;
-              color: black !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            #root, .print\\:hidden, .fixed, .modal {
-              display: none !important;
-            }
-            .print\\:block {
-              display: block !important;
-            }
-            @page {
-              size: A4 portrait;
-              margin: 1.2cm;
-            }
-          }
-        `}} />
-        
-        {/* Ledger Outer border Box */}
-        <div ref={printRef} className="border-2 border-black w-full min-h-[265mm] flex flex-col justify-between p-0 m-0 text-black">
-          <div>
-            {/* Top compartmental row (GSTIN & PHONE) */}
-            <div className="grid grid-cols-12 border-b-2 border-black text-[10px] font-bold uppercase tracking-wide">
-              <div className="col-span-4 p-2 border-r-2 border-black">
-                GSTIN : {companyInfo?.gstin || '24CMAPK3117Q1ZZ'}
-              </div>
-              <div className="col-span-4 p-2 border-r-2 border-black"></div>
-              <div className="col-span-4 p-2 text-right">
-                PHONE : {party?.phone || companyInfo?.phone || '79907 13846'}
-              </div>
-            </div>
-
-            {/* Centered Business Name and Address block */}
-            <div className="text-center py-4 border-b-2 border-black px-6">
-              <h1 className="text-xl font-medium tracking-widest text-black mb-1">
-                {companyInfo?.name?.toUpperCase() || 'SK ENTERPRISE'}
-              </h1>
-              <p className="text-[9px] font-semibold text-gray-700 uppercase tracking-wide">
-                {companyInfo?.address || 'SHOP NO 28, SHIVOM CIRCLE, GOLDEN POINT, PHASE III, DARED, JAMNAGAR'}
-              </p>
-            </div>
-
-            {/* Account Info and Period grid block */}
-            <div className="grid grid-cols-12 text-[10px] border-b-2 border-black font-semibold">
-              <div className="col-span-7 p-3 border-r-2 border-black space-y-1.5 uppercase">
-                <div>ACCOUNT : <span className="font-medium text-sm ml-2">{party?.name?.toUpperCase() || 'KRAFT AQUATECH'}</span></div>
-                <div>GSTIN : <span className="font-medium text-sm ml-2">{party?.gstin || '24AANFK2769B1ZD'}</span></div>
-              </div>
-              <div className="col-span-5 p-3 space-y-1.5 uppercase">
-                <div className="flex justify-between">
-                  <span>FROM DATE</span> 
-                  <span className="font-medium mr-12">{fromDateFormatted}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>TO DATE</span> 
-                  <span className="font-medium mr-12">{toDateFormatted}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Main Ledger Book grid table */}
-            <table className="w-full text-[10px] border-collapse text-black">
-              <thead>
-                <tr className="border-b-2 border-black text-left font-bold italic text-black">
-                  <th className="p-2 border-r-2 border-black text-center w-10">SR</th>
-                  <th className="p-2 border-r-2 border-black text-center w-20">DATE</th>
-                  <th className="p-2 border-r-2 border-black px-2">TRANSACTION</th>
-                  <th className="p-2 border-r-2 border-black px-2 w-24">REFERENCE</th>
-                  <th className="p-2 border-r-2 border-black text-right w-24 px-2">DEBIT</th>
-                  <th className="p-2 border-r-2 border-black text-right w-24 px-2">CREDIT</th>
-                  <th className="p-2 text-right w-28 px-2">BALANCE</th>
-                </tr>
-              </thead>
-              <tbody>
-                {printRows.map((row, idx) => {
-                  const srNo = idx + 1;
-                  const isPlaceholder = row.isPlaceholder;
-                  
-                  return (
-                    <tr key={idx} className="border-b border-gray-300 h-[7.5mm]">
-                      <td className="p-1 border-r-2 border-black text-center font-bold">{srNo}</td>
-                      <td className="p-1 border-r-2 border-black text-center font-medium">
-                        {isPlaceholder ? '' : (row.date ? formatLedgerDate(row.date) : '')}
-                      </td>
-                      <td className="p-1 border-r-2 border-black px-2 font-semibold">
-                        {isPlaceholder ? '' : row.transaction}
-                      </td>
-                      <td className="p-1 border-r-2 border-black px-2 font-mono font-bold">
-                        {isPlaceholder ? '' : (row.reference || '-')}
-                      </td>
-                      <td className="p-1 border-r-2 border-black text-right font-bold px-2">
-                        {isPlaceholder || !row.debit ? '' : Number(row.debit).toFixed(2)}
-                      </td>
-                      <td className="p-1 border-r-2 border-black text-right font-bold px-2">
-                        {isPlaceholder || !row.credit ? '' : Number(row.credit).toFixed(2)}
-                      </td>
-                      <td className="p-1 text-right font-bold px-2 font-mono">
-                        {isPlaceholder ? '' : (
-                          <>
-                            {Number(Math.abs(row.balance)).toFixed(2)}
-                            <span className="text-[8px] ml-1 font-sans font-bold">
-                              {row.balance === 0 ? 'Nil' : (row.balance > 0 ? 'Dr' : 'Cr')}
-                            </span>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-black font-bold uppercase tracking-wide text-[10px]">
-                  <td colSpan={4} className="p-2 text-right border-r-2 border-black">
-                    TOTAL
-                  </td>
-                  <td className="p-2 text-right border-r-2 border-black font-medium px-2 font-mono">
-                    {debitSum.toFixed(2)}
-                  </td>
-                  <td className="p-2 text-right border-r-2 border-black font-medium px-2 font-mono">
-                    {creditSum.toFixed(2)}
-                  </td>
-                  <td className="p-2 text-right font-medium px-2 font-mono">
-                    {/* Blank or matching style */}
-                  </td>
-                </tr>
-                <tr className="border-t border-black font-bold uppercase tracking-wide text-[10px]">
-                  <td colSpan={4} className="p-2 text-right border-r-2 border-black">
-                    NET CLOSING BALANCE
-                  </td>
-                  <td className="p-2 text-right border-r-2 border-black font-medium px-2 font-mono">
-                    {!isDebitHigher && netBalance > 0 ? (
-                      <>
-                        {netBalance.toFixed(2)}
-                        <span className="text-[8px] ml-1 font-sans font-bold">Dr</span>
-                      </>
-                    ) : ''}
-                  </td>
-                  <td className="p-2 text-right border-r-2 border-black font-medium px-2 font-mono">
-                    {isDebitHigher && netBalance > 0 ? (
-                      <>
-                        {netBalance.toFixed(2)}
-                        <span className="text-[8px] ml-1 font-sans font-bold">Cr</span>
-                      </>
-                    ) : ''}
-                  </td>
-                  <td className="p-2 text-right font-medium px-2 font-mono bg-gray-50">
-                    {netBalance.toFixed(2)}
-                    <span className="text-[8px] ml-1 font-sans font-bold">
-                      {debitSum === creditSum ? 'Nil' : (isDebitHigher ? 'Dr' : 'Cr')}
-                    </span>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      </div>
+      {/* PIXEL-PERFECT PARTY LEDGER PRINT & PDF MODAL */}
+      <PartyLedgerPrintModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        party={party}
+        companyInfo={companyInfo}
+        ledgerRows={ledgerRows}
+      />
     </>
   );
 };

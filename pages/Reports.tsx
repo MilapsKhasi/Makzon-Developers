@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import DateFilter from '../components/DateFilter';
 import ExportModal from '../components/ExportModal';
+import PartyLedgerPrintModal from '../components/PartyLedgerPrintModal';
 import { 
   ReportsEngineShell, 
   ReportViewHeader, 
@@ -44,6 +45,7 @@ const Reports: React.FC = () => {
 
   // Export Modal
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isPartyLedgerPrintOpen, setIsPartyLedgerPrintOpen] = useState(false);
 
   const cid = getActiveCompanyId();
 
@@ -785,13 +787,19 @@ const Reports: React.FC = () => {
 
     if (type === 'excel') exportToExcel(headers, rows, config);
     else if (type === 'csv') exportToCSV(headers, rows, config);
-    else if (type === 'pdf') triggerPrint();
+    else if (type === 'pdf') {
+      if (activeTab === 'Party Ledgers' && selectedParty) {
+        setIsPartyLedgerPrintOpen(true);
+      } else {
+        triggerPrint();
+      }
+    }
 
     setIsExportModalOpen(false);
   };
 
   const handlePrintPartyLedger = () => {
-    window.print();
+    setIsPartyLedgerPrintOpen(true);
   };
 
   return (
@@ -801,6 +809,16 @@ const Reports: React.FC = () => {
         onClose={() => setIsExportModalOpen(false)} 
         onExport={handleExport} 
         reportName={activeTab === 'Party Ledgers' && selectedParty ? `${selectedParty.name} Ledger` : activeTab} 
+      />
+
+      {/* PIXEL-PERFECT PARTY LEDGER PRINT & PDF MODAL */}
+      <PartyLedgerPrintModal
+        isOpen={isPartyLedgerPrintOpen}
+        onClose={() => setIsPartyLedgerPrintOpen(false)}
+        party={selectedParty}
+        companyInfo={companyInfo}
+        ledgerRows={selectedPartyLedger.rows}
+        dateRange={{ startDate: dateRange.startDate || undefined, endDate: dateRange.endDate || undefined }}
       />
 
       <ReportsEngineShell

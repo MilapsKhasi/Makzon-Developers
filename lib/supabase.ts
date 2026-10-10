@@ -539,14 +539,18 @@ class MockBuilder {
     return { data: items, error: null, count };
   }
 
-  async then(resolve: any, reject?: any) {
+  async then(resolve?: any, reject?: any) {
     try {
       const result = await this.execute();
-      return resolve(result);
+      return typeof resolve === 'function' ? resolve(result) : result;
     } catch (err) {
-      if (reject) return reject(err);
+      if (typeof reject === 'function') return reject(err);
       throw err;
     }
+  }
+
+  catch(reject?: any) {
+    return this.then(undefined, reject);
   }
 
   async maybeSingle() {
@@ -881,22 +885,35 @@ class ResilientQueryBuilder {
     }
   }
 
-  async then(resolve: any, reject?: any) {
+  async then(resolve?: any, reject?: any) {
+    const handleSuccess = (val: any) => (typeof resolve === 'function' ? resolve(val) : val);
+    const handleError = (err: any) => {
+      if (typeof reject === 'function') return reject(err);
+      throw err;
+    };
+
     try {
       const res = await this.execute();
-      return resolve(res);
+      return handleSuccess(res);
     } catch (err) {
       if (isRefreshTokenError(err)) {
         handleRefreshTokenError();
-        return resolve(this.mockQb.execute());
+        const fallback = await this.mockQb.execute();
+        return handleSuccess(fallback);
       }
       if (isNetworkError(err)) {
         enableOfflineMode();
-        return resolve(this.mockQb.execute());
+        const fallback = await this.mockQb.execute();
+        return handleSuccess(fallback);
       }
-      if (reject) return reject(err);
-      return resolve(this.mockQb.execute());
+      if (typeof reject === 'function') return reject(err);
+      const fallback = await this.mockQb.execute();
+      return handleSuccess(fallback);
     }
+  }
+
+  catch(reject?: any) {
+    return this.then(undefined, reject);
   }
 
   async single() {
