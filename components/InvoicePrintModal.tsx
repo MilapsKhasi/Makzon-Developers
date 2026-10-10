@@ -66,7 +66,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         if (comp) setCompany(comp);
       }
 
-      // Check if invoice or workspace has a connected registered partner firm
       const raw = invoice?.items_raw || invoice?.items || {};
       const savedPartner = raw?.partner_company;
       const settings = getAppSettings();
@@ -124,7 +123,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
 
   const payment = itemsRaw?.payment_details || invoice?.payment_details || {};
 
-  // Company Details
   const isConnectedToRd = Boolean(partnerInfo && partnerInfo.gstin && partnerInfo.gstin.trim().length > 0);
   const companyName = isConnectedToRd ? partnerInfo.name : (company?.name || 'JAGRUTI');
   const companyAddress = isConnectedToRd ? (partnerInfo.address || company?.address || '') : (company?.address || '');
@@ -132,7 +130,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   const companyGstin = isConnectedToRd ? partnerInfo.gstin : (company?.gstin || '');
   const hasGstin = Boolean(companyGstin && companyGstin.trim().length > 0 && companyGstin.toUpperCase() !== 'URD');
 
-  // Customer Details
   const customerName = invoice.customer_name || invoice.vendor_name || customer?.name || 'KARAN';
   const customerAddress = customer?.address || '';
   const customerPhone = customer?.phone || '';
@@ -144,13 +141,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   const shipToName = customerName;
   const shipToAddress = customer?.shipping_address || customerAddress;
 
-  // Invoice Details
   const invoiceNo = invoice.invoice_number || invoice.bill_number || '';
   const invoiceDate = invoice.date ? formatInvoiceDate(invoice.date) : '';
   const poNumber = payment?.po_number || invoice.po_number || itemsRaw?.po_number || '';
   const docTitle = itemsRaw?.is_delivery_challan || invoice?.is_delivery_challan ? 'Delivery Challan' : (hasGstin ? 'Tax Invoice' : 'Bill of Supply');
 
-  // GST & Tax Calculations
   const gstType = itemsRaw?.gst_type || invoice.gst_type || 'Intra-State';
   const isInterState = gstType === 'Inter-State' || gstType === 'IGST';
 
@@ -203,7 +198,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
     };
   });
 
-  // Additional Charges
   const appliedCharges = dutiesAndTaxes.filter((d: any) => {
     const amt = parseFloat(d.amount) || 0;
     return amt !== 0 && !['CGST', 'SGST', 'IGST'].includes((d.name || '').toUpperCase());
@@ -218,7 +212,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
   const gstVal = hasGstin ? (invoice.total_gst !== undefined ? parseFloat(invoice.total_gst) : (isInterState ? totalIgst : (totalCgst + totalSgst))) : 0;
   const grandTotalVal = invoice.grand_total !== undefined && hasGstin ? parseFloat(invoice.grand_total) : (taxableVal + gstVal + sumAdditionalCharges);
 
-  // Bank Details
   const bankName = payment?.bank_name || company?.bank_name || company?.raw_data?.bank_name || '';
   const bankHolder = payment?.account_holder || company?.account_holder || company?.account_name || company?.raw_data?.account_holder || '';
   const bankAccount = payment?.account_number || company?.account_number || company?.raw_data?.account_number || '';
@@ -233,7 +226,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
 
   return (
     <div className="invoice-print-backdrop fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-fadeIn print:p-0 print:bg-white print:static print:inset-auto print:z-auto">
-      {/* Exact CSS Print Architecture from template for pixel-perfect A4 printing & PDF export */}
       <style dangerouslySetInnerHTML={{ __html: `
         @page {
           size: A4 portrait;
@@ -320,7 +312,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
           }
         }
 
-        /* Screen & Print Container Styles */
+        /* Screen & Print Container Styles with Enhanced Readable Font Sizes */
         .exact-a4-page {
           width: 210mm;
           min-height: 297mm;
@@ -333,12 +325,11 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
           flex-direction: column;
           justify-content: space-between;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-          font-size: 11px;
-          line-height: 1.35;
+          font-size: 12.5px;
+          line-height: 1.4;
           color: #1e293b;
         }
 
-        /* Two-Column Master Header */
         .exact-a4-page .header-grid {
           display: table;
           width: 100%;
@@ -363,7 +354,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         }
 
         .exact-a4-page .company-title {
-          font-size: 20px;
+          font-size: 22px;
           font-weight: 800;
           color: #D32F2F;
           text-transform: uppercase;
@@ -373,7 +364,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         }
 
         .exact-a4-page .doc-title {
-          font-size: 20px;
+          font-size: 22px;
           font-weight: 800;
           color: #0f172a;
           letter-spacing: -0.2px;
@@ -387,8 +378,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         }
 
         .exact-a4-page .info-table td {
-          padding: 2px 0;
-          font-size: 10.5px;
+          padding: 3px 0;
+          font-size: 12px;
           vertical-align: top;
         }
 
@@ -409,7 +400,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
           font-family: 'Roboto Mono', ui-monospace, monospace;
         }
 
-        /* Billed To & Shipped To Section */
         .exact-a4-page .party-card {
           border: 1px solid #D5E0EB;
           margin-bottom: 14px;
@@ -426,7 +416,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         .exact-a4-page .party-card-cell-header {
           display: table-cell;
           width: 50%;
-          padding: 5px 10px;
+          padding: 7px 12px;
           vertical-align: middle;
         }
 
@@ -442,14 +432,14 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
 
         .exact-a4-page .party-tag {
           color: #64748b;
-          font-size: 10px;
+          font-size: 11.5px;
         }
 
         .exact-a4-page .party-name {
           font-weight: 700;
           color: #0f172a;
           text-transform: uppercase;
-          font-size: 11px;
+          font-size: 12.5px;
         }
 
         .exact-a4-page .party-card-body {
@@ -460,7 +450,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         .exact-a4-page .party-card-cell-body {
           display: table-cell;
           width: 50%;
-          padding: 8px 10px;
+          padding: 10px 12px;
           vertical-align: top;
         }
 
@@ -468,7 +458,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
           border-right: 1px solid #D5E0EB;
         }
 
-        /* Fixed Items Table */
         .exact-a4-page .items-container {
           width: 100%;
           margin-bottom: 12px;
@@ -484,16 +473,16 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
           background-color: #D32F2F !important;
           color: #ffffff !important;
           font-weight: 600;
-          font-size: 10px;
+          font-size: 11.5px;
           text-transform: uppercase;
-          padding: 7px 4px;
+          padding: 8px 6px;
           letter-spacing: 0.3px;
           border: none;
         }
 
         .exact-a4-page .items-table td {
-          padding: 5.5px 4px;
-          font-size: 10.5px;
+          padding: 7px 6px;
+          font-size: 12px;
           color: #1e293b;
           vertical-align: middle;
           border-bottom: 1px solid #f1f5f9;
@@ -512,7 +501,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
 
         .exact-a4-page .items-table tbody tr.empty-row td {
           border-bottom: 1px solid #f8fafc;
-          height: 22px;
+          height: 24px;
         }
 
         .exact-a4-page .items-table tfoot tr {
@@ -524,14 +513,13 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         }
 
         .exact-a4-page .items-table tfoot td {
-          padding: 6px 4px;
-          font-size: 10.5px;
+          padding: 8px 6px;
+          font-size: 12px;
           font-weight: 700;
           color: #0f172a;
           border: none;
         }
 
-        /* Calculation Summary & Total in Words */
         .exact-a4-page .calc-section {
           display: table;
           width: 100%;
@@ -553,19 +541,19 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         }
 
         .exact-a4-page .section-label-italic {
-          font-size: 10px;
+          font-size: 11.5px;
           font-style: italic;
-          color: #94a3b8;
-          margin-bottom: 3px;
+          color: #64748b;
+          margin-bottom: 4px;
         }
 
         .exact-a4-page .section-divider-line {
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #cbd5e1;
           margin-bottom: 6px;
         }
 
         .exact-a4-page .words-container {
-          font-size: 10.5px;
+          font-size: 12px;
           font-weight: 700;
           color: #0f172a;
           line-height: 1.45;
@@ -577,8 +565,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         }
 
         .exact-a4-page .calc-table td {
-          padding: 2.5px 0;
-          font-size: 10.5px;
+          padding: 3.5px 0;
+          font-size: 12px;
         }
 
         .exact-a4-page .calc-table .label {
@@ -596,28 +584,27 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         .exact-a4-page .grand-total-banner {
           background-color: #EBF3FA !important;
           border: 1px solid #D5E0EB;
-          padding: 6px 12px;
-          margin-top: 6px;
+          padding: 8px 12px;
+          margin-top: 8px;
           display: flex;
           justify-content: space-between;
           align-items: center;
           font-weight: 700;
-          font-size: 12px;
+          font-size: 13.5px;
           color: #0f172a;
         }
 
         .exact-a4-page .grand-total-amount {
-          font-size: 13px;
+          font-size: 14.5px;
           font-weight: 800;
           font-family: 'Roboto Mono', ui-monospace, monospace;
         }
 
-        /* Footer Section */
         .exact-a4-page .footer-section {
           display: table;
           width: 100%;
           border-top: 1px solid #e2e8f0;
-          padding-top: 10px;
+          padding-top: 12px;
           margin-top: auto;
         }
 
@@ -639,14 +626,14 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         .exact-a4-page .signatory-box {
           display: inline-block;
           text-align: center;
-          width: 180px;
+          width: 200px;
         }
 
         .exact-a4-page .signatory-company {
-          font-size: 10px;
+          font-size: 11.5px;
           font-style: italic;
           color: #64748b;
-          margin-bottom: 34px;
+          margin-bottom: 38px;
           text-align: right;
         }
 
@@ -656,16 +643,14 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
         }
 
         .exact-a4-page .signatory-text {
-          font-size: 10px;
+          font-size: 11.5px;
           font-style: italic;
           color: #64748b;
         }
       `}} />
 
-      {/* Modal Popup Container */}
       <div className="invoice-print-container w-full max-w-[950px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] print:max-h-none print:border-none print:shadow-none print:rounded-none">
         
-        {/* Top Control Bar */}
         <div className="print-modal-header flex items-center justify-between px-6 py-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 print:hidden">
           <div className="flex-1" />
           
@@ -691,17 +676,13 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
           </div>
         </div>
 
-        {/* Scrollable Preview Area */}
         <div className="invoice-print-scroll flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100/80 dark:bg-slate-950 flex justify-center print:p-0 print:bg-white print:overflow-visible">
-          {/* Exact A4 Sheet Page */}
           <div
             ref={invoiceRef}
             className="exact-a4-page shadow-lg print:shadow-none"
           >
             <div>
-              {/* 1. Header Grid */}
               <div className="header-grid">
-                {/* Company Left Column */}
                 <div className="header-col-left">
                   <div className="company-title">{companyName}</div>
                   <table className="info-table">
@@ -722,7 +703,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
                   </table>
                 </div>
 
-                {/* Document Right Column */}
                 <div className="header-col-right">
                   <div className="doc-title">{docTitle}</div>
                   <table className="info-table">
@@ -744,7 +724,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
                 </div>
               </div>
 
-              {/* 2. Billed To & Shipped To Box */}
               <div className="party-card">
                 <div className="party-card-header">
                   <div className="party-card-cell-header">
@@ -793,7 +772,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
                 </div>
               </div>
 
-              {/* 3. Fixed Table Items */}
               <div className="items-container">
                 <table className="items-table">
                   <thead>
@@ -878,7 +856,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
                 </table>
               </div>
 
-              {/* 4. Calculations & Grand Total in Words Grid */}
               <div className="calc-section">
                 <div className="calc-left">
                   <div className="section-label-italic">Grand Total in words</div>
@@ -921,7 +898,6 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({ isOpen, on
 
             </div>
 
-            {/* 5. Footer Section: Bank Details & Authorized Signatory */}
             <div className="footer-section">
               <div className="footer-left">
                 <div className="section-label-italic">Bank Details</div>

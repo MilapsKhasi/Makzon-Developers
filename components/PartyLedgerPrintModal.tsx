@@ -43,7 +43,6 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
 
   if (!isOpen || !party) return null;
 
-  // Process rows
   let rows: any[] = [];
   if (ledgerRows && ledgerRows.length > 0) {
     rows = ledgerRows;
@@ -65,7 +64,6 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
     });
   }
 
-  // Calculate totals
   let totalDebit = 0;
   let totalCredit = 0;
   rows.forEach((r: any) => {
@@ -76,7 +74,6 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
   const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
   const closingBalance = lastRow ? Number(lastRow.balance || 0) : (totalDebit - totalCredit);
 
-  // Statement from and to dates
   let fromDate = dateRange?.startDate ? formatLedgerDate(dateRange.startDate) : '';
   let toDate = dateRange?.endDate ? formatLedgerDate(dateRange.endDate) : '';
 
@@ -96,7 +93,6 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
   if (!fromDate) fromDate = '01/04/26';
   if (!toDate) toDate = '31/03/27';
 
-  // Company details
   const companyName = companyInfo?.name || 'SK ENTERPRISE';
   const companyGstin = companyInfo?.gstin || '24CMAPK3117Q1ZZ';
   const fullAddress = companyInfo?.address || 'Shop No 28, Shiv Om Circle, Golden Point, GIDC, Phase III, Dared, Jamnagar';
@@ -106,7 +102,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
   const addressLine1 = addressParts.slice(0, midPoint).join(', ');
   const addressLine2 = addressParts.slice(midPoint).join(', ');
 
-  const blankRowsNeeded = Math.max(0, 12 - rows.length);
+  const blankRowsNeeded = Math.max(0, 10 - rows.length);
 
   const handlePrint = () => {
     if (!printSheetRef.current) return;
@@ -115,7 +111,6 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
 
   return (
     <div className="ledger-print-backdrop fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-fadeIn print:p-0 print:bg-white print:static print:inset-auto print:z-auto">
-      {/* Strict CSS Print Architecture for Ledger: Exact A4 specifications */}
       <style dangerouslySetInnerHTML={{ __html: `
         @page {
           size: A4 portrait;
@@ -202,7 +197,6 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
           }
         }
 
-        /* Screen & Print Container Styles */
         .exact-ledger-page {
           width: 210mm;
           min-height: 297mm;
@@ -215,12 +209,11 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
           flex-direction: column;
           justify-content: space-between;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-          font-size: 11px;
-          line-height: 1.35;
+          font-size: 12px;
+          line-height: 1.4;
           color: #1e293b;
         }
 
-        /* Ledger Table */
         .exact-ledger-page .ledger-table {
           width: 100%;
           table-layout: fixed;
@@ -231,16 +224,16 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
           background-color: #D32F2F !important;
           color: #ffffff !important;
           font-weight: 600;
-          font-size: 10px;
+          font-size: 11.5px;
           text-transform: uppercase;
-          padding: 7px 8px;
+          padding: 8px 10px;
           letter-spacing: 0.3px;
           border: none;
         }
 
         .exact-ledger-page .ledger-table td {
-          padding: 6px 8px;
-          font-size: 10.5px;
+          padding: 7px 10px;
+          font-size: 12px;
           color: #1e293b;
           vertical-align: middle;
           border-bottom: 1px solid #f1f5f9;
@@ -253,32 +246,30 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
 
         .exact-ledger-page .ledger-table tbody tr.empty-row td {
           border-bottom: 1px solid #f8fafc;
-          height: 24px;
+          height: 26px;
         }
 
-        /* Footer totals rows */
+        /* Consistent bottom totals rows matching invoice style borders & fills */
         .exact-ledger-page .ledger-total-row-top td {
-          border-top: 2px solid #0f172a !important;
-          border-bottom: 1px solid #0f172a !important;
-          background-color: #f8fafc !important;
+          border-top: 1.5px solid #0f172a !important;
+          border-bottom: 1px solid #cbd5e1 !important;
+          background-color: #F4F8FA !important;
           font-weight: 700;
           color: #0f172a;
-          padding: 7px 8px;
+          padding: 8px 10px;
         }
 
         .exact-ledger-page .ledger-total-row-bottom td {
           border-bottom: 2px solid #0f172a !important;
-          background-color: #ffffff !important;
+          background-color: #F4F8FA !important;
           font-weight: 800;
           color: #0f172a;
-          padding: 7px 8px;
+          padding: 8px 10px;
         }
       `}} />
 
-      {/* Modal Popup Container */}
       <div className="ledger-print-container w-full max-w-[950px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] print:max-h-none print:border-none print:shadow-none print:rounded-none">
         
-        {/* Top Control Bar */}
         <div className="print-modal-header flex items-center justify-between px-6 py-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 print:hidden">
           <div className="flex-1" />
           
@@ -304,17 +295,14 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
           </div>
         </div>
 
-        {/* Scrollable Preview Area */}
         <div className="ledger-print-scroll flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100/80 dark:bg-slate-950 flex justify-center print:p-0 print:bg-white print:overflow-visible">
-          {/* Exact A4 Sheet Page */}
           <div
             ref={printSheetRef}
             className="exact-ledger-page shadow-lg print:shadow-none"
           >
             <div>
-              {/* 1. Centered Company Details Header */}
               <div className="text-center pt-1 pb-3 space-y-1">
-                <h1 className="text-xl font-bold text-slate-900 tracking-wide uppercase">
+                <h1 className="text-2xl font-bold text-slate-900 tracking-wide uppercase">
                   {companyName}
                 </h1>
                 {companyGstin && (
@@ -323,31 +311,28 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                   </p>
                 )}
                 {addressLine1 && (
-                  <p className="text-[11px] text-slate-600">
+                  <p className="text-xs text-slate-600">
                     {addressLine1}
                   </p>
                 )}
                 {addressLine2 && (
-                  <p className="text-[11px] text-slate-600">
+                  <p className="text-xs text-slate-600">
                     {addressLine2}
                   </p>
                 )}
               </div>
 
-              {/* 2. Centered Statement Date Range with Divider */}
               <div className="text-center my-3 text-xs text-slate-700 font-medium">
                 <span>Statement from : <strong className="font-mono text-slate-900">{fromDate}</strong></span>
                 <span className="mx-3 text-slate-400">|</span>
                 <span>Statement to : <strong className="font-mono text-slate-900">{toDate}</strong></span>
               </div>
 
-              {/* 3. Account Name */}
               <div className="mb-3 text-xs">
                 <span className="font-semibold text-slate-700">Account : </span>
                 <span className="font-bold text-slate-900 uppercase">{party?.name}</span>
               </div>
 
-              {/* 4. Ledger Table with Solid Red Header & Fixed Percentage Widths */}
               <div className="mb-4">
                 <table className="ledger-table">
                   <thead>
@@ -389,18 +374,10 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                     ))}
                   </tbody>
                   
-                  {/* Table Footer matching user's exact specification:
-                      ----------------
-                      I 1800      1800 I
-                      ----------------
-                      I                     0 I
-                      First left side one is total of debit and second amount is total of credit and the bottom one is the closing balance.
-                  */}
                   <tfoot>
-                    {/* Top Row: Total Debit and Total Credit */}
                     <tr className="ledger-total-row-top">
                       <td className="col-party-desc font-bold text-slate-900">
-                        Net Closing
+                        Total
                       </td>
                       <td className="col-party-debit font-mono font-bold text-slate-900">
                         {formatAmount(totalDebit)}
@@ -408,15 +385,13 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                       <td className="col-party-credit font-mono font-bold text-slate-900">
                         {formatAmount(totalCredit)}
                       </td>
-                      <td className="col-party-bal font-mono font-bold">
-                        {/* Blank under balance on first row */}
-                      </td>
+                      <td className="col-party-bal font-mono font-bold"></td>
                     </tr>
-                    {/* Bottom Row: Closing Balance */}
                     <tr className="ledger-total-row-bottom">
-                      <td colSpan={3} className="col-party-desc">
-                        {/* Blank spanning Particulars, Debit, Credit */}
+                      <td className="col-party-desc font-bold text-slate-900">
+                        Net Closing Balance
                       </td>
+                      <td colSpan={2} className="col-party-debit"></td>
                       <td className="col-party-bal font-mono font-extrabold text-slate-900 text-sm">
                         {formatAmount(closingBalance)}
                       </td>
@@ -426,7 +401,6 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
               </div>
             </div>
 
-            {/* Subtle bottom page spacer to enforce strict 297mm bounds */}
             <div className="pt-2 text-center text-[10px] text-slate-400"></div>
           </div>
         </div>
