@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Trash2, Filter, ChevronDown, Loader2, ShoppingBag, Plus, CheckCircle2, Clock } from 'lucide-react';
+import { Search, Edit, Trash2, Filter, ChevronDown, Loader2, ReceiptText, Plus, CheckCircle2, Clock } from 'lucide-react';
 import { formatCurrency, formatDate, getActiveCompanyId, normalizeBill } from '../utils/helpers';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
 import ConfirmDialog from '../components/ConfirmDialog';
+import PageHeader from '../components/PageHeader';
+import SectionIcon from '../components/SectionIcon';
 import { supabase } from '../lib/supabase';
 import { useSecurityDemo } from '../context/SecurityDemoContext';
 
@@ -101,23 +103,20 @@ const Purchases = () => {
         message={`Delete purchase entry ${deleteDialog.bill?.bill_number}?`}
       />
 
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <ShoppingBag className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Purchase Register</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Manage and track all vendor purchase invoices and bills</p>
-          </div>
-        </div>
-        <button
-          onClick={() => verifyAction('Create Purchase Bill', () => { setEditingBill(null); setIsModalOpen(true); })}
-          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
-        >
-          <Plus className="w-4 h-4 mr-2" /> New Purchase
-        </button>
-      </div>
+      <PageHeader
+        icon={ReceiptText}
+        iconColor="text-indigo-600 dark:text-indigo-400"
+        title="Purchase Register"
+        subtitle="Manage and track all vendor purchase invoices and bills"
+        actions={
+          <button
+            onClick={() => verifyAction('Create Purchase Bill', () => { setEditingBill(null); setIsModalOpen(true); })}
+            className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-md font-medium text-sm hover:bg-primary-dark flex items-center justify-center shadow-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4 mr-2" /> New Purchase
+          </button>
+        }
+      />
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-4 sm:p-6 space-y-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -165,9 +164,7 @@ const Purchases = () => {
                 {formatCurrency(filtered.reduce((acc, b) => acc + Number(b.grand_total || 0), 0))}
               </p>
             </div>
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-              <ShoppingBag className="w-4 h-4" />
-            </div>
+            <SectionIcon icon={ReceiptText} className="text-indigo-600 dark:text-indigo-400" size={20} />
           </div>
         </div>
 

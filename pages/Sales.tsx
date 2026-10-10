@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Loader2, Edit, Trash2, Plus, Printer, TrendingUp, Lock } from 'lucide-react';
+import { Search, Loader2, Edit, Trash2, Plus, Printer, FileText, Lock } from 'lucide-react';
 import { formatDate, formatCurrency, getActiveCompanyId, normalizeBill, unsyncTransactionFromCashbook } from '../utils/helpers';
 import Modal from '../components/Modal';
 import SalesInvoiceForm from '../components/SalesInvoiceForm';
 import ConfirmDialog from '../components/ConfirmDialog';
 import DateFilter, { DateFilterHandle } from '../components/DateFilter';
 import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
+import SectionIcon from '../components/SectionIcon';
 import { supabase } from '../lib/supabase';
 import { InvoicePrintModal } from '../components/InvoicePrintModal';
 import { useLicense } from '../context/LicenseContext';
@@ -228,37 +230,34 @@ const Sales = () => {
         message={`Permanently archive sale invoice ${deleteDialog.invoice?.invoice_number}? (Press Shift + D again to confirm, or Esc to cancel)`} 
       />
 
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-            <TrendingUp className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Sales Ledger</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Generate sales invoices, track revenue, and manage customer accounts</p>
-          </div>
-        </div>
-        <button
-          ref={newSaleBtnRef}
-          disabled={isReadOnly}
-          onClick={() => {
-            if (!isReadOnly) {
-              verifyAction('Create Sales Invoice', () => {
-                setEditingInvoice(null);
-                setIsModalOpen(true);
-              });
-            }
-          }}
-          className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
-            isReadOnly
-              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-              : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
-          }`}
-          title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Sale'}
-        >
-          {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Sale
-        </button>
-      </div>
+      <PageHeader
+        icon={FileText}
+        iconColor="text-emerald-600 dark:text-emerald-400"
+        title="Sales Ledger"
+        subtitle="Generate sales invoices, track revenue, and manage customer accounts"
+        actions={
+          <button
+            ref={newSaleBtnRef}
+            disabled={isReadOnly}
+            onClick={() => {
+              if (!isReadOnly) {
+                verifyAction('Create Sales Invoice', () => {
+                  setEditingInvoice(null);
+                  setIsModalOpen(true);
+                });
+              }
+            }}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
+              isReadOnly
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+            }`}
+            title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Sale'}
+          >
+            {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Sale
+          </button>
+        }
+      />
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-4 sm:p-6 space-y-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -284,9 +283,7 @@ const Sales = () => {
                 {formatCurrency(filtered.reduce((acc, i) => acc + Number(i.grand_total || 0), 0))}
               </p>
             </div>
-            <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-              <TrendingUp className="w-4 h-4" />
-            </div>
+            <SectionIcon icon={FileText} className="text-emerald-600 dark:text-emerald-400" size={20} />
           </div>
         </div>
 

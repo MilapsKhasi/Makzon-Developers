@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet, Truck, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, ReceiptText, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet, Truck, Sun, Moon } from 'lucide-react';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import { useLicense } from '../context/LicenseContext';
@@ -15,7 +15,6 @@ import ImportExcelModal from './ImportExcelModal';
 import LicenseSummaryBadge from './LicenseSummaryBadge';
 import ActivationScreen from './ActivationScreen';
 import Settings from '../pages/Settings';
-import { getUserActivity } from '../utils/activityTracker';
 import { processOfflineSyncQueue } from '../lib/syncEngine';
 import { useSecurityDemo } from '../context/SecurityDemoContext';
 
@@ -43,7 +42,6 @@ const Layout = () => {
   };
 
   const [user, setUser] = useState<any>(null);
-  const [isInactive, setIsInactive] = useState(false);
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return document.documentElement.classList.contains('dark') || localStorage.getItem('app_theme') === 'dark';
@@ -91,18 +89,6 @@ const Layout = () => {
     };
     fetchUser();
   }, []);
-
-  useEffect(() => {
-    const checkStatus = () => {
-      if (user) {
-        const activity = getUserActivity(user.id);
-        setIsInactive(activity?.status === 'inactive');
-      }
-    };
-    checkStatus();
-    const interval = setInterval(checkStatus, 30000); // Check status every 30s
-    return () => clearInterval(interval);
-  }, [user]);
 
   // Handle window resize to auto-close/open sidebar
   useEffect(() => {
@@ -356,7 +342,7 @@ const Layout = () => {
     {
       groupName: 'Purchases',
       items: [
-        { icon: ShoppingCart, label: 'Purchase Bills', path: '/bills', createType: 'purchase_bill' },
+        { icon: ReceiptText, label: 'Purchase Bills', path: '/bills', createType: 'purchase_bill' },
         { icon: ArrowUpCircle, label: 'Pay Supplier', path: '/make-payment', createType: 'make_payment' },
       ]
     },
@@ -375,10 +361,9 @@ const Layout = () => {
     {
       groupName: 'Others',
       items: [
-        { icon: BookOpen, label: 'Cashbook', path: '/cashbook' },
+        { icon: Wallet, label: 'Cashbook', path: '/cashbook' },
         { icon: Percent, label: 'Additional Charges', path: '/additional-charges' },
         { icon: BarChart3, label: 'Reports', path: '/reports' },
-        { icon: MonitorPlay, label: 'User Activity', path: '/user-activity' },
       ]
     }
   ];
@@ -602,14 +587,6 @@ const Layout = () => {
             )}
           </div>
           <div className="flex items-center space-x-3">
-            {isInactive && (
-              <div className="hidden md:flex items-center space-x-2 bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-full border border-red-100 dark:border-red-800 transition-all">
-                <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                <span className="text-[10px] sm:text-xs font-medium text-red-600 dark:text-red-400">
-                  Your account is inactive. Please perform an action to keep it active.
-                </span>
-              </div>
-            )}
             <button
               onClick={() => setIsGlobalSearchOpen(true)}
               className="flex items-center space-x-2 px-3 py-1.5 h-[32px] bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg text-xs transition-all border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs"

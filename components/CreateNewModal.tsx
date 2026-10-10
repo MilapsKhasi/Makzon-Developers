@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  FileText, ShoppingCart, ArrowDownCircle, ArrowUpCircle, 
+  FileText, ReceiptText, ShoppingCart, ArrowDownCircle, ArrowUpCircle, 
   Users, UserPlus, Package, FolderPlus, Building, 
   BookOpen, Percent, Crown, Plus, X, Lock, ShieldAlert, Truck
 } from 'lucide-react';
@@ -227,7 +227,7 @@ export const CreateNewModal: React.FC<CreateNewModalProps> = ({ isOpen, onClose,
                 >
                   <div className="flex items-center space-x-3">
                     <div className="p-2 rounded-md bg-indigo-100/60 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
-                      <ShoppingCart className="w-4 h-4" />
+                      <ReceiptText className="w-4 h-4" />
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Purchase Bill</h4>

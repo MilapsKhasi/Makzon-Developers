@@ -5,6 +5,7 @@ import { formatDate, formatCurrency } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 import CashbookSheet from '../components/CashbookSheet';
 import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
 import { exportToCSV } from '../utils/exportHelper';
 import { useCompany } from '../context/CompanyContext';
 import { useLicense } from '../context/LicenseContext';
@@ -189,51 +190,47 @@ const Cashbook = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <Wallet className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Cashbook Register</h1>
-              <button onClick={loadData} className="p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded transition-colors" title="Refresh">
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Daily cash in hand statements, income, expenses, and net balances</p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 justify-end w-full sm:w-auto">
-          <button 
-            onClick={() => verifyAction('Export Cashbook CSV', handleExportCSV)}
-            disabled={exporting || entries.length === 0}
-            className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all font-semibold flex items-center disabled:opacity-50 text-slate-700 dark:text-slate-300 shadow-xs cursor-pointer"
-          >
-            {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <FileDown className="w-3.5 h-3.5 mr-2" />} Export CSV
+      <PageHeader
+        icon={Wallet}
+        iconColor="text-teal-600 dark:text-teal-400"
+        title="Cashbook Register"
+        subtitle="Daily cash in hand statements, income, expenses, and net balances"
+        badge={
+          <button onClick={loadData} className="p-1 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded transition-colors ml-1 cursor-pointer" title="Refresh">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
-          <button 
-            disabled={isReadOnly}
-            onClick={() => {
-              if (!isReadOnly) {
-                verifyAction('Create Statement', () => {
-                  setEditingEntry(null);
-                  setViewState('entry');
-                });
-              }
-            }} 
-            className={`px-5 py-2.5 rounded-md font-medium text-sm flex items-center shadow-sm ${
-              isReadOnly
-                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
-            }`}
-            title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'Create Statement'}
-          >
-            {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} Create Statement
-          </button>
-        </div>
-      </div>
+        }
+        actions={
+          <>
+            <button 
+              onClick={() => verifyAction('Export Cashbook CSV', handleExportCSV)}
+              disabled={exporting || entries.length === 0}
+              className="px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all font-semibold flex items-center disabled:opacity-50 text-slate-700 dark:text-slate-300 shadow-xs cursor-pointer"
+            >
+              {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <FileDown className="w-3.5 h-3.5 mr-2" />} Export CSV
+            </button>
+            <button 
+              disabled={isReadOnly}
+              onClick={() => {
+                if (!isReadOnly) {
+                  verifyAction('Create Statement', () => {
+                    setEditingEntry(null);
+                    setViewState('entry');
+                  });
+                }
+              }} 
+              className={`px-5 py-2.5 rounded-md font-medium text-sm flex items-center shadow-sm ${
+                isReadOnly
+                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                  : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+              }`}
+              title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'Create Statement'}
+            >
+              {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} Create Statement
+            </button>
+          </>
+        }
+      />
 
       {!loading && entries.length === 0 ? (
         <EmptyState 

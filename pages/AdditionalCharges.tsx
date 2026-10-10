@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Loader2, X, ChevronDown, Lock } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, X, ChevronDown, Lock, Percent } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getActiveCompanyId, safeSupabaseSave, getSelectedLedgerIds, toggleSelectedLedgerId } from '../utils/helpers';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
 import { useLicense } from '../context/LicenseContext';
 
 const isGstLedger = (name: string) => {
@@ -218,23 +219,28 @@ const AdditionalCharges = () => {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-[20px] font-medium text-slate-900 capitalize">Additional Charges</h1>
-        {taxes.length > 0 && (
-          <button 
-            disabled={isReadOnly}
-            onClick={() => { if (!isReadOnly) { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); } }} 
-            className={`px-6 py-2 rounded-md font-medium text-sm transition-none capitalize w-full sm:w-auto flex items-center justify-center ${
-              isReadOnly
-                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
-            }`}
-            title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Charge'}
-          >
-            {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Charge
-          </button>
-        )}
-      </div>
+      <PageHeader
+        icon={Percent}
+        iconColor="text-slate-600 dark:text-slate-400"
+        title="Additional Charges"
+        subtitle="Configure user-defined adjustments such as Labour, Freight, or Discounts"
+        actions={
+          taxes.length > 0 ? (
+            <button 
+              disabled={isReadOnly}
+              onClick={() => { if (!isReadOnly) { setEditingTax(null); setFormData(getInitialFormData()); setIsModalOpen(true); } }} 
+              className={`px-5 py-2.5 rounded-md font-medium text-sm transition-none capitalize w-full sm:w-auto flex items-center justify-center shadow-sm ${
+                isReadOnly
+                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                  : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+              }`}
+              title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Charge'}
+            >
+              {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Charge
+            </button>
+          ) : undefined
+        }
+      />
 
       {!loading && taxes.length === 0 ? (
         <EmptyState 

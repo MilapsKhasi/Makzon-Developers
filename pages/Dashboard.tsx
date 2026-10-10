@@ -8,6 +8,7 @@ import SalesInvoiceForm from '../components/SalesInvoiceForm';
 import PaymentVoucherModal from '../components/PaymentVoucherModal';
 import NewVoucherDropdown from '../components/NewVoucherDropdown';
 import SalesPurchaseChart from '../components/SalesPurchaseChart';
+import PageHeader from '../components/PageHeader';
 import { supabase } from '../lib/supabase';
 import { useLicense } from '../context/LicenseContext';
 import { useSecurityDemo } from '../context/SecurityDemoContext';
@@ -207,26 +208,23 @@ const Dashboard = () => {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <LayoutDashboard className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Executive Summary</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Real-time overview of sales, purchases, payables, receivables, and recent activity</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
-          <DateFilter onFilterChange={setDateRange} />
-          <NewVoucherDropdown
-            onSelectSalesInvoice={() => { if (!isReadOnly) verifyAction('Create Sales Invoice', () => setIsSalesModalOpen(true)); }}
-            onSelectPurchaseBill={() => { if (!isReadOnly) verifyAction('Create Purchase Bill', () => setIsPurchaseModalOpen(true)); }}
-            onSelectReceivePayment={() => { if (!isReadOnly) verifyAction('Create Receipt Voucher', () => { setPaymentVoucherType('Receipt'); setIsPaymentModalOpen(true); }); }}
-            onSelectMakePayment={() => { if (!isReadOnly) verifyAction('Create Payment Voucher', () => { setPaymentVoucherType('Payment'); setIsPaymentModalOpen(true); }); }}
-          />
-        </div>
-      </div>
+      <PageHeader
+        icon={LayoutDashboard}
+        iconColor="text-slate-700 dark:text-slate-200"
+        title="Executive Summary"
+        subtitle="Real-time overview of sales, purchases, payables, receivables, and recent activity"
+        actions={
+          <>
+            <DateFilter onFilterChange={setDateRange} />
+            <NewVoucherDropdown
+              onSelectSalesInvoice={() => { if (!isReadOnly) verifyAction('Create Sales Invoice', () => setIsSalesModalOpen(true)); }}
+              onSelectPurchaseBill={() => { if (!isReadOnly) verifyAction('Create Purchase Bill', () => setIsPurchaseModalOpen(true)); }}
+              onSelectReceivePayment={() => { if (!isReadOnly) verifyAction('Create Receipt Voucher', () => { setPaymentVoucherType('Receipt'); setIsPaymentModalOpen(true); }); }}
+              onSelectMakePayment={() => { if (!isReadOnly) verifyAction('Create Payment Voucher', () => { setPaymentVoucherType('Payment'); setIsPaymentModalOpen(true); }); }}
+            />
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatBox label="Sales (Gross)" value={formatCurrency(stats.totalSales)} subLabel={`Net Recv: ${formatCurrency(stats.receivables)}`} icon={BadgeIndianRupee} />

@@ -509,9 +509,29 @@ export const ensureStockItems = async (items: any[], company_id: string) => {
   }
 };
 
-export const ensureParty = async (name: string, type: 'customer' | 'vendor', company_id: string) => {
+export const ensureParty = async (name: string, type: 'customer' | 'vendor', company_id: string, partyId?: string) => {
   if (!name || !name.trim()) return;
   const nameTrim = name.trim().toUpperCase();
+
+  // If partyId is provided, check if it already exists by id
+  if (partyId) {
+    const { data: byId } = await supabase
+      .from('vendors')
+      .select('*')
+      .eq('id', partyId)
+      .eq('is_deleted', false)
+      .maybeSingle();
+
+    if (byId) {
+      const pType = (byId.party_type || '').toLowerCase();
+      if (type === 'customer' && pType === 'vendor') {
+        await supabase.from('vendors').update({ party_type: 'both', is_customer: true }).eq('id', byId.id);
+      } else if (type === 'vendor' && pType === 'customer') {
+        await supabase.from('vendors').update({ party_type: 'both' }).eq('id', byId.id);
+      }
+      return;
+    }
+  }
 
   // 1. Search unified 'vendors' table
   const { data: existingVendor } = await supabase
@@ -687,18 +707,136 @@ export const validateGstin = (gstin: string): boolean => {
 
 /**
  * Checks if a voucher or ledger transaction belongs to a given party.
+ * Supports party passed as an object (with id, name, alias, previous_names)
+ * or as an ID or name string.
  */
-export const isTransactionForParty = (tx: any, partyName: string): boolean => {
-  if (!tx || !partyName) return false;
-  const target = partyName.trim().toLowerCase();
-  const txParty = (
-    tx.party_name ||
-    tx.party ||
-    tx.customer_name ||
-    tx.vendor_name ||
-    tx.name ||
-    ''
-  ).trim().toLowerCase();
-  return txParty === target;
+export const isTransactionForParty = (
+  tx: any,
+  partyOrId: any,
+  optionalPartyName?: string
+): boolean => {
+  if (!tx || !partyOrId) return false;
+
+  let targetId = '';
+  const targetNames = new Set<string>();
+
+  if (typeof partyOrId === 'object') {
+    if (partyOrId.id) targetId = String(partyOrId.id).trim();
+    if (partyOrId.name) targetNames.add(String(partyOrId.name).trim().toLowerCase());
+    if (partyOrId.party_name) targetNames.add(String(partyOrId.party_name).trim().toLowerCase());
+    if (partyOrId.alias) targetNames.add(String(partyOrId.alias).trim().toLowerCase());
+    if (Array.isArray(partyOrId.previous_names)) {
+      partyOrId.previous_names.forEach((pn: any) => {
+        if (pn) targetNames.add(String(pn).trim().toLowerCase());
+      });
+    }
+  } else if (typeof partyOrId === 'string') {
+    const trimmed = partyOrId.trim();
+    targetId = trimmed;
+    targetNames.add(trimmed.toLowerCase());
+  }
+
+  if (optionalPartyName && typeof optionalPartyName === 'string') {
+    targetNames.add(optionalPartyName.trim().toLowerCase());
+  }
+
+  // 1. Check ID matching first
+  if (targetId) {
+    const txPartyId = tx.party_id ||
+                      tx.customer_id ||
+                      tx.vendor_id ||
+                      tx.items_raw?.party_id ||
+                      tx.items_raw?.customer_id ||
+                      tx.items_raw?.vendor_id ||
+                      tx.items?.party_id ||
+                      tx.items?.customer_id ||
+                      tx.items?.vendor_id;
+
+    if (txPartyId && String(txPartyId).trim() === targetId) {
+      return true;
+    }
+  }
+
+  // 2. Check Name matching
+  const candidateNames = [
+    tx.customer_name,
+    tx.vendor_name,
+    tx.party_name,
+    tx.party,
+    tx.name,
+    tx.items_raw?.customer_name,
+    tx.items_raw?.vendor_name,
+    tx.items_raw?.party_name
+  ];
+
+  for (const c of candidateNames) {
+    if (c && typeof c === 'string') {
+      const cNorm = c.trim().toLowerCase();
+      if (targetNames.has(cNorm)) {
+        return true;
+      }
+    }
+  }
+
+  // 3. Check payment_details inside items_raw if payment voucher
+  const pDetails = tx.items_raw?.payment_details || tx.payment_details;
+  if (pDetails) {
+    const pArray = Array.isArray(pDetails) ? pDetails : [pDetails];
+    for (const p of pArray) {
+      if (!p) continue;
+      if (targetId && p.party_id && String(p.party_id).trim() === targetId) {
+        return true;
+      }
+      const pCandidateNames = [p.party_name, p.customer_name, p.vendor_name, p.party];
+      for (const pn of pCandidateNames) {
+        if (pn && typeof pn === 'string' && targetNames.has(pn.trim().toLowerCase())) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
 };
+
+/**
+ * Enriches transactions with master data from party and stock item lists.
+ */
+export const enrichTransactionsWithMasterData = (
+  transactions: any[],
+  parties: any[] = [],
+  stockItems: any[] = []
+): any[] => {
+  if (!Array.isArray(transactions)) return [];
+  const partyMap = new Map<string, any>();
+  parties.forEach(p => {
+    if (p && p.id) partyMap.set(String(p.id), p);
+  });
+
+  const stockMap = new Map<string, any>();
+  stockItems.forEach(s => {
+    if (s && s.id) stockMap.set(String(s.id), s);
+  });
+
+  return transactions.map(tx => {
+    if (!tx) return tx;
+    const pId = tx.party_id || tx.customer_id || tx.vendor_id;
+    let matchedParty = pId ? partyMap.get(String(pId)) : null;
+    if (!matchedParty && (tx.customer_name || tx.vendor_name)) {
+      const name = (tx.customer_name || tx.vendor_name).trim().toLowerCase();
+      matchedParty = parties.find(p => p.name && p.name.trim().toLowerCase() === name);
+    }
+
+    const customerName = matchedParty ? matchedParty.name : (tx.customer_name || tx.vendor_name || '');
+    const vendorName = matchedParty ? matchedParty.name : (tx.vendor_name || tx.customer_name || '');
+
+    return {
+      ...tx,
+      customer_name: customerName,
+      vendor_name: vendorName,
+      party_name: matchedParty ? matchedParty.name : (tx.party_name || customerName)
+    };
+  });
+};
+
 

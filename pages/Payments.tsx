@@ -6,6 +6,8 @@ import Modal from '../components/Modal';
 import DateFilter, { DateFilterHandle } from '../components/DateFilter';
 import EmptyState from '../components/EmptyState';
 import ConfirmDialog from '../components/ConfirmDialog';
+import PageHeader from '../components/PageHeader';
+import SectionIcon from '../components/SectionIcon';
 import { supabase } from '../lib/supabase';
 import { useLicense } from '../context/LicenseContext';
 import { useSecurityDemo } from '../context/SecurityDemoContext';
@@ -618,46 +620,33 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div className="flex items-center space-x-3">
-          {isReceiptMode ? (
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-              <ArrowDownCircle className="w-5 h-5" />
-            </div>
-          ) : isPaymentMode ? (
-            <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
-              <ArrowUpCircle className="w-5 h-5" />
-            </div>
-          ) : (
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-              <Wallet className="w-5 h-5" />
-            </div>
-          )}
-          <div>
-            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">{pageTitle}</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">{pageSubtitle}</p>
-          </div>
-        </div>
-        <button
-          disabled={isReadOnly}
-          onClick={() => {
-            if (!isReadOnly) {
-              verifyAction('Create ' + newButtonLabel, () => {
-                resetForm();
-                setIsModalOpen(true);
-              });
-            }
-          }}
-          className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
-            isReadOnly
-              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-              : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
-          }`}
-          title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : newButtonLabel}
-        >
-          {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} {newButtonLabel}
-        </button>
-      </div>
+      <PageHeader
+        icon={isReceiptMode ? ArrowDownCircle : isPaymentMode ? ArrowUpCircle : Wallet}
+        iconColor={isReceiptMode ? 'text-emerald-600 dark:text-emerald-400' : isPaymentMode ? 'text-rose-600 dark:text-rose-400' : 'text-teal-600 dark:text-teal-400'}
+        title={pageTitle}
+        subtitle={pageSubtitle}
+        actions={
+          <button
+            disabled={isReadOnly}
+            onClick={() => {
+              if (!isReadOnly) {
+                verifyAction('Create ' + newButtonLabel, () => {
+                  resetForm();
+                  setIsModalOpen(true);
+                });
+              }
+            }}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
+              isReadOnly
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+            }`}
+            title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : newButtonLabel}
+          >
+            {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} {newButtonLabel}
+          </button>
+        }
+      />
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-4 sm:p-6 space-y-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -684,9 +673,7 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
                   {formatCurrency(totalReceived)}
                 </p>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <ArrowDownCircle className="w-4 h-4" />
-              </div>
+              <SectionIcon icon={ArrowDownCircle} className="text-emerald-600 dark:text-emerald-400" size={20} />
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
@@ -696,9 +683,7 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
                   {formatCurrency(totalReceivables)}
                 </p>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <CreditCard className="w-4 h-4" />
-              </div>
+              <SectionIcon icon={CreditCard} className="text-emerald-600 dark:text-emerald-400" size={20} />
             </div>
           </div>
         ) : isPaymentMode ? (
@@ -710,9 +695,7 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
                   {formatCurrency(totalPaid)}
                 </p>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-rose-100/80 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                <ArrowUpCircle className="w-4 h-4" />
-              </div>
+              <SectionIcon icon={ArrowUpCircle} className="text-rose-600 dark:text-rose-400" size={20} />
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
@@ -722,9 +705,7 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
                   {formatCurrency(totalPayables)}
                 </p>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-rose-100/80 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                <CreditCard className="w-4 h-4" />
-              </div>
+              <SectionIcon icon={CreditCard} className="text-rose-600 dark:text-rose-400" size={20} />
             </div>
           </div>
         ) : (
@@ -734,36 +715,28 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Received</p>
                 <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">{formatCurrency(totalReceived)}</p>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <ArrowDownCircle className="w-4 h-4" />
-              </div>
+              <SectionIcon icon={ArrowDownCircle} className="text-emerald-600 dark:text-emerald-400" size={20} />
             </div>
             <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Receivables</p>
                 <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">{formatCurrency(totalReceivables)}</p>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <CreditCard className="w-4 h-4" />
-              </div>
+              <SectionIcon icon={CreditCard} className="text-emerald-600 dark:text-emerald-400" size={20} />
             </div>
             <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Paid</p>
                 <p className="text-xl font-bold font-mono text-rose-600 dark:text-rose-400 mt-1">{formatCurrency(totalPaid)}</p>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-rose-100/80 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                <ArrowUpCircle className="w-4 h-4" />
-              </div>
+              <SectionIcon icon={ArrowUpCircle} className="text-rose-600 dark:text-rose-400" size={20} />
             </div>
             <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Payables</p>
                 <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">{formatCurrency(totalPayables)}</p>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-rose-100/80 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                <CreditCard className="w-4 h-4" />
-              </div>
+              <SectionIcon icon={CreditCard} className="text-rose-600 dark:text-rose-400" size={20} />
             </div>
           </div>
         )}

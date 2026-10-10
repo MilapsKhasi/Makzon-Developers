@@ -7,6 +7,7 @@ import Modal from '../components/Modal';
 import StockForm from '../components/StockForm';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
 import { supabase } from '../lib/supabase';
 import { useLicense } from '../context/LicenseContext';
 import { useSecurityDemo } from '../context/SecurityDemoContext';
@@ -229,36 +230,33 @@ const Stock = () => {
       </Modal>
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, item: null })} onConfirm={confirmDelete} title="Delete Stock Item" message={`Are you sure you want to remove "${deleteDialog.item?.name}" from master?`} />
       
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <Package className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Inventory & Stock Control</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Track stock balances, inward purchases, outward sales, and SKU registers</p>
-          </div>
-        </div>
-        <button
-          disabled={isReadOnly}
-          onClick={() => {
-            if (!isReadOnly) {
-              verifyAction('Create Stock Item', () => {
-                setEditingItem(null);
-                setIsModalOpen(true);
-              });
-            }
-          }}
-          className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
-            isReadOnly
-              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-              : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
-          }`}
-          title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New SKU Item'}
-        >
-          {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New SKU Item
-        </button>
-      </div>
+      <PageHeader
+        icon={Package}
+        iconColor="text-amber-600 dark:text-amber-400"
+        title="Inventory & Stock Control"
+        subtitle="Track stock balances, inward purchases, outward sales, and SKU registers"
+        actions={
+          <button
+            disabled={isReadOnly}
+            onClick={() => {
+              if (!isReadOnly) {
+                verifyAction('Create Stock Item', () => {
+                  setEditingItem(null);
+                  setIsModalOpen(true);
+                });
+              }
+            }}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
+              isReadOnly
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+            }`}
+            title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New SKU Item'}
+          >
+            {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New SKU Item
+          </button>
+        }
+      />
 
       {!loading && items.length === 0 ? (
         <EmptyState 

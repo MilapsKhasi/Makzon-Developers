@@ -7,6 +7,8 @@ import DeliveryChallanForm from '../components/DeliveryChallanForm';
 import ConfirmDialog from '../components/ConfirmDialog';
 import DateFilter, { DateFilterHandle } from '../components/DateFilter';
 import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
+import SectionIcon from '../components/SectionIcon';
 import { supabase } from '../lib/supabase';
 import { InvoicePrintModal } from '../components/InvoicePrintModal';
 import { useLicense } from '../context/LicenseContext';
@@ -187,36 +189,33 @@ export const DeliveryChallans = () => {
       />
 
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-            <Truck className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Delivery Challan Ledger</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Manage goods transport, dispatch notes, and delivery challans</p>
-          </div>
-        </div>
-        <button
-          disabled={isReadOnly}
-          onClick={() => {
-            if (!isReadOnly) {
-              verifyAction('Create Delivery Challan', () => {
-                setEditingChallan(null);
-                setIsModalOpen(true);
-              });
-            }
-          }}
-          className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
-            isReadOnly
-              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-              : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
-          }`}
-          title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Delivery Challan'}
-        >
-          {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Delivery Challan
-        </button>
-      </div>
+      <PageHeader
+        icon={Truck}
+        iconColor="text-blue-600 dark:text-blue-400"
+        title="Delivery Challan Ledger"
+        subtitle="Manage goods transport, dispatch notes, and delivery challans"
+        actions={
+          <button
+            disabled={isReadOnly}
+            onClick={() => {
+              if (!isReadOnly) {
+                verifyAction('Create Delivery Challan', () => {
+                  setEditingChallan(null);
+                  setIsModalOpen(true);
+                });
+              }
+            }}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
+              isReadOnly
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+            }`}
+            title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Delivery Challan'}
+          >
+            {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Delivery Challan
+          </button>
+        }
+      />
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-4 sm:p-6 space-y-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -240,9 +239,7 @@ export const DeliveryChallans = () => {
               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Total Challans</p>
               <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">{filtered.length}</p>
             </div>
-            <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-              <Truck className="w-4 h-4" />
-            </div>
+            <SectionIcon icon={Truck} className="text-blue-600 dark:text-blue-400" size={20} />
           </div>
 
           <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
@@ -250,9 +247,7 @@ export const DeliveryChallans = () => {
               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Dispatched Goods Value</p>
               <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">{formatCurrency(totalDispatchedValue)}</p>
             </div>
-            <div className="w-9 h-9 rounded-lg bg-emerald-100/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-              <Truck className="w-4 h-4" />
-            </div>
+            <SectionIcon icon={Truck} className="text-blue-600 dark:text-blue-400" size={20} />
           </div>
         </div>
 

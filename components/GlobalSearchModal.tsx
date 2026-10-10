@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Search, FileText, ShoppingCart, Contact, ArrowDownCircle, ArrowUpCircle, 
+  Search, FileText, ReceiptText, Contact, ArrowDownCircle, ArrowUpCircle, 
   Package, X, ArrowRight, Loader2, Tag
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -327,7 +327,7 @@ const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }
           {[
             { id: 'all', label: 'All Results' },
             { id: 'sales', label: 'Sales Invoices', icon: FileText },
-            { id: 'purchases', label: 'Purchase Bills', icon: ShoppingCart },
+            { id: 'purchases', label: 'Purchase Bills', icon: ReceiptText },
             { id: 'parties', label: 'Parties', icon: Contact },
             { id: 'payments', label: 'Payments & Receipts', icon: ArrowDownCircle },
             { id: 'stock', label: 'Stock Items', icon: Package },
@@ -379,7 +379,7 @@ const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }
                   <div className="flex items-center space-x-3 min-w-0 flex-1">
                     <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
                       {result.category === 'sales' && <FileText className="w-4 h-4 text-blue-500" />}
-                      {result.category === 'purchases' && <ShoppingCart className="w-4 h-4 text-purple-500" />}
+                      {result.category === 'purchases' && <ReceiptText className="w-4 h-4 text-purple-500" />}
                       {result.category === 'parties' && <Contact className="w-4 h-4 text-amber-500" />}
                       {result.category === 'payments' && <ArrowDownCircle className="w-4 h-4 text-emerald-500" />}
                       {result.category === 'stock' && <Package className="w-4 h-4 text-cyan-500" />}

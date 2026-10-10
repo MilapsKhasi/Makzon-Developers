@@ -87,11 +87,18 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
     try {
       const partyId = party.id ? String(party.id) : null;
 
-      // Fetch company details and latest party master (to ensure full alias/previous_names awareness)
-      const [{ data: company }, { data: freshParty }] = await Promise.all([
-        supabase.from('companies').select('*').eq('id', cid).single(),
-        partyId ? supabase.from('vendors').select('*').eq('id', partyId).single() : Promise.resolve({ data: null })
-      ]);
+      // Safely fetch company details and fresh party record without throwing on 0 rows
+      let freshParty: any = null;
+      const { data: company } = await supabase.from('companies').select('*').eq('id', cid).maybeSingle();
+      if (partyId) {
+        const { data: vParty } = await supabase.from('vendors').select('*').eq('id', partyId).maybeSingle();
+        if (vParty) {
+          freshParty = vParty;
+        } else {
+          const { data: cParty } = await supabase.from('customers').select('*').eq('id', partyId).maybeSingle();
+          freshParty = cParty;
+        }
+      }
 
       const activePartyRecord = freshParty || party;
 
@@ -115,7 +122,7 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
         ...(salesData || []).map((v: any) => ({ ...normalizeBill(v), source: 'sales_invoices' }))
       ].filter(Boolean);
 
-      // Primary: Match strictly by permanent Party ID and historical linkages
+      // Match strictly by permanent Party ID, aliases, or name linkages
       const partyTransactions = allVouchers.filter((v: any) => 
         isTransactionForParty(v, activePartyRecord)
       );
@@ -161,76 +168,148 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
       balance: runningBalance
     });
 
+    interface LedgerEvent {
+      date: string;
+      transaction: string;
+      reference: string;
+      debit: number;
+      credit: number;
+      sortTime: number;
+    }
+
+    const events: LedgerEvent[] = [];
+
     transactions.forEach(t => {
       const amount = Number(t.grand_total) || 0;
-      const isSale = t.type === 'Sale';
-      const isPaymentVoucher = t.items_raw?.is_payment_voucher === true;
-      
-      // Bill/Invoice Row
-      if (!isPaymentVoucher) {
-        if (isSale) {
-          // Sales: Debits the party (Sales Invoice)
-          runningBalance += amount;
-          rows.push({
-            date: t.date,
-            transaction: 'Sales Invoice',
-            reference: t.bill_number || '',
-            debit: amount,
-            credit: 0,
-            balance: runningBalance
-          });
-        } else {
-          // Purchase: Credits the party (Purchase Bill)
-          runningBalance -= amount;
-          rows.push({
-            date: t.date,
-            transaction: 'Purchase Bill',
-            reference: t.bill_number || '',
-            debit: 0,
-            credit: amount,
-            balance: runningBalance
-          });
-        }
-      }
+      const docNo = t.invoice_number || t.bill_number || t.challan_number || '';
+      const tDate = t.date || '';
+      const sortTime = tDate ? new Date(tDate).getTime() : 0;
 
-      // Payment/Receipt Row (only for actual Payment Vouchers)
+      const isPaymentVoucher = t.items_raw?.is_payment_voucher === true || 
+                               t.items?.is_payment_voucher === true ||
+                               t.voucher_type === 'Receipt' || 
+                               t.voucher_type === 'Payment' ||
+                               t.items_raw?.voucher_type === 'Receipt' || 
+                               t.items_raw?.voucher_type === 'Payment';
+
+      const isReceipt = isPaymentVoucher && (
+        t.items_raw?.voucher_type === 'Receipt' || 
+        t.voucher_type === 'Receipt' || 
+        t.source === 'sales_invoices' ||
+        t.type === 'Sale' ||
+        (t.invoice_number && t.invoice_number.startsWith('REC-'))
+      );
+
+      const isSale = !isPaymentVoucher && (t.type === 'Sale' || t.source === 'sales_invoices');
+
       if (isPaymentVoucher) {
-        const pDetailsRaw = t.items_raw?.payment_details;
+        // Standalone Payment or Receipt Voucher
+        const pDetailsRaw = t.items_raw?.payment_details || t.payment_details;
         const payments = Array.isArray(pDetailsRaw) ? pDetailsRaw : (pDetailsRaw ? [pDetailsRaw] : [{
           payment_amount: amount,
-          payment_date: t.date,
+          payment_date: tDate,
           payment_method: 'Cash'
         }]);
 
         payments.forEach((p: any) => {
-          const pAmount = Number(p.payment_amount) || 0;
-          const pDate = p.payment_date || t.date;
+          const pAmount = Number(p.payment_amount) || amount;
+          const pDate = p.payment_date || tDate;
+          const pTime = pDate ? new Date(pDate).getTime() : sortTime;
 
-          if (isSale) {
-            // Receipt: Credits the party (Receipt)
-            runningBalance -= pAmount;
-            rows.push({
+          if (isReceipt) {
+            // Receipt: Customer paid us -> Credits the party
+            events.push({
               date: pDate,
               transaction: 'Receipt',
-              reference: t.bill_number || '',
+              reference: docNo,
               debit: 0,
               credit: pAmount,
-              balance: runningBalance
+              sortTime: pTime
             });
           } else {
-            // Payment: Debits the party (Payment)
-            runningBalance += pAmount;
-            rows.push({
+            // Payment: We paid vendor -> Debits the party
+            events.push({
               date: pDate,
               transaction: 'Payment',
-              reference: t.bill_number || '',
+              reference: docNo,
               debit: pAmount,
               credit: 0,
-              balance: runningBalance
+              sortTime: pTime
             });
           }
         });
+      } else {
+        // Sales Invoice or Purchase Bill
+        if (isSale) {
+          // Sales Invoice: Debits the customer
+          events.push({
+            date: tDate,
+            transaction: 'Sales Invoice',
+            reference: docNo,
+            debit: amount,
+            credit: 0,
+            sortTime
+          });
+        } else {
+          // Purchase Bill: Credits the vendor
+          events.push({
+            date: tDate,
+            transaction: 'Purchase Bill',
+            reference: docNo,
+            debit: 0,
+            credit: amount,
+            sortTime
+          });
+        }
+
+        // If the invoice/bill itself had payment(s) recorded against it (e.g. marked Paid directly)
+        const pDetailsRaw = t.items_raw?.payment_details || t.payment_details;
+        if (pDetailsRaw) {
+          const pArray = Array.isArray(pDetailsRaw) ? pDetailsRaw : [pDetailsRaw];
+          pArray.forEach((p: any) => {
+            const pAmount = Number(p.payment_amount) || 0;
+            if (pAmount > 0) {
+              const pDate = p.payment_date || tDate;
+              const pTime = pDate ? new Date(pDate).getTime() : sortTime;
+              if (isSale) {
+                events.push({
+                  date: pDate,
+                  transaction: 'Receipt',
+                  reference: docNo ? `Ref: ${docNo}` : 'Receipt',
+                  debit: 0,
+                  credit: pAmount,
+                  sortTime: pTime + 1
+                });
+              } else {
+                events.push({
+                  date: pDate,
+                  transaction: 'Payment',
+                  reference: docNo ? `Ref: ${docNo}` : 'Payment',
+                  debit: pAmount,
+                  credit: 0,
+                  sortTime: pTime + 1
+                });
+              }
+            }
+          });
+        }
       }
+    });
+
+    // Sort all events chronologically
+    events.sort((a, b) => a.sortTime - b.sortTime);
+
+    // Build ledger rows with sequential running balance
+    events.forEach(evt => {
+      runningBalance += (evt.debit - evt.credit);
+      rows.push({
+        date: evt.date,
+        transaction: evt.transaction,
+        reference: evt.reference,
+        debit: evt.debit,
+        credit: evt.credit,
+        balance: runningBalance
+      });
     });
 
     return { ledgerRows: rows, finalBalance: runningBalance };

@@ -15,14 +15,12 @@ import Cashbook from './pages/Cashbook';
 import Payments from './pages/Payments';
 import Auth from './pages/Auth';
 import Companies from './pages/Companies';
-import UserActivity from './pages/UserActivity';
 import DeliveryChallans from './pages/DeliveryChallans';
 import { CompanyProvider, useCompany } from './context/CompanyContext';
 import { LicenseProvider } from './context/LicenseContext';
 import { SecurityDemoProvider } from './context/SecurityDemoContext';
 import { supabase } from './lib/supabase';
 import { Database, AlertCircle, Copy, Check } from 'lucide-react';
-import { processInactivity, recordActivity } from './utils/activityTracker';
 
 const AppContent = () => {
   const [session, setSession] = useState<any>(null);
@@ -82,8 +80,6 @@ const AppContent = () => {
         setSession(currentSession);
         if (currentSession) {
           await checkSchema(currentSession);
-          // Record initial activity on load if session exists
-          recordActivity(currentSession.user.id, currentSession.user.email || '');
         }
       } catch (e: any) {
         if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError') || e.name === 'TypeError') {
@@ -105,7 +101,6 @@ const AppContent = () => {
       setSession(newSession);
       if (event === 'SIGNED_IN' && newSession) {
         checkSchema(newSession);
-        recordActivity(newSession.user.id, newSession.user.email || '');
       }
       if (event === 'SIGNED_OUT') {
         localStorage.removeItem('local_session_user');
@@ -113,14 +108,8 @@ const AppContent = () => {
       }
     });
 
-    // Periodically check for inactivity
-    const inactivityInterval = setInterval(() => {
-      processInactivity();
-    }, 60000); // Check every minute
-
     return () => {
       subscription.unsubscribe();
-      clearInterval(inactivityInterval);
     };
   }, []);
 
@@ -310,7 +299,6 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
           <Route path="additional-charges" element={<AdditionalCharges />} />
           <Route path="stock" element={<Stock />} />
           <Route path="reports" element={<Reports />} />
-          <Route path="user-activity" element={<UserActivity />} />
         </Route>
         
         <Route path="*" element={<Navigate to="/" replace />} />

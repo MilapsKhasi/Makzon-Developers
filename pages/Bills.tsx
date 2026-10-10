@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Loader2, Edit, Trash2, Plus, ShoppingBag, Lock } from 'lucide-react';
+import { Search, Loader2, Edit, Trash2, Plus, ReceiptText, Lock } from 'lucide-react';
 import { formatDate, formatCurrency, getActiveCompanyId, normalizeBill, unsyncTransactionFromCashbook } from '../utils/helpers';
 import Modal from '../components/Modal';
 import BillForm from '../components/BillForm';
@@ -9,6 +9,8 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import DateFilter, { DateFilterHandle } from '../components/DateFilter';
 import ExportModal from '../components/ExportModal';
 import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
+import SectionIcon from '../components/SectionIcon';
 import { supabase } from '../lib/supabase';
 import { useLicense } from '../context/LicenseContext';
 import { useSecurityDemo } from '../context/SecurityDemoContext';
@@ -224,37 +226,34 @@ const Bills = () => {
 
       <ConfirmDialog isOpen={deleteDialog.isOpen} onClose={() => setDeleteDialog({ isOpen: false, bill: null })} onConfirm={confirmDelete} title="Archive Bill" message={`Are you sure you want to delete bill ${deleteDialog.bill?.bill_number}? (Press Shift + D again to confirm)`} />
 
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <ShoppingBag className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Purchase Bills Ledger</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Register purchase invoices, track vendor liabilities, and manage stock receipts</p>
-          </div>
-        </div>
-        <button
-          ref={newEntryBtnRef}
-          disabled={isReadOnly}
-          onClick={() => {
-            if (!isReadOnly) {
-              verifyAction('Create Purchase Bill', () => {
-                setEditingBill(null);
-                setIsModalOpen(true);
-              });
-            }
-          }}
-          className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
-            isReadOnly
-              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-              : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
-          }`}
-          title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Entry'}
-        >
-          {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Entry
-        </button>
-      </div>
+      <PageHeader
+        icon={ReceiptText}
+        iconColor="text-indigo-600 dark:text-indigo-400"
+        title="Purchase Bills Ledger"
+        subtitle="Register purchase invoices, track vendor liabilities, and manage stock receipts"
+        actions={
+          <button
+            ref={newEntryBtnRef}
+            disabled={isReadOnly}
+            onClick={() => {
+              if (!isReadOnly) {
+                verifyAction('Create Purchase Bill', () => {
+                  setEditingBill(null);
+                  setIsModalOpen(true);
+                });
+              }
+            }}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
+              isReadOnly
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+            }`}
+            title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Entry'}
+          >
+            {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Entry
+          </button>
+        }
+      />
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-4 sm:p-6 space-y-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -280,9 +279,7 @@ const Bills = () => {
                 {formatCurrency(totalPurchase)}
               </p>
             </div>
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-              <ShoppingBag className="w-4 h-4" />
-            </div>
+            <SectionIcon icon={ReceiptText} className="text-indigo-600 dark:text-indigo-400" size={20} />
           </div>
         </div>
 

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { getActiveCompanyId, normalizeBill } from '../utils/helpers';
+import { getActiveCompanyId, normalizeBill, isTransactionForParty } from '../utils/helpers';
 import { 
   Plus, Search, Landmark, ArrowLeft, Maximize2, Minimize2, 
-  Trash2, Edit, Eye, FileText, User, Filter, AlertCircle, Phone, 
+  Trash2, Edit, Eye, FileText, User, Contact, Filter, AlertCircle, Phone, 
   Mail, MapPin, Lock
 } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -12,6 +12,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import PartyForm from '../components/PartyForm';
 import LedgerModal from '../components/LedgerModal';
 import EmptyState from '../components/EmptyState';
+import PageHeader from '../components/PageHeader';
 import { useLicense } from '../context/LicenseContext';
 import { useSecurityDemo } from '../context/SecurityDemoContext';
 
@@ -269,34 +270,75 @@ const Parties = () => {
   const partyStats = useMemo(() => {
     if (!selectedParty) return { transactions: [], totalSales: 0, totalReceipts: 0, totalPurchases: 0, totalPayments: 0, netBalance: 0 };
 
-    const nameLower = selectedParty.name?.toLowerCase().trim();
-
     // 1. Invoices & Receipts (Sales)
-    const normalizedSales = salesInvoices.map(s => normalizeBill(s));
-    const partyInvoices = normalizedSales.filter(s => s && !s.items_raw?.is_payment_voucher && s.customer_name?.toLowerCase().trim() === nameLower);
-    const partyReceipts = normalizedSales.filter(s => s && s.items_raw?.is_payment_voucher === true && s.customer_name?.toLowerCase().trim() === nameLower);
+    const normalizedSales = salesInvoices.map(s => normalizeBill(s)).filter(Boolean);
+    const partySales = normalizedSales.filter(s => isTransactionForParty(s, selectedParty));
+    const partyInvoices = partySales.filter(s => !s.items_raw?.is_payment_voucher);
+    const partyReceipts = partySales.filter(s => s.items_raw?.is_payment_voucher === true);
 
     // 2. Bills & Payments (Purchases)
-    const normalizedPurchases = purchaseBills.map(b => normalizeBill(b));
-    const partyBills = normalizedPurchases.filter(b => b && !b.items_raw?.is_payment_voucher && b.vendor_name?.toLowerCase().trim() === nameLower);
-    const partyPayments = normalizedPurchases.filter(b => b && b.items_raw?.is_payment_voucher === true && b.vendor_name?.toLowerCase().trim() === nameLower);
+    const normalizedPurchases = purchaseBills.map(b => normalizeBill(b)).filter(Boolean);
+    const partyPurchases = normalizedPurchases.filter(b => isTransactionForParty(b, selectedParty));
+    const partyBills = partyPurchases.filter(b => !b.items_raw?.is_payment_voucher);
+    const partyPayments = partyPurchases.filter(b => b.items_raw?.is_payment_voucher === true);
 
     const totalSales = partyInvoices.reduce((acc, i) => acc + Number(i.grand_total || 0), 0);
     const totalPurchases = partyBills.reduce((acc, b) => acc + Number(b.grand_total || 0), 0);
 
-    const totalReceipts = partyReceipts.reduce((acc, r) => {
-      const pDetails = r.items_raw?.payment_details;
+    let totalReceipts = partyReceipts.reduce((acc, r) => {
+      const pDetails = r.items_raw?.payment_details || r.payment_details;
       const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
       const amount = pArray.reduce((sum: number, p: any) => sum + (Number(p.payment_amount) || 0), 0);
       return acc + (amount || Number(r.grand_total) || 0);
     }, 0);
 
-    const totalPayments = partyPayments.reduce((acc, p) => {
-      const pDetails = p.items_raw?.payment_details;
+    let totalPayments = partyPayments.reduce((acc, p) => {
+      const pDetails = p.items_raw?.payment_details || p.payment_details;
       const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
       const amount = pArray.reduce((sum: number, p: any) => sum + (Number(p.payment_amount) || 0), 0);
       return acc + (amount || Number(p.grand_total) || 0);
     }, 0);
+
+    // Also include payments attached directly to invoices/bills
+    const embeddedReceipts: any[] = [];
+    partyInvoices.forEach(inv => {
+      const pDetails = inv.items_raw?.payment_details || inv.payment_details;
+      const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
+      pArray.forEach((p: any) => {
+        const amt = Number(p.payment_amount) || 0;
+        if (amt > 0) {
+          totalReceipts += amt;
+          embeddedReceipts.push({
+            ...inv,
+            id: `p-${inv.id}`,
+            date: p.payment_date || inv.date,
+            grand_total: amt,
+            displayType: 'Receipt',
+            bill_number: inv.invoice_number ? `Ref: ${inv.invoice_number}` : 'Receipt'
+          });
+        }
+      });
+    });
+
+    const embeddedPayments: any[] = [];
+    partyBills.forEach(bill => {
+      const pDetails = bill.items_raw?.payment_details || bill.payment_details;
+      const pArray = Array.isArray(pDetails) ? pDetails : (pDetails ? [pDetails] : []);
+      pArray.forEach((p: any) => {
+        const amt = Number(p.payment_amount) || 0;
+        if (amt > 0) {
+          totalPayments += amt;
+          embeddedPayments.push({
+            ...bill,
+            id: `p-${bill.id}`,
+            date: p.payment_date || bill.date,
+            grand_total: amt,
+            displayType: 'Payment',
+            bill_number: bill.bill_number ? `Ref: ${bill.bill_number}` : 'Payment'
+          });
+        }
+      });
+    });
 
     // netBalance representation:
     // Debit side is positive, Credit side is negative.
@@ -312,8 +354,10 @@ const Parties = () => {
     const allTransactions = [
       ...partyInvoices.map(item => ({ ...item, displayType: 'Sale' })),
       ...partyReceipts.map(item => ({ ...item, displayType: 'Receipt' })),
+      ...embeddedReceipts,
       ...partyBills.map(item => ({ ...item, displayType: 'Purchase' })),
-      ...partyPayments.map(item => ({ ...item, displayType: 'Payment' }))
+      ...partyPayments.map(item => ({ ...item, displayType: 'Payment' })),
+      ...embeddedPayments
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return {
@@ -364,36 +408,33 @@ const Parties = () => {
       )}
 
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <User className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-[20px] font-medium text-slate-900 dark:text-white capitalize">Party Master & Accounts</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Unified register for Customer & Supplier accounts, balances, and contact details</p>
-          </div>
-        </div>
-        <button 
-          disabled={isReadOnly}
-          onClick={() => {
-            if (!isReadOnly) {
-              verifyAction('Create Party Account', () => {
-                setEditingParty(null);
-                setIsFormOpen(true);
-              });
-            }
-          }} 
-          className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
-            isReadOnly
-              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-              : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
-          }`}
-          title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Party Account'}
-        >
-          {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Party Account
-        </button>
-      </div>
+      <PageHeader
+        icon={Contact}
+        iconColor="text-purple-600 dark:text-purple-400"
+        title="Party Master & Accounts"
+        subtitle="Unified register for Customer & Supplier accounts, balances, and contact details"
+        actions={
+          <button 
+            disabled={isReadOnly}
+            onClick={() => {
+              if (!isReadOnly) {
+                verifyAction('Create Party Account', () => {
+                  setEditingParty(null);
+                  setIsFormOpen(true);
+                });
+              }
+            }} 
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-md font-medium text-sm flex items-center justify-center shadow-sm ${
+              isReadOnly
+                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+            }`}
+            title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'New Party Account'}
+          >
+            {isReadOnly ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />} New Party Account
+          </button>
+        }
+      />
 
       {/* Empty State */}
       {!loading && parties.length === 0 ? (
@@ -677,7 +718,7 @@ const Parties = () => {
                           return (
                             <div key={index} className="px-6 py-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/40">
                               <div className="space-y-1">
-                                <p className="font-bold text-slate-800 dark:text-slate-200 uppercase">{t.displayType} Voucher: #{t.bill_number}</p>
+                                <p className="font-bold text-slate-800 dark:text-slate-200 uppercase">{t.displayType} Voucher: #{t.invoice_number || t.bill_number || t.challan_number || '-'}</p>
                                 <p className="text-[10px] text-slate-400 font-medium">{t.date}</p>
                               </div>
                               <div className="text-right">

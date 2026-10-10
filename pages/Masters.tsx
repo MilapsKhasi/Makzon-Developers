@@ -1,5 +1,6 @@
 import React from 'react';
 import { Database, Folder, Tag, Briefcase } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 
 const MasterCard = ({ title, desc, icon: Icon }: { title: string, desc: string, icon: any }) => (
     <div className="bg-white p-6 hover:bg-slate-50 transition-all cursor-pointer group">
@@ -13,13 +14,15 @@ const MasterCard = ({ title, desc, icon: Icon }: { title: string, desc: string, 
 
 const Masters = () => {
   return (
-    <div>
-        <div className="mb-8">
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Master Data Management</h2>
-            <p className="text-slate-500 font-medium">Configure core system data and categories.</p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        icon={Database}
+        iconColor="text-slate-700 dark:text-slate-200"
+        title="Master Data Management"
+        subtitle="Configure core system data and categories"
+      />
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <MasterCard title="Item Categories" desc="Manage product groups and classifications." icon={Folder} />
             <MasterCard title="Tax Rates" desc="Configure GST/VAT and other tax percentages." icon={Tag} />
             <MasterCard title="Units of Measure" desc="Define measurement units (kg, pcs, ltr)." icon={Database} />
