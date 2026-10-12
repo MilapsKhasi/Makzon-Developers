@@ -1,0 +1,32 @@
+{
+  "pins": {
+    "04150096-388a-47ef-934d-c94c76609ab5": {
+      "userId": "04150096-388a-47ef-934d-c94c76609ab5",
+      "email": "khasimilap@gmail.com",
+      "pinHash": "137e57ad7485bfb42471cebb75fa0af73c26a8fac1aa1b053373dcc73b66cd1a747a9aaa2c2eac486f54e8e3bd17f75effa7de32f6c8c3fc562299d466e3e4f5",
+      "salt": "89ebd7d14c92a791a231017176f7777bd8fcc354a9b444e98b842961545fc7ca",
+      "createdAt": "2026-10-12T11:06:12.818Z",
+      "updatedAt": "2026-10-12T11:06:12.818Z"
+    }
+  },
+  "devices": {
+    "db616af8-a0c4-468b-80db-997536f31a6c": {
+      "id": "db616af8-a0c4-468b-80db-997536f31a6c",
+      "userId": "04150096-388a-47ef-934d-c94c76609ab5",
+      "credentialHash": "d5a2713bbdc21aad66572fb04a1830b907ed0077a8decd3f682dd7e0e42e289e",
+      "deviceName": "Google Chrome on Windows",
+      "createdAt": "2026-10-12T11:06:13.075Z",
+      "lastVerifiedAt": "2026-10-12T11:06:13.075Z",
+      "isRevoked": false
+    }
+  },
+  "rateLimits": {
+    "04150096-388a-47ef-934d-c94c76609ab5": {
+      "userId": "04150096-388a-47ef-934d-c94c76609ab5",
+      "failedAttempts": 0,
+      "lockoutCount": 0,
+      "lockedUntil": null,
+      "lastAttemptAt": "2026-10-12T10:46:17.819Z"
+    }
+  }
+}

@@ -11,6 +11,7 @@ import { useCompany } from '../context/CompanyContext';
 import { useLicense } from '../context/LicenseContext';
 import { useSecurityDemo } from '../context/SecurityDemoContext';
 import { validateGstin } from '../utils/helpers';
+import { performAppSignOut } from '../lib/deviceAuth';
 
 const Companies = () => {
   const { isWorkspaceLimitReached } = useLicense();
@@ -29,6 +30,10 @@ const Companies = () => {
   
   const navigate = useNavigate();
   const { activeCompany, setCompany } = useCompany();
+
+  const handleSignOut = async () => {
+    await performAppSignOut();
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -168,7 +173,7 @@ const Companies = () => {
               <span className="text-[10px] font-medium text-slate-400 capitalize tracking-widest mr-2">Workspaces</span>
             </div>
           </div>
-          <button onClick={() => supabase.auth.signOut()} className="sm:hidden p-2 text-slate-400 hover:text-red-500 rounded transition-colors">
+          <button onClick={handleSignOut} className="sm:hidden p-2 text-slate-400 hover:text-red-500 rounded transition-colors cursor-pointer">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -185,7 +190,7 @@ const Companies = () => {
           </div>
         </div>
         <div className="hidden sm:flex items-center space-x-4">
-           <button onClick={() => supabase.auth.signOut()} className="p-2 text-slate-400 hover:text-red-500 rounded transition-colors">
+           <button onClick={handleSignOut} className="p-2 text-slate-400 hover:text-red-500 rounded transition-colors cursor-pointer">
             <LogOut className="w-4 h-4" />
           </button>
         </div>

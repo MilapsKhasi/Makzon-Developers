@@ -332,8 +332,8 @@ const LedgerModal: React.FC<LedgerModalProps> = ({ isOpen, onClose, party, type 
           {/* Header */}
           <div className="px-4 sm:px-8 py-4 sm:py-6 liquid-glass-header flex justify-between items-center shrink-0">
             <div className="flex items-center space-x-3 sm:space-x-4 overflow-hidden">
-              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shadow-inner shrink-0 ${type === 'customer' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600' : 'bg-amber-50 dark:bg-amber-900/30 text-amber-600'}`}>
-                <History className="w-5 h-5 sm:w-6 sm:h-6" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/70 dark:border-slate-700/70 flex items-center justify-center shrink-0">
+                <History className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500 dark:text-orange-400" />
               </div>
               <div className="truncate">
                 <h2 

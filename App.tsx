@@ -19,6 +19,8 @@ import DeliveryChallans from './pages/DeliveryChallans';
 import { CompanyProvider, useCompany } from './context/CompanyContext';
 import { LicenseProvider } from './context/LicenseContext';
 import { SecurityDemoProvider } from './context/SecurityDemoContext';
+import { DeviceVerificationProvider } from './context/DeviceVerificationContext';
+import { DeviceVerificationGate } from './components/DeviceVerificationGate';
 import { supabase } from './lib/supabase';
 import { Database, AlertCircle, Copy, Check } from 'lucide-react';
 
@@ -104,6 +106,10 @@ const AppContent = () => {
       }
       if (event === 'SIGNED_OUT') {
         localStorage.removeItem('local_session_user');
+        localStorage.removeItem('use_offline_mode');
+        localStorage.removeItem('activeCompanyId');
+        localStorage.removeItem('activeCompanyName');
+        setSession(null);
         setDbError(null);
       }
     });
@@ -280,11 +286,33 @@ CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authent
   return (
     <div>
       <Routes>
-        <Route path="/login" element={authenticated ? <Navigate to="/companies" replace /> : <Auth />} />
-        <Route path="/setup" element={authenticated ? <Navigate to="/companies" replace /> : <Auth />} />
-        <Route path="/companies" element={authenticated ? <Companies /> : <Navigate to="/login" replace />} />
+        <Route path="/login" element={<Auth />} />
+        <Route path="/setup" element={<Auth />} />
+        <Route 
+          path="/companies" 
+          element={
+            authenticated ? (
+              <DeviceVerificationGate>
+                <Companies />
+              </DeviceVerificationGate>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } 
+        />
         
-        <Route path="/" element={authenticated ? (activeCompany ? <Layout /> : <Navigate to="/companies" replace />) : (<Navigate to="/login" replace />)}>
+        <Route 
+          path="/" 
+          element={
+            authenticated ? (
+              <DeviceVerificationGate>
+                {activeCompany ? <Layout /> : <Navigate to="/companies" replace />}
+              </DeviceVerificationGate>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        >
           <Route index element={<Dashboard />} />
           <Route path="masters" element={<Masters />} />
           <Route path="purchases" element={<Purchases />} />
@@ -312,7 +340,9 @@ const App = () => (
     <SecurityDemoProvider>
       <LicenseProvider>
         <CompanyProvider>
-          <AppContent />
+          <DeviceVerificationProvider>
+            <AppContent />
+          </DeviceVerificationProvider>
         </CompanyProvider>
       </LicenseProvider>
     </SecurityDemoProvider>

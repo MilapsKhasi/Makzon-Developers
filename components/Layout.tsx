@@ -17,6 +17,7 @@ import ActivationScreen from './ActivationScreen';
 import Settings from '../pages/Settings';
 import { processOfflineSyncQueue } from '../lib/syncEngine';
 import { useSecurityDemo } from '../context/SecurityDemoContext';
+import { performAppSignOut } from '../lib/deviceAuth';
 
 const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
@@ -220,17 +221,7 @@ const Layout = () => {
   };
 
   const handleSignOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      localStorage.removeItem('local_session_user');
-      localStorage.removeItem('use_offline_mode');
-      localStorage.removeItem('activeCompanyId');
-      localStorage.removeItem('activeCompanyName');
-      navigate('/setup', { replace: true });
-    } catch (err) {
-      console.error("Error signing out:", err);
-    }
+    await performAppSignOut();
   };
 
   const handleOpenCreateWs = () => {

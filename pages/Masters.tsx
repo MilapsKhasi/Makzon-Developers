@@ -17,7 +17,7 @@ const Masters = () => {
     <div className="space-y-6">
       <PageHeader
         icon={Database}
-        iconColor="text-slate-700 dark:text-slate-200"
+        iconColor="text-blue-600 dark:text-blue-400"
         title="Master Data Management"
         subtitle="Configure core system data and categories"
       />

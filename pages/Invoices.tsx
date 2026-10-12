@@ -79,7 +79,7 @@ const Invoices = () => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-center space-x-4">
           <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center shadow-sm shrink-0">
-            <ReceiptText className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400 dark:text-slate-500" />
+            <ReceiptText className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 dark:text-emerald-400" />
           </div>
           <h1 
             style={{ fontFamily: 'Ubuntu', fontWeight: 'normal', lineHeight: '30px' }}

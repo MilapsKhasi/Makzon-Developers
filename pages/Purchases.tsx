@@ -105,7 +105,7 @@ const Purchases = () => {
 
       <PageHeader
         icon={ReceiptText}
-        iconColor="text-indigo-600 dark:text-indigo-400"
+        iconColor="text-violet-600 dark:text-violet-400"
         title="Purchase Register"
         subtitle="Manage and track all vendor purchase invoices and bills"
         actions={

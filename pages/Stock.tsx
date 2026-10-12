@@ -232,7 +232,7 @@ const Stock = () => {
       
       <PageHeader
         icon={Package}
-        iconColor="text-amber-600 dark:text-amber-400"
+        iconColor="text-teal-600 dark:text-teal-400"
         title="Inventory & Stock Control"
         subtitle="Track stock balances, inward purchases, outward sales, and SKU registers"
         actions={

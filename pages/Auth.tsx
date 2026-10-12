@@ -1,30 +1,119 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Database, AlertCircle, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useSecurityDemo, validateZPin } from '../context/SecurityDemoContext';
+import { Loader2, AlertCircle, LogOut, KeyRound, X } from 'lucide-react';
+import { supabase, setDeviceVerifiedSession } from '../lib/supabase';
+import {
+  enrollZPinWithServer,
+  verifyZPinWithServer,
+  getStoredBrowserVerificationKey,
+  performAppSignOut
+} from '../lib/deviceAuth';
+
+type AuthStep = 'login' | 'signup' | 'zpin' | 'setup-pin' | 'verify-pin';
 
 const Auth = () => {
+  const [authStep, setAuthStep] = useState<AuthStep>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showSqlHelp, setShowSqlHelp] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [signupZPin, setSignupZPin] = useState('');
-  const [signupPinError, setSignupPinError] = useState('');
+
+  // Authenticated user holding area when navigating between login and Z-PIN steps
+  const [authenticatedUser, setAuthenticatedUser] = useState<{ id: string; email: string } | null>(null);
+
+  // Z-PIN Digit inputs for signup step
+  const [pinDigits, setPinDigits] = useState<string[]>(['', '', '', '']);
+  const [confirmPinDigits, setConfirmPinDigits] = useState<string[]>(['', '', '', '']);
+  const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const confirmRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Z-PIN Digit inputs for legacy setup onboarding view
+  const [legacySetupPinDigits, setLegacySetupPinDigits] = useState<string[]>(['', '', '', '']);
+  const [legacyConfirmPinDigits, setLegacyConfirmPinDigits] = useState<string[]>(['', '', '', '']);
+  const legacySetupRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const legacyConfirmRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Z-PIN Digit inputs for verify-pin view
+  const [verifyPinDigits, setVerifyPinDigits] = useState<string[]>(['', '', '', '']);
+  const verifyPinRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Forgot password & Forgot Z-PIN modals
+  const [showForgotPwdModal, setShowForgotPwdModal] = useState(false);
+  const [forgotPwdEmail, setForgotPwdEmail] = useState('');
+  const [forgotPwdMsg, setForgotPwdMsg] = useState<string | null>(null);
+  const [forgotPwdLoading, setForgotPwdLoading] = useState(false);
+
+  const [showForgotPinModal, setShowForgotPinModal] = useState(false);
+
   const navigate = useNavigate();
 
-  const { setDemoZPin } = useSecurityDemo();
+  // Digit box handler for Z-PIN
+  const handleDigitChange = (
+    index: number,
+    value: string,
+    currentDigits: string[],
+    setDigits: React.Dispatch<React.SetStateAction<string[]>>,
+    refs: React.MutableRefObject<(HTMLInputElement | null)[]>
+  ) => {
+    const clean = value.replace(/\D/g, '');
+    if (!clean) {
+      const copy = [...currentDigits];
+      copy[index] = '';
+      setDigits(copy);
+      return;
+    }
 
-  const handleLogin = async (e: React.FormEvent) => {
+    const lastChar = clean.slice(-1);
+    const copy = [...currentDigits];
+    copy[index] = lastChar;
+    setDigits(copy);
+
+    if (index < 3 && lastChar) {
+      refs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>,
+    currentDigits: string[],
+    refs: React.MutableRefObject<(HTMLInputElement | null)[]>
+  ) => {
+    if (e.key === 'Backspace' && !currentDigits[index] && index > 0) {
+      refs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (
+    e: React.ClipboardEvent<HTMLInputElement>,
+    setDigits: React.Dispatch<React.SetStateAction<string[]>>,
+    refs: React.MutableRefObject<(HTMLInputElement | null)[]>
+  ) => {
     e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+    if (!pasted) return;
+
+    const copy = ['', '', '', ''];
+    for (let i = 0; i < pasted.length; i++) {
+      copy[i] = pasted[i];
+    }
+    setDigits(copy);
+    const nextIdx = Math.min(3, pasted.length);
+    refs.current[nextIdx]?.focus();
+  };
+
+  // Submit Login with Legacy Account & Browser Verification Detection
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      setError('Please enter your email and password.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
-    // Clear offline flag when attempting online account authentication
+    // Clear offline flags when logging in online
     localStorage.removeItem('use_offline_mode');
     localStorage.removeItem('zenter_license_status');
     localStorage.removeItem('zenter_trial_created_at');
@@ -37,7 +126,6 @@ const Auth = () => {
     }
 
     try {
-      // Verify Developer Mode access credentials
       const cleanEmail = email.trim().toLowerCase();
       const cleanPassword = password;
       if (cleanEmail === 'khasimilap@gmail.com' && cleanPassword === 'Milaps123') {
@@ -46,402 +134,831 @@ const Auth = () => {
         localStorage.removeItem('zenter_dev_cred_verified');
       }
 
-      if (isLogin) {
-        const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-        if (loginError) throw loginError;
-        
-        // Save user info to 'users' table
-        if (authData?.user) {
-          try {
-            await supabase.from('users').upsert({
-              id: authData.user.id,
-              email: authData.user.email,
-              created_at: authData.user.created_at || new Date().toISOString()
-            });
-          } catch (upsertErr) {
-            console.error("Failed to upsert to users table:", upsertErr);
-          }
+      const { data: authData, error: loginError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword
+      });
+
+      if (loginError) throw loginError;
+
+      if (authData?.user) {
+        try {
+          await supabase.from('users').upsert({
+            id: authData.user.id,
+            email: authData.user.email,
+            created_at: authData.user.created_at || new Date().toISOString()
+          });
+        } catch (upsertErr) {
+          console.warn('Upsert users table notice:', upsertErr);
         }
 
-        // On success, navigate to companies selection immediately
-        navigate('/companies');
-      } else {
-        // Part 3: Validate Z-PIN before creating account
-        const pinValidation = validateZPin(signupZPin, password);
-        if (!pinValidation.isValid) {
-          setSignupPinError(pinValidation.error || 'Choose a stronger Z-PIN.');
-          setLoading(false);
+        const currentUserId = authData.user.id;
+        setAuthenticatedUser({ id: currentUserId, email: authData.user.email || '' });
+
+        // 1. Fetch user's profile from profiles table to check if z_pin is NULL (Legacy Account Detection)
+        let profileRecord: { z_pin: string | null } | null = null;
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('z_pin')
+            .eq('id', currentUserId)
+            .maybeSingle();
+
+          profileRecord = profile;
+        } catch (profErr) {
+          console.warn('Could not read profiles.z_pin directly:', profErr);
+        }
+
+        const hasZPin = Boolean(profileRecord && profileRecord.z_pin && profileRecord.z_pin.trim().length > 0);
+
+        // If z_pin is NULL -> Legacy account! Smoothly redirect to "Set Up Your Z-PIN" onboarding view
+        if (!hasZPin) {
+          setLegacySetupPinDigits(['', '', '', '']);
+          setLegacyConfirmPinDigits(['', '', '', '']);
+          setAuthStep('setup-pin');
+          setTimeout(() => {
+            legacySetupRefs.current[0]?.focus();
+          }, 150);
           return;
         }
-        // Store inside localStorage / state only. Never send to Supabase.
-        setDemoZPin(signupZPin.trim());
 
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
-        if (signUpError) throw signUpError;
-        
-        // Save user info to 'users', 'profiles', and 'login_verifications' tables with 14-Day Evaluation
-        if (signUpData?.user) {
-          const now = new Date();
-          const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+        // 2. Z-PIN exists. Check if this device already has matching verification key in IndexedDB
+        const storedKey = await getStoredBrowserVerificationKey(currentUserId);
+        let isDeviceAuthorized = false;
+
+        if (storedKey) {
           try {
-            await supabase.from('users').upsert({
-              id: signUpData.user.id,
-              email: signUpData.user.email,
-              created_at: signUpData.user.created_at || now.toISOString()
-            });
-            await supabase.from('profiles').upsert({
-              id: signUpData.user.id,
-              trial_start: now.toISOString(),
-              trial_end: endDate.toISOString(),
-              license_type: 'evaluation',
-              license_status: 'active',
-              created_at: now.toISOString()
-            });
-            await supabase.from('login_verifications').insert({
-              user_id: signUpData.user.id,
-              otp: '',
-              created_at: now.toISOString(),
-              expires_at: endDate.toISOString(),
-            });
-          } catch (upsertErr) {
-            console.error("Failed to upsert user profile trial:", upsertErr);
+            const { data: verifs } = await supabase
+              .from('login_verifications')
+              .select('id, expires_at')
+              .eq('user_id', currentUserId)
+              .eq('browser_verification_key', storedKey.trim())
+              .limit(1);
+
+            if (verifs && verifs.length > 0) {
+              const isExpired = verifs[0].expires_at && new Date(verifs[0].expires_at).getTime() < Date.now();
+              if (!isExpired) {
+                isDeviceAuthorized = true;
+              }
+            }
+          } catch (verifErr) {
+            console.warn('login_verifications query note:', verifErr);
           }
         }
-        navigate('/companies');
+
+        if (isDeviceAuthorized) {
+          // Bypasses the Z-PIN entering screen completely!
+          setDeviceVerifiedSession(true);
+          navigate('/companies');
+          return;
+        } else {
+          // Missing or unmatched key: show Z-PIN entering screen
+          setVerifyPinDigits(['', '', '', '']);
+          setAuthStep('verify-pin');
+          setTimeout(() => {
+            verifyPinRefs.current[0]?.focus();
+          }, 150);
+          return;
+        }
       }
+
+      navigate('/companies');
     } catch (err: any) {
-      console.error("Auth error details:", err);
-      let errorMessage = err.message || 'Authentication failed';
-      
-      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || err.name === 'TypeError') {
-        errorMessage = "Connection Error: Unable to reach the server. Please check your internet connection or ensure the Supabase project is active.";
+      console.error('Login error:', err);
+      let msg = err.message || 'Authentication failed.';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || err.name === 'TypeError') {
+        msg = 'Connection Error: Unable to reach server. Please check your internet connection.';
       }
-      
-      setError(errorMessage);
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
+  // Step 1: Signup credentials validation -> Proceed to Z-PIN
+  const handleSignupNext = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setError('Password must contain at least 6 characters.');
+      return;
+    }
+
+    setAuthStep('zpin');
+    setTimeout(() => {
+      pinRefs.current[0]?.focus();
+    }, 150);
+  };
+
+  // Step 2: Complete signup with 4-digit Z-PIN
+  const handleCompleteSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const pin = pinDigits.join('');
+    const confirmPin = confirmPinDigits.join('');
+
+    if (pin.length !== 4) {
+      setError('Z-PIN must contain exactly 4 numeric digits.');
+      return;
+    }
+
+    if (pin !== confirmPin) {
+      setError('Z-PIN and Confirmation PIN do not match.');
+      setConfirmPinDigits(['', '', '', '']);
+      confirmRefs.current[0]?.focus();
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password
+      });
+
+      if (signUpError) throw signUpError;
+
+      if (signUpData?.user) {
+        const now = new Date();
+        const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+        try {
+          await supabase.from('users').upsert({
+            id: signUpData.user.id,
+            email: signUpData.user.email,
+            created_at: signUpData.user.created_at || now.toISOString()
+          });
+          await supabase.from('profiles').upsert({
+            id: signUpData.user.id,
+            trial_start: now.toISOString(),
+            trial_end: endDate.toISOString(),
+            license_type: 'evaluation',
+            license_status: 'active',
+            created_at: now.toISOString()
+          });
+        } catch (upsertErr) {
+          console.warn('Trial profile init note:', upsertErr);
+        }
+
+        // Enroll Z-PIN on server and store device verification key in IndexedDB for this account
+        try {
+          await enrollZPinWithServer(pin, confirmPin, signUpData.user.id);
+        } catch (enrollErr) {
+          console.warn('Failed to enroll Z-PIN on server:', enrollErr);
+        }
+      }
+
+      setDeviceVerifiedSession(true);
+      navigate('/companies');
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      let msg = err.message || 'Registration failed.';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || err.name === 'TypeError') {
+        msg = 'Connection Error: Unable to reach server. Please check your internet connection.';
+      }
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Legacy Account Migration: Submit New Z-PIN during onboarding
+  const handleLegacySetupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const p1 = legacySetupPinDigits.join('');
+    const p2 = legacyConfirmPinDigits.join('');
+
+    if (p1.length !== 4) {
+      setError('Z-PIN must contain exactly 4 numeric digits.');
+      return;
+    }
+
+    if (p1 !== p2) {
+      setError('Z-PIN and Confirmation PIN do not match.');
+      setLegacyConfirmPinDigits(['', '', '', '']);
+      legacyConfirmRefs.current[0]?.focus();
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await enrollZPinWithServer(p1, p2, authenticatedUser?.id);
+      if (!res.success) {
+        setError(res.error || 'Failed to setup Z-PIN.');
+        return;
+      }
+
+      setDeviceVerifiedSession(true);
+      navigate('/companies');
+    } catch (err: any) {
+      setError(err.message || 'Error configuring Z-PIN.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cross-Device Security: Verify existing Z-PIN on unrecognized browser
+  const handleVerifyPinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const pin = verifyPinDigits.join('');
+
+    if (pin.length !== 4) {
+      setError('Z-PIN must contain exactly 4 numeric digits.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await verifyZPinWithServer(pin, authenticatedUser?.id);
+
+      if (!res.verified) {
+        // Rejected attempt locally, database record untouched!
+        setError(res.error || 'Incorrect PIN');
+        setVerifyPinDigits(['', '', '', '']);
+        verifyPinRefs.current[0]?.focus();
+        return;
+      }
+
+      // Verified: Authorized browser key recorded in IndexedDB & Supabase
+      setDeviceVerifiedSession(true);
+      navigate('/companies');
+    } catch (err: any) {
+      setError(err.message || 'Error verifying Z-PIN.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Clean Sign Out from Z-PIN screens
+  const handleSignOutFromSecurity = async () => {
+    setLoading(true);
+    await performAppSignOut();
+    setAuthenticatedUser(null);
+    setAuthStep('login');
+    setLoading(false);
+  };
+
+  // Forgot Password Action
+  const handleForgotPwdSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotPwdEmail.trim()) return;
+    setForgotPwdLoading(true);
+    setForgotPwdMsg(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotPwdEmail.trim());
+      if (error) throw error;
+      setForgotPwdMsg('Password recovery link sent! Please check your email inbox.');
+    } catch (err: any) {
+      setForgotPwdMsg(err.message || 'Failed to send recovery email.');
+    } finally {
+      setForgotPwdLoading(false);
+    }
+  };
+
+  const isSecurityScreen = authStep === 'zpin' || authStep === 'setup-pin' || authStep === 'verify-pin';
+
   return (
-    <div className="min-h-screen bg-[#F7F8FC] flex items-center justify-center p-6 font-sans">
-      <div className={`w-full ${showSqlHelp ? 'max-w-2xl' : 'max-w-sm'} bg-primary rounded-[10px] p-2 transition-all duration-300 border border-slate-200/20 shadow-none`}>
-        <div className="text-center py-6">
-          <h2 className="text-xl font-semibold text-white">
-            {isLogin ? 'Welcome Back' : 'Activate 14-Day Evaluation Edition'}
-          </h2>
-          <p className="text-xs text-white/80 mt-1">
-            {isLogin ? 'Sign in to ZenterPrime Accounting' : 'Full access workspace trial. No key required.'}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-[10px] p-6 pb-10 shadow-none">
-          <form onSubmit={handleLogin} className="space-y-6">
-            {error && (
-              <div className="space-y-3">
-                <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-xs rounded-[10px] font-semibold flex items-start">
-                  <AlertCircle className="w-4 h-4 text-red-500 mr-2 shrink-0 mt-0.5" />
-                  <span>{error}</span>
-                </div>
-                {error.toLowerCase().includes("saving new user") && (
-                  <div className="p-3.5 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-[10px] space-y-2 leading-relaxed">
-                    <p className="font-bold text-amber-950 flex items-center">
-                      <Database className="w-4 h-4 mr-1.5" />
-                      Trigger / Schema Mismatch Detected
-                    </p>
-                    <p>An old or mismatched trigger in your Supabase database is blocking registration. Run the complete Database Setup SQL below to clear conflicting triggers and set up the correct schema.</p>
-                    <button
-                      type="button"
-                      onClick={() => setShowSqlHelp(true)}
-                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded font-bold text-[10px] uppercase tracking-wider"
-                    >
-                      View Setup SQL Script
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="space-y-5">
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-900 ml-1">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-primary font-medium text-slate-900 transition-all placeholder:text-slate-300 text-sm shadow-none"
-                  placeholder="Your Email Address"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-900 ml-1">Password</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-primary font-medium text-slate-900 transition-all placeholder:text-slate-300 text-sm shadow-none"
-                  placeholder="Your Password"
-                />
-              </div>
-
-              {/* Part 3: Create your Z-PIN (Signup Demo only) */}
-              {!isLogin && (
-                <div className="pt-2 pb-1 space-y-2 border-t border-slate-100">
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-900 ml-1">Create your Z-PIN</h3>
-                    <p className="text-xs text-slate-500 ml-1">
-                      A separate security PIN used to verify sensitive actions.
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <input
-                      type="password"
-                      inputMode="numeric"
-                      maxLength={6}
-                      value={signupZPin}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                        setSignupZPin(val);
-                        if (signupPinError) setSignupPinError('');
-                      }}
-                      className="w-full px-4 py-3 bg-[#f9f9f9] border border-slate-200 rounded-[10px] outline-none focus:border-primary font-mono tracking-widest text-slate-900 text-sm shadow-none placeholder:font-sans placeholder:tracking-normal"
-                      placeholder="•••• (4–6 digits)"
-                    />
-                    {signupPinError && (
-                      <p className="text-[11px] font-semibold text-rose-600 ml-1">
-                        {signupPinError}
-                      </p>
-                    )}
-                  </div>
-                </div>
+    <div className="min-h-screen bg-[#F0F2F6] flex items-center justify-center p-4 sm:p-8 font-sans">
+      {/* Outer Card with Exact Dimensions & Rounded Borders */}
+      <div
+        className={`w-full max-w-[1040px] rounded-[32px] p-5 sm:p-7 shadow-2xl transition-all duration-300 ${
+          isSecurityScreen
+            ? 'bg-gradient-to-br from-[#00967A] via-[#028090] to-[#1660E8]'
+            : 'bg-[#1865E8]'
+        }`}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch min-h-[500px]">
+          {/* Left Column (Brand & Heading) */}
+          <div className="md:col-span-5 flex flex-col justify-between py-6 px-4 sm:px-6 text-left">
+            <div>
+              {isSecurityScreen ? (
+                <>
+                  <h1 className="text-white text-2xl sm:text-3xl font-medium tracking-tight">
+                    Your account,
+                  </h1>
+                  <h2 className="text-white text-3xl sm:text-4xl font-extrabold tracking-tight mt-0.5">
+                    protected.
+                  </h2>
+                  <p className="text-white/85 text-xs sm:text-sm mt-4 font-normal leading-relaxed max-w-xs">
+                    {authStep === 'verify-pin'
+                      ? 'Please enter your 4-digit Z-PIN for securing your account for login from unknown devices'
+                      : 'Please set your Z-PIN for securing your account for login from unknown devices'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-white text-2xl sm:text-3xl font-medium tracking-tight">
+                    Welcome to
+                  </h1>
+                  <h2 className="text-white text-3xl sm:text-4xl font-bold tracking-tight mt-0.5">
+                    ZenterPrime
+                  </h2>
+                  <p className="text-white/80 text-xs sm:text-sm mt-4 font-normal">
+                    Your Digital Finance Desk
+                  </p>
+                </>
               )}
             </div>
 
-            <div className="pt-2 space-y-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 rounded-[10px] font-bold bg-primary text-white hover:bg-primary-dark transition-all flex items-center justify-center disabled:opacity-50 text-xs tracking-[0.15em] border border-transparent active:scale-[0.98] shadow-none"
-              >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : 'GET STARTED'} 
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  localStorage.setItem('use_offline_mode', 'true');
-                  localStorage.setItem('local_session_user', JSON.stringify({ id: 'local-user-1', email: 'offline@zenterprime.com', created_at: new Date().toISOString() }));
-                  localStorage.setItem('activeCompanyId', 'local-company-1');
-                  localStorage.setItem('activeCompanyName', 'Local Demo Company');
-                  window.location.href = '/';
-                }}
-                className="w-full py-3.5 rounded-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all flex items-center justify-center text-xs tracking-[0.1em] border border-slate-200"
-              >
-                USE OFFLINE LOCAL MODE
-              </button>
-
-              <div className="flex flex-col space-y-3">
+            {/* Bottom Actions on Left Side */}
+            <div className="mt-8 space-y-3">
+              {authStep === 'zpin' ? (
                 <button
                   type="button"
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="w-full text-center text-[10px] text-slate-400 font-medium text-xs leading-normal"
+                  onClick={() => {
+                    setAuthStep('signup');
+                    setError(null);
+                  }}
+                  className="text-white/90 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer underline transition-colors"
                 >
-                  {isLogin ? (
-                    <>Don't have an account? <span className="text-primary font-bold uppercase ml-1">SIGN UP</span></>
-                  ) : (
-                    <>Already have an account? <span className="text-primary font-bold uppercase ml-1">LOGIN</span></>
-                  )}
+                  ← Back to Account Credentials
                 </button>
-
+              ) : (authStep === 'setup-pin' || authStep === 'verify-pin') ? (
                 <button
                   type="button"
-                  onClick={() => setShowSqlHelp(!showSqlHelp)}
-                  className="w-full text-center text-[10px] text-slate-400 hover:text-slate-600 font-bold flex items-center justify-center space-x-1 uppercase tracking-wider text-xs leading-normal pt-1"
+                  onClick={handleSignOutFromSecurity}
+                  className="text-white/90 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer underline transition-colors"
                 >
-                  <Database className="w-3.5 h-3.5 mr-1 text-primary/70" />
-                  <span>{showSqlHelp ? 'Hide Setup SQL' : 'Database Setup SQL Instructions'}</span>
-                  {showSqlHelp ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  <LogOut className="w-3.5 h-3.5" />
+                  Sign Out & Return to Login
                 </button>
-              </div>
+              ) : (
+                <>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPinModal(true)}
+                      className="text-white/90 hover:text-white text-xs font-normal cursor-pointer transition-colors"
+                    >
+                      Forgot Z-PIN ? <span className="underline font-bold">Reset</span>
+                    </button>
+                  </div>
+
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForgotPwdEmail(email);
+                        setShowForgotPwdModal(true);
+                      }}
+                      className="bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold px-6 py-3 rounded-xl shadow-sm transition-all cursor-pointer inline-block"
+                    >
+                      Forgot Password ? <span className="text-[#1865E8] font-bold underline">Reset</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-          </form>
+          </div>
 
-          {showSqlHelp && (
-            <div className="mt-6 p-5 bg-slate-900 text-slate-100 rounded-[10px] border border-slate-800 text-xs space-y-3 text-left">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-emerald-400 uppercase tracking-wider text-[10px]">Database Setup SQL Script</span>
-                <div className="flex items-center space-x-2">
+          {/* Right Column (Inner White Card Form) */}
+          <div className="md:col-span-7 bg-white rounded-[24px] p-6 sm:p-10 flex flex-col justify-between shadow-sm min-h-[460px]">
+            {/* Top Switcher Tabs (Only visible in Login & Signup step) */}
+            {!isSecurityScreen ? (
+              <div>
+                <div className="flex items-center gap-4 mb-8">
                   <button
                     type="button"
-                    onClick={async () => {
-                      const sql = `-- 0. Clean up any old/conflicting triggers, functions, and tables
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users CASCADE;
-DROP TRIGGER IF EXISTS on_user_created ON auth.users CASCADE;
-DROP TRIGGER IF EXISTS sync_user ON auth.users CASCADE;
-DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
-DROP FUNCTION IF EXISTS public.sync_user() CASCADE;
-
-DROP TABLE IF EXISTS public.profiles CASCADE;
-DROP TABLE IF EXISTS public.companies CASCADE;
-DROP TABLE IF EXISTS public.login_verifications CASCADE;
-DROP TABLE IF EXISTS public.users CASCADE;
-DROP TABLE IF EXISTS public.vendors CASCADE;
-DROP TABLE IF EXISTS public.customers CASCADE;
-DROP TABLE IF EXISTS public.purchase_bills CASCADE;
-DROP TABLE IF EXISTS public.sales_invoices CASCADE;
-DROP TABLE IF EXISTS public.stock_items CASCADE;
-DROP TABLE IF EXISTS public.duties_taxes CASCADE;
-DROP TABLE IF EXISTS public.cashbooks CASCADE;
-
--- 1. Create Profiles Table for Multi-tenancy Context
-CREATE TABLE public.profiles (
-  id uuid REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
-  active_company_id uuid,
-  full_name text,
-  created_at timestamptz DEFAULT now()
-);
-
--- 2. Create Core Tables
-CREATE TABLE public.companies (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY, 
-  name text NOT NULL, 
-  gstin text, 
-  address text, 
-  is_deleted boolean DEFAULT false, 
-  created_at timestamptz DEFAULT now(), 
-  user_id uuid DEFAULT auth.uid(),
-  created_by uuid DEFAULT auth.uid()
-);
-
--- 2.1 Create OTP Verification Table
-CREATE TABLE public.login_verifications (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  otp text NOT NULL,
-  expires_at timestamptz NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
-
--- 2.2 Create Users Table
-CREATE TABLE public.users (
-  id uuid PRIMARY KEY,
-  email text NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
-
--- 2.3 Create Vendors and Customers Tables
-CREATE TABLE public.vendors (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, name text NOT NULL, email text, phone text, gstin text, pan text, state text, account_number text, account_name text, ifsc_code text, address text, balance numeric DEFAULT 0, party_type text DEFAULT 'vendor', is_customer boolean DEFAULT false, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());
-CREATE TABLE public.customers (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, name text NOT NULL, email text, phone text, gstin text, pan text, state text, account_number text, account_name text, ifsc_code text, address text, balance numeric DEFAULT 0, party_type text DEFAULT 'customer', is_customer boolean DEFAULT true, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());
-
--- 2.4 Create Bills and Invoices Tables
-CREATE TABLE public.purchase_bills (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, vendor_name text NOT NULL, bill_number text NOT NULL, date date NOT NULL DEFAULT CURRENT_DATE, total_without_gst numeric DEFAULT 0, total_gst numeric DEFAULT 0, grand_total numeric DEFAULT 0, status text DEFAULT 'Pending', is_deleted boolean DEFAULT false, description text, items jsonb DEFAULT '{}'::jsonb, round_off numeric DEFAULT 0, created_at timestamptz DEFAULT now());
-CREATE TABLE public.sales_invoices (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, customer_name text NOT NULL, invoice_number text NOT NULL, date date NOT NULL DEFAULT CURRENT_DATE, total_without_gst numeric DEFAULT 0, total_gst numeric DEFAULT 0, grand_total numeric DEFAULT 0, status text DEFAULT 'Pending', is_deleted boolean DEFAULT false, description text, items jsonb DEFAULT '{}'::jsonb, round_off numeric DEFAULT 0, created_at timestamptz DEFAULT now());
-
--- 2.5 Create Stock, Duties and Taxes, and Cashbook Tables
-CREATE TABLE public.stock_items (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, name text NOT NULL, hsn text, rate numeric DEFAULT 0, selling_price numeric DEFAULT 0, tax_rate numeric DEFAULT 0, unit text DEFAULT 'PCS', in_stock numeric DEFAULT 0, sku text, description text, kg_per_bag numeric DEFAULT 0, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());
-CREATE TABLE public.duties_taxes (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, name text NOT NULL, type text DEFAULT 'Charge', calc_method text DEFAULT 'Percentage', rate numeric DEFAULT 0, fixed_amount numeric DEFAULT 0, apply_on text DEFAULT 'Subtotal', applicable_to text DEFAULT 'Both', is_default boolean DEFAULT false, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());
-CREATE TABLE public.cashbooks (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, company_id uuid REFERENCES public.companies(id) ON DELETE CASCADE, date date NOT NULL, income_total numeric DEFAULT 0, expense_total numeric DEFAULT 0, balance numeric DEFAULT 0, raw_data jsonb DEFAULT '{}'::jsonb, is_deleted boolean DEFAULT false, created_at timestamptz DEFAULT now());
-
--- 3. Enable RLS
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.vendors ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.purchase_bills ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.sales_invoices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.stock_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.duties_taxes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.cashbooks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.login_verifications ENABLE ROW LEVEL SECURITY;
-
--- 4. Set Policies
-CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL TO authenticated USING (auth.uid() = id);
-CREATE POLICY "Manage own companies" ON public.companies FOR ALL TO authenticated USING (auth.uid() = created_by);
-CREATE POLICY "Manage own users" ON public.users FOR ALL TO authenticated USING (auth.uid() = id);
-CREATE POLICY "Manage company vendors" ON public.vendors FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
-CREATE POLICY "Manage company customers" ON public.customers FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
-CREATE POLICY "Manage company purchase bills" ON public.purchase_bills FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
-CREATE POLICY "Manage company sales" ON public.sales_invoices FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
-CREATE POLICY "Manage company stock" ON public.stock_items FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
-CREATE POLICY "Manage company taxes" ON public.duties_taxes FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
-CREATE POLICY "Manage company cashbook" ON public.cashbooks FOR ALL TO authenticated USING (company_id IN (SELECT id FROM companies WHERE created_by = auth.uid()));
-CREATE POLICY "Manage own OTPs" ON public.login_verifications FOR ALL TO authenticated USING (auth.uid() = user_id);
-
--- 5. Auto-create user profiles & records on signup
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-  INSERT INTO public.users (id, email, created_at)
-  VALUES (new.id, new.email, now())
-  ON CONFLICT (id) DO NOTHING;
-  
-  INSERT INTO public.profiles (id, created_at)
-  VALUES (new.id, now())
-  ON CONFLICT (id) DO NOTHING;
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE OR REPLACE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();`;
-                      await navigator.clipboard.writeText(sql);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
+                    onClick={() => {
+                      setAuthStep('login');
+                      setError(null);
                     }}
-                    className="flex items-center space-x-1 px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[10px] font-bold"
+                    className={`text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                      authStep === 'login'
+                        ? 'bg-[#1865E8] text-white px-7 py-2.5 rounded-xl shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 px-4 py-2.5'
+                    }`}
                   >
-                    {copied ? <Check className="w-3 h-3 text-emerald-400 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
-                    {copied ? "COPIED!" : "COPY COMPLETE SQL"}
+                    Login to Existing Account
                   </button>
+
                   <button
                     type="button"
-                    onClick={() => setShowSqlHelp(false)}
-                    className="px-2 py-1 text-[10px] text-slate-400 hover:text-white uppercase font-bold"
+                    onClick={() => {
+                      setAuthStep('signup');
+                      setError(null);
+                    }}
+                    className={`text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                      authStep === 'signup'
+                        ? 'bg-[#1865E8] text-white px-7 py-2.5 rounded-xl shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 px-4 py-2.5'
+                    }`}
                   >
-                    Hide
+                    Create New Account
                   </button>
                 </div>
+
+                {error && (
+                  <div className="p-3 mb-5 bg-rose-50 border border-rose-200 text-rose-600 text-xs rounded-xl flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                {/* FORM: Login */}
+                {authStep === 'login' && (
+                  <form onSubmit={handleLoginSubmit} className="space-y-6 text-left">
+                    <div>
+                      <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">
+                        Enter Registered Email Address
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Enter email"
+                        className="w-full px-4 py-3 bg-[#F2F4F8] border border-slate-200/90 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#1865E8] focus:bg-white transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">
+                        Enter Registered Account Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter password"
+                        className="w-full px-4 py-3 bg-[#F2F4F8] border border-slate-200/90 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#1865E8] focus:bg-white transition-all"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full py-3.5 bg-[#1865E8] hover:bg-[#1357CE] text-white font-semibold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer disabled:opacity-50 mt-8"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          <span>Verifying Credentials...</span>
+                        </>
+                      ) : (
+                        <span>Get Started &gt;</span>
+                      )}
+                    </button>
+                  </form>
+                )}
+
+                {/* FORM: Signup Step 1 */}
+                {authStep === 'signup' && (
+                  <form onSubmit={handleSignupNext} className="space-y-6 text-left">
+                    <div>
+                      <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">
+                        Register Email Address
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Create or register with existing email"
+                        className="w-full px-4 py-3 bg-[#F2F4F8] border border-slate-200/90 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#1865E8] focus:bg-white transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">
+                        Register Account Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Create or enter password (min 6 characters)"
+                        className="w-full px-4 py-3 bg-[#F2F4F8] border border-slate-200/90 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-[#1865E8] focus:bg-white transition-all"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-3.5 bg-[#1865E8] hover:bg-[#1357CE] text-white font-semibold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer mt-8"
+                    >
+                      <span>Next &gt;</span>
+                    </button>
+                  </form>
+                )}
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Run this SQL query in your <strong>Supabase Dashboard &gt; SQL Editor &gt; New Query</strong> to set up all tables, enable RLS, configure access control policies, and link auth signup automation.
-              </p>
-              <pre className="p-2.5 bg-black/50 text-emerald-400 font-mono text-[9px] rounded-lg max-h-[180px] overflow-y-auto select-all leading-normal whitespace-pre-wrap">
-{`-- Run this SQL in Supabase SQL Editor to initialize and fix user signup:
+            ) : authStep === 'setup-pin' ? (
+              /* FORM: Legacy Account Set Up Your Z-PIN Onboarding */
+              <div className="flex flex-col justify-between h-full text-left">
+                {error && (
+                  <div className="p-3 mb-4 bg-rose-50 border border-rose-200 text-rose-600 text-xs rounded-xl flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+                    <span>{error}</span>
+                  </div>
+                )}
 
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users CASCADE;
-DROP TRIGGER IF EXISTS on_user_created ON auth.users CASCADE;
-DROP TRIGGER IF EXISTS sync_user ON auth.users CASCADE;
-DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
-DROP FUNCTION IF EXISTS public.sync_user() CASCADE;
+                <form onSubmit={handleLegacySetupSubmit} className="space-y-8 my-auto">
+                  {/* Set your 4-Digit Z-PIN */}
+                  <div>
+                    <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-3 block">
+                      Set your 4-Digit Z-PIN
+                    </label>
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      {[0, 1, 2, 3].map((idx) => (
+                        <input
+                          key={`leg-pin-${idx}`}
+                          ref={(el) => { legacySetupRefs.current[idx] = el; }}
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={legacySetupPinDigits[idx]}
+                          onChange={(e) => handleDigitChange(idx, e.target.value, legacySetupPinDigits, setLegacySetupPinDigits, legacySetupRefs)}
+                          onKeyDown={(e) => handleKeyDown(idx, e, legacySetupPinDigits, legacySetupRefs)}
+                          onPaste={(e) => handlePaste(e, setLegacySetupPinDigits, legacySetupRefs)}
+                          placeholder="0"
+                          className="w-12 h-12 sm:w-14 sm:h-14 text-center text-lg sm:text-xl font-bold bg-[#F4F5F7] border border-slate-200/90 rounded-xl focus:border-[#1865E8] focus:bg-white text-slate-800 outline-none transition-all placeholder:text-slate-400"
+                        />
+                      ))}
+                    </div>
+                  </div>
 
-CREATE TABLE public.profiles (
-  id uuid REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
-  active_company_id uuid,
-  full_name text,
-  created_at timestamptz DEFAULT now()
-);
+                  {/* Confirm your Z-PIN */}
+                  <div>
+                    <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-3 block">
+                      Confirm your Z-PIN
+                    </label>
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      {[0, 1, 2, 3].map((idx) => (
+                        <input
+                          key={`leg-confirm-${idx}`}
+                          ref={(el) => { legacyConfirmRefs.current[idx] = el; }}
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={legacyConfirmPinDigits[idx]}
+                          onChange={(e) => handleDigitChange(idx, e.target.value, legacyConfirmPinDigits, setLegacyConfirmPinDigits, legacyConfirmRefs)}
+                          onKeyDown={(e) => handleKeyDown(idx, e, legacyConfirmPinDigits, legacyConfirmRefs)}
+                          onPaste={(e) => handlePaste(e, setLegacyConfirmPinDigits, legacyConfirmRefs)}
+                          placeholder="0"
+                          className="w-12 h-12 sm:w-14 sm:h-14 text-center text-lg sm:text-xl font-bold bg-[#F4F5F7] border border-slate-200/90 rounded-xl focus:border-[#1865E8] focus:bg-white text-slate-800 outline-none transition-all placeholder:text-slate-400"
+                        />
+                      ))}
+                    </div>
+                  </div>
 
-CREATE TABLE public.users (
-  id uuid PRIMARY KEY,
-  email text NOT NULL,
-  created_at timestamptz DEFAULT now()
-);
+                  <button
+                    type="submit"
+                    disabled={loading || legacySetupPinDigits.join('').length !== 4 || legacyConfirmPinDigits.join('').length !== 4}
+                    className="w-full py-3.5 bg-[#1865E8] hover:bg-[#1357CE] text-white font-semibold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer disabled:opacity-50 mt-8"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <span>Saving Z-PIN & Authorizing Browser...</span>
+                      </>
+                    ) : (
+                      <span>Complete your Setup &gt;</span>
+                    )}
+                  </button>
+                </form>
+              </div>
+            ) : authStep === 'verify-pin' ? (
+              /* FORM: Verify Existing 4-Digit Z-PIN */
+              <div className="flex flex-col justify-between h-full text-left">
+                {error && (
+                  <div className="p-3 mb-4 bg-rose-50 border border-rose-200 text-rose-600 text-xs rounded-xl flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+                    <span>{error}</span>
+                  </div>
+                )}
 
--- (Click "Copy SQL" above for the complete schema, RLS policies, and triggers)`}
-              </pre>
-            </div>
-          )}
+                <form onSubmit={handleVerifyPinSubmit} className="space-y-8 my-auto">
+                  <div>
+                    <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-3 block">
+                      Enter your 4-Digit Z-PIN
+                    </label>
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      {[0, 1, 2, 3].map((idx) => (
+                        <input
+                          key={`ver-pin-${idx}`}
+                          ref={(el) => { verifyPinRefs.current[idx] = el; }}
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={verifyPinDigits[idx]}
+                          onChange={(e) => handleDigitChange(idx, e.target.value, verifyPinDigits, setVerifyPinDigits, verifyPinRefs)}
+                          onKeyDown={(e) => handleKeyDown(idx, e, verifyPinDigits, verifyPinRefs)}
+                          onPaste={(e) => handlePaste(e, setVerifyPinDigits, verifyPinRefs)}
+                          placeholder="0"
+                          className="w-12 h-12 sm:w-14 sm:h-14 text-center text-lg sm:text-xl font-bold bg-[#F4F5F7] border border-slate-200/90 rounded-xl focus:border-[#1865E8] focus:bg-white text-slate-800 outline-none transition-all placeholder:text-slate-400"
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading || verifyPinDigits.join('').length !== 4}
+                    className="w-full py-3.5 bg-[#1865E8] hover:bg-[#1357CE] text-white font-semibold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer disabled:opacity-50 mt-8"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <span>Verifying Z-PIN...</span>
+                      </>
+                    ) : (
+                      <span>Verify & Access Account &gt;</span>
+                    )}
+                  </button>
+                </form>
+              </div>
+            ) : (
+              /* FORM: Z-PIN Setup for New Signup */
+              <div className="flex flex-col justify-between h-full text-left">
+                {error && (
+                  <div className="p-3 mb-4 bg-rose-50 border border-rose-200 text-rose-600 text-xs rounded-xl flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleCompleteSetup} className="space-y-8 my-auto">
+                  {/* Set your 4-Digit Z-PIN */}
+                  <div>
+                    <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-3 block">
+                      Set your 4-Digit Z-PIN
+                    </label>
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      {[0, 1, 2, 3].map((idx) => (
+                        <input
+                          key={`pin-${idx}`}
+                          ref={(el) => { pinRefs.current[idx] = el; }}
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={pinDigits[idx]}
+                          onChange={(e) => handleDigitChange(idx, e.target.value, pinDigits, setPinDigits, pinRefs)}
+                          onKeyDown={(e) => handleKeyDown(idx, e, pinDigits, pinRefs)}
+                          onPaste={(e) => handlePaste(e, setPinDigits, pinRefs)}
+                          placeholder="0"
+                          className="w-12 h-12 sm:w-14 sm:h-14 text-center text-lg sm:text-xl font-bold bg-[#F4F5F7] border border-slate-200/90 rounded-xl focus:border-[#1865E8] focus:bg-white text-slate-800 outline-none transition-all placeholder:text-slate-400"
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Confirm your Z-PIN */}
+                  <div>
+                    <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-3 block">
+                      Confirm your Z-PIN
+                    </label>
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      {[0, 1, 2, 3].map((idx) => (
+                        <input
+                          key={`confirm-${idx}`}
+                          ref={(el) => { confirmRefs.current[idx] = el; }}
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={confirmPinDigits[idx]}
+                          onChange={(e) => handleDigitChange(idx, e.target.value, confirmPinDigits, setConfirmPinDigits, confirmRefs)}
+                          onKeyDown={(e) => handleKeyDown(idx, e, confirmPinDigits, confirmRefs)}
+                          onPaste={(e) => handlePaste(e, setConfirmPinDigits, confirmRefs)}
+                          placeholder="0"
+                          className="w-12 h-12 sm:w-14 sm:h-14 text-center text-lg sm:text-xl font-bold bg-[#F4F5F7] border border-slate-200/90 rounded-xl focus:border-[#1865E8] focus:bg-white text-slate-800 outline-none transition-all placeholder:text-slate-400"
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading || pinDigits.join('').length !== 4 || confirmPinDigits.join('').length !== 4}
+                    className="w-full py-3.5 bg-[#1865E8] hover:bg-[#1357CE] text-white font-semibold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer disabled:opacity-50 mt-8"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <span>Enrolling Device & Account...</span>
+                      </>
+                    ) : (
+                      <span>Complete your Setup &gt;</span>
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPwdModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-left shadow-xl border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900">Reset Account Password</h3>
+              <button
+                onClick={() => setShowForgotPwdModal(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 mt-2 mb-4">
+              Enter your registered email address to receive password reset instructions.
+            </p>
+            {forgotPwdMsg && (
+              <div className="p-3 mb-4 bg-blue-50 border border-blue-200 text-blue-700 text-xs rounded-xl">
+                {forgotPwdMsg}
+              </div>
+            )}
+            <form onSubmit={handleForgotPwdSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 mb-1 block">Registered Email</label>
+                <input
+                  type="email"
+                  required
+                  value={forgotPwdEmail}
+                  onChange={(e) => setForgotPwdEmail(e.target.value)}
+                  placeholder="your.email@example.com"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#1865E8]"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPwdModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={forgotPwdLoading}
+                  className="px-4 py-2 text-xs font-semibold bg-[#1865E8] hover:bg-[#1357CE] text-white rounded-lg shadow-sm flex items-center cursor-pointer disabled:opacity-50"
+                >
+                  {forgotPwdLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                  <span>Send Reset Email</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Forgot Z-PIN Modal */}
+      {showForgotPinModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-left shadow-xl border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-amber-600">
+                <KeyRound className="w-4 h-4" />
+                <h3 className="text-sm font-bold text-slate-900">Z-PIN Reset Information</h3>
+              </div>
+              <button
+                onClick={() => setShowForgotPinModal(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="py-4 space-y-3 text-xs text-slate-600">
+              <p>
+                Your 4-digit Z-PIN is cryptographically stored to secure accounting ledgers on unknown or unregistered browsers.
+              </p>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-[11.5px]">
+                <p className="font-semibold text-slate-800">To reset or re-enroll your Z-PIN:</p>
+                <ol className="list-decimal pl-4 space-y-1 text-slate-600">
+                  <li>Log in from an existing recognized browser where your device key is saved.</li>
+                  <li>Navigate to <strong>Settings &gt; Registered Devices</strong>.</li>
+                  <li>You can re-enroll your Z-PIN or revoke old devices.</li>
+                </ol>
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowForgotPinModal(false)}
+                className="px-4 py-2 text-xs font-semibold bg-[#1865E8] hover:bg-[#1357CE] text-white rounded-lg cursor-pointer"
+              >
+                Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default Auth;
-

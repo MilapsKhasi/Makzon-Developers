@@ -192,7 +192,7 @@ const Cashbook = () => {
     <div className="space-y-6">
       <PageHeader
         icon={Wallet}
-        iconColor="text-teal-600 dark:text-teal-400"
+        iconColor="text-blue-600 dark:text-blue-400"
         title="Cashbook Register"
         subtitle="Daily cash in hand statements, income, expenses, and net balances"
         badge={

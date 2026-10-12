@@ -104,9 +104,18 @@ function enableOfflineMode() {
 }
 
 let isSyncingWorkspaces = false;
+let isDeviceVerifiedSession = false;
+
+export function setDeviceVerifiedSession(verified: boolean) {
+  isDeviceVerifiedSession = verified;
+}
+
+export function getDeviceVerifiedSession(): boolean {
+  return isDeviceVerifiedSession;
+}
 
 export async function syncUserWorkspaceDataToIndexedDB(userId: string) {
-  if (!userId || isSyncingWorkspaces || (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true')) {
+  if (!userId || !isDeviceVerifiedSession || isSyncingWorkspaces || (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true')) {
     return;
   }
   isSyncingWorkspaces = true;
@@ -570,6 +579,9 @@ class MockBuilder {
 }
 
 function seedLocalStorage() {
+  if (typeof window === 'undefined') return;
+  if (localStorage.getItem('use_offline_mode') !== 'true') return;
+
   if (!localStorage.getItem('local_db_users')) {
     localStorage.setItem('local_db_users', JSON.stringify([
       { id: 'local-user-1', email: 'offline@zenterprime.com', created_at: new Date().toISOString() }
@@ -637,8 +649,10 @@ function notifyAuthListeners(event: string, session: any) {
 
 const mockAuth = {
   async getSession() {
-    seedLocalStorage();
-    const userJson = localStorage.getItem('local_session_user');
+    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true') {
+      seedLocalStorage();
+    }
+    const userJson = typeof window !== 'undefined' ? localStorage.getItem('local_session_user') : null;
     if (!userJson) {
       return { data: { session: null }, error: null };
     }
@@ -651,8 +665,10 @@ const mockAuth = {
     return { data: { session }, error: null };
   },
   async getUser() {
-    seedLocalStorage();
-    const userJson = localStorage.getItem('local_session_user');
+    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true') {
+      seedLocalStorage();
+    }
+    const userJson = typeof window !== 'undefined' ? localStorage.getItem('local_session_user') : null;
     if (!userJson) {
       return { data: { user: null }, error: null };
     }
@@ -679,14 +695,21 @@ const mockAuth = {
     return { data: { user, session }, error: null };
   },
   async signOut() {
-    localStorage.removeItem('local_session_user');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('local_session_user');
+      localStorage.removeItem('use_offline_mode');
+      localStorage.removeItem('activeCompanyId');
+      localStorage.removeItem('activeCompanyName');
+    }
     notifyAuthListeners('SIGNED_OUT', null);
     return { error: null };
   },
   onAuthStateChange(callback: any) {
-    seedLocalStorage();
+    if (typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true') {
+      seedLocalStorage();
+    }
     authListeners.add(callback);
-    const userJson = localStorage.getItem('local_session_user');
+    const userJson = typeof window !== 'undefined' ? localStorage.getItem('local_session_user') : null;
     const user = userJson ? JSON.parse(userJson) : null;
     const session = user ? { user, access_token: 'local-token', refresh_token: 'local-refresh-token' } : null;
     
@@ -1000,7 +1023,7 @@ const resilientAuth = {
           return await mockAuth.getSession();
         }
       }
-      if (!res?.data?.session && typeof window !== 'undefined' && localStorage.getItem('local_session_user')) {
+      if (!res?.data?.session && typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true' && localStorage.getItem('local_session_user')) {
         return await mockAuth.getSession();
       }
       if (res?.data?.session?.user) {
@@ -1042,7 +1065,7 @@ const resilientAuth = {
           return await mockAuth.getUser();
         }
       }
-      if (!res?.data?.user && typeof window !== 'undefined' && localStorage.getItem('local_session_user')) {
+      if (!res?.data?.user && typeof window !== 'undefined' && localStorage.getItem('use_offline_mode') === 'true' && localStorage.getItem('local_session_user')) {
         return await mockAuth.getUser();
       }
       if (res?.data?.user) {
@@ -1130,6 +1153,37 @@ const resilientAuth = {
     }
   },
   async signOut(opts?: any) {
+    if (typeof window !== 'undefined') {
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (
+            key &&
+            (key.startsWith('sb-') ||
+              key.includes('supabase') ||
+              key.includes('local_session_user') ||
+              key.includes('use_offline_mode') ||
+              key.includes('activeCompany') ||
+              key.startsWith('zenter_') ||
+              key.includes('auth-token'))
+          ) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((k) => {
+          try {
+            localStorage.removeItem(k);
+          } catch {}
+        });
+        localStorage.removeItem('local_session_user');
+        localStorage.removeItem('use_offline_mode');
+        localStorage.removeItem('activeCompanyId');
+        localStorage.removeItem('activeCompanyName');
+        sessionStorage.clear();
+      } catch {}
+    }
+    setDeviceVerifiedSession(false);
     try {
       await realSupabase.auth.signOut(opts);
     } catch {
@@ -1141,7 +1195,12 @@ const resilientAuth = {
     const mockSub = mockAuth.onAuthStateChange(callback);
     try {
       const realSub = realSupabase.auth.onAuthStateChange((event, session) => {
-        if (session?.user) {
+        if (event === 'SIGNED_OUT' || !session?.user) {
+          localStorage.removeItem('local_session_user');
+          localStorage.removeItem('use_offline_mode');
+          localStorage.removeItem('activeCompanyId');
+          localStorage.removeItem('activeCompanyName');
+        } else if (session?.user) {
           localStorage.setItem('local_session_user', JSON.stringify(session.user));
           syncUserWorkspaceDataToIndexedDB(session.user.id).catch(() => {});
         }

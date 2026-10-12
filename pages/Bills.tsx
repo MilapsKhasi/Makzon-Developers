@@ -228,7 +228,7 @@ const Bills = () => {
 
       <PageHeader
         icon={ReceiptText}
-        iconColor="text-indigo-600 dark:text-indigo-400"
+        iconColor="text-violet-600 dark:text-violet-400"
         title="Purchase Bills Ledger"
         subtitle="Register purchase invoices, track vendor liabilities, and manage stock receipts"
         actions={

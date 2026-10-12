@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Building2, Percent, Sun, ShieldCheck, Cpu, HardDrive, Trash2, AlertTriangle, 
   Save, Loader2, Lock, CheckCircle2, RefreshCw, Download, FolderSymlink, 
-  Zap, Database, RotateCcw, Trash, Server, Laptop, Moon, ExternalLink 
+  Zap, Database, RotateCcw, Trash, Server, Laptop, Moon, ExternalLink, Shield
 } from 'lucide-react';
 import { 
   getActiveCompanyId, safeSupabaseSave, getAppSettings, formatDate, 
@@ -16,6 +16,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { exportFullDatabaseToFolder, downloadStandaloneOfflineLauncher, downloadWindowsExePackage } from '../utils/offlineHelper';
 import { useLicense } from '../context/LicenseContext';
 import { useCompany } from '../context/CompanyContext';
+import { listUserDevices, revokeUserDevice, RegisteredDeviceItem } from '../lib/deviceAuth';
 
 interface SettingsProps {
   onClose?: () => void;
@@ -32,7 +33,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     else navigate(-1);
   };
 
-  const [activeTab, setActiveTab] = useState<'business' | 'gst' | 'appearance' | 'license' | 'updates' | 'backup' | 'recycle' | 'danger'>('business');
+  const [activeTab, setActiveTab] = useState<'business' | 'gst' | 'appearance' | 'devices' | 'license' | 'updates' | 'backup' | 'recycle' | 'danger'>('business');
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -76,6 +77,52 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [recycleTab, setRecycleTab] = useState('All');
   const [deletedItems, setDeletedItems] = useState<any[]>([]);
   const [recycleLoading, setRecycleLoading] = useState(false);
+
+  // Registered Devices State
+  const [devices, setDevices] = useState<RegisteredDeviceItem[]>([]);
+  const [devicesLoading, setDevicesLoading] = useState(false);
+  const [revokingDeviceId, setRevokingDeviceId] = useState<string | null>(null);
+  const [deviceActionMsg, setDeviceActionMsg] = useState<string | null>(null);
+
+  const loadDevices = async () => {
+    setDevicesLoading(true);
+    setDeviceActionMsg(null);
+    try {
+      const list = await listUserDevices();
+      setDevices(list);
+    } catch (err: any) {
+      console.error('Failed to load registered devices:', err);
+    } finally {
+      setDevicesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'devices') {
+      loadDevices();
+    }
+  }, [activeTab]);
+
+  const handleRevokeDevice = async (deviceId: string) => {
+    if (!window.confirm('Are you sure you want to revoke this browser device? This device will immediately lose access and must verify the 4-digit Z-PIN to reconnect.')) {
+      return;
+    }
+    setRevokingDeviceId(deviceId);
+    setDeviceActionMsg(null);
+    try {
+      const success = await revokeUserDevice(deviceId);
+      if (success) {
+        setDeviceActionMsg('Device access revoked successfully. Subsequent visits from that browser will require 4-digit Z-PIN verification.');
+        await loadDevices();
+      } else {
+        setDeviceActionMsg('Failed to revoke device. Please try again.');
+      }
+    } catch (err: any) {
+      setDeviceActionMsg(`Error: ${err.message || 'Revoke failed'}`);
+    } finally {
+      setRevokingDeviceId(null);
+    }
+  };
 
   // Load User & Company Profile Data
   useEffect(() => {
@@ -412,6 +459,18 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
           </button>
 
           <button
+            onClick={() => setActiveTab('devices')}
+            className={`flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'devices'
+                ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            <span>Registered Devices</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('license')}
             className={`flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
               activeTab === 'license'
@@ -667,6 +726,164 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Eye-friendly deep dark canvas for low light.</p>
                   </div>
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: Registered Devices */}
+          {activeTab === 'devices' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Registered Devices & Z-PIN Security</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Authorized browsers for account: <strong className="text-slate-700 dark:text-slate-300">{userEmail || 'Active Account'}</strong>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadDevices}
+                  disabled={devicesLoading}
+                  className="flex items-center space-x-1.5 bg-primary hover:bg-primary-dark text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                >
+                  {devicesLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  <span>Refresh Devices</span>
+                </button>
+              </div>
+
+              {deviceActionMsg && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-blue-700 dark:text-blue-300 text-xs rounded-xl flex items-start">
+                  <CheckCircle2 className="w-4 h-4 mr-2 shrink-0 mt-0.5 text-blue-600" />
+                  <span>{deviceActionMsg}</span>
+                </div>
+              )}
+
+              {/* Security info card */}
+              <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl p-4.5 space-y-3">
+                <div className="flex items-center space-x-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span>Hardware & Browser Trust Architecture</span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Only browser sessions verified with your 4-digit Z-PIN for account <strong className="text-slate-700 dark:text-slate-300">{userEmail}</strong> are displayed here.
+                  Each verified browser holds an encrypted token in IndexedDB to bypass PIN entry on subsequent visits.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-[11px]">
+                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200/80 dark:border-slate-800">
+                    <span className="text-slate-400 font-bold block uppercase text-[10px]">Account Scope</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 mt-0.5 block truncate" title={userEmail || ''}>{userEmail || 'Active User'}</span>
+                  </div>
+                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200/80 dark:border-slate-800">
+                    <span className="text-slate-400 font-bold block uppercase text-[10px]">PIN Protection</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 mt-0.5 block">scrypt (32KB, 32-byte salt)</span>
+                  </div>
+                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200/80 dark:border-slate-800">
+                    <span className="text-slate-400 font-bold block uppercase text-[10px]">Credential Storage</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 mt-0.5 block">SHA-256 Verified Token</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Devices list */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  Authorized Browsers for This Account ({devices.length})
+                </h4>
+
+                {devicesLoading ? (
+                  <div className="p-8 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary mb-2" />
+                    <p className="text-xs text-slate-500">Loading registered devices...</p>
+                  </div>
+                ) : devices.length === 0 ? (
+                  <div className="p-8 text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
+                    <Laptop className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">No Registered Devices</p>
+                    <p className="text-[11px] text-slate-400 mt-1">This browser will enroll automatically upon Z-PIN verification.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {devices.map((device) => (
+                      <div
+                        key={device.id}
+                        className={`p-4 rounded-xl border transition-all ${
+                          device.isRevoked
+                            ? 'bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 opacity-75'
+                            : device.isCurrentDevice
+                            ? 'bg-blue-50/30 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 shadow-xs'
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-start space-x-3">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                              device.isRevoked 
+                                ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400' 
+                                : device.isCurrentDevice
+                                ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400'
+                                : 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-light'
+                            }`}>
+                              <Laptop className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h5 className="text-sm font-bold text-slate-900 dark:text-white">
+                                  {device.deviceName || 'Registered Browser'}
+                                </h5>
+                                {device.isCurrentDevice && (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 uppercase flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                                    This Device (Current Browser)
+                                  </span>
+                                )}
+                                {device.isRevoked ? (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 uppercase">
+                                    Revoked
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 uppercase">
+                                    Active & Verified
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                Session Status: {device.isCurrentDevice ? 'Active & authenticated in this browser' : (device.isRevoked ? 'Access revoked' : 'Verified session')}
+                              </p>
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
+                                <span>Enrolled: <strong>{new Date(device.createdAt).toLocaleString()}</strong></span>
+                                <span>Last Verified: <strong>{new Date(device.lastVerifiedAt).toLocaleString()}</strong></span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center sm:self-center shrink-0">
+                            {device.isRevoked ? (
+                              <span className="text-xs text-rose-500 font-semibold italic">
+                                Access Revoked
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleRevokeDevice(device.id)}
+                                disabled={revokingDeviceId === device.id}
+                                className="px-3.5 py-2 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center"
+                              >
+                                {revokingDeviceId === device.id ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                                    <span>Revoking...</span>
+                                  </>
+                                ) : (
+                                  <span>Revoke Device</span>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

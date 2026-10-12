@@ -221,7 +221,7 @@ const AdditionalCharges = () => {
 
       <PageHeader
         icon={Percent}
-        iconColor="text-slate-600 dark:text-slate-400"
+        iconColor="text-blue-600 dark:text-blue-400"
         title="Additional Charges"
         subtitle="Configure user-defined adjustments such as Labour, Freight, or Discounts"
         actions={

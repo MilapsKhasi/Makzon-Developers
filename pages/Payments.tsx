@@ -622,7 +622,7 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
     <div className="space-y-6">
       <PageHeader
         icon={isReceiptMode ? ArrowDownCircle : isPaymentMode ? ArrowUpCircle : Wallet}
-        iconColor={isReceiptMode ? 'text-emerald-600 dark:text-emerald-400' : isPaymentMode ? 'text-rose-600 dark:text-rose-400' : 'text-teal-600 dark:text-teal-400'}
+        iconColor={isReceiptMode ? 'text-emerald-600 dark:text-emerald-400' : isPaymentMode ? 'text-violet-600 dark:text-violet-400' : 'text-blue-600 dark:text-blue-400'}
         title={pageTitle}
         subtitle={pageSubtitle}
         actions={

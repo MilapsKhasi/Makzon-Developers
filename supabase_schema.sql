@@ -19,7 +19,7 @@ DROP TABLE IF EXISTS public.stock_items CASCADE;
 DROP TABLE IF EXISTS public.duties_taxes CASCADE;
 DROP TABLE IF EXISTS public.cashbooks CASCADE;
 
--- 1. Profiles Table for Evaluation Licensing
+-- 1. Profiles Table for Evaluation Licensing & Z-PIN Security
 CREATE TABLE public.profiles (
   id uuid REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
   active_company_id uuid,
@@ -28,16 +28,20 @@ CREATE TABLE public.profiles (
   trial_end timestamptz DEFAULT (now() + interval '14 days'),
   license_type text DEFAULT 'evaluation',
   license_status text DEFAULT 'active',
+  z_pin text DEFAULT NULL,
   created_at timestamptz DEFAULT now()
 );
 
--- 2. Login Verifications Table (Storing Supabase Server Timestamps created_at and expires_at = +14 days)
+-- 2. Login Verifications Table (Storing Z-PIN Browser Verification Keys & Session Timestamps)
 CREATE TABLE public.login_verifications (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  browser_verification_key text DEFAULT NULL,
+  device_name text DEFAULT 'Browser Session',
+  last_verified_at timestamptz DEFAULT now(),
   otp text DEFAULT '',
   created_at timestamptz DEFAULT now(),
-  expires_at timestamptz DEFAULT (now() + interval '14 days')
+  expires_at timestamptz DEFAULT (now() + interval '30 days')
 );
 
 -- 3. Core Accounting Tables

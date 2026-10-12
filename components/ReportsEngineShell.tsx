@@ -61,7 +61,7 @@ export const ReportsEngineShell: React.FC<ReportsEngineShellProps> = ({
       <PageHeader
         className="print:hidden"
         icon={BarChart3}
-        iconColor="text-primary dark:text-primary-light"
+        iconColor="text-blue-600 dark:text-blue-400"
         title="Reports Engine"
         subtitle="Tax registers, outstanding receivables & payables, party ledgers and GST analytics"
         actions={

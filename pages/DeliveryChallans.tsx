@@ -191,7 +191,7 @@ export const DeliveryChallans = () => {
       {/* Header Bar */}
       <PageHeader
         icon={Truck}
-        iconColor="text-blue-600 dark:text-blue-400"
+        iconColor="text-emerald-600 dark:text-emerald-400"
         title="Delivery Challan Ledger"
         subtitle="Manage goods transport, dispatch notes, and delivery challans"
         actions={

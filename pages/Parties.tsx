@@ -410,7 +410,7 @@ const Parties = () => {
       {/* Page Header */}
       <PageHeader
         icon={Contact}
-        iconColor="text-purple-600 dark:text-purple-400"
+        iconColor="text-orange-500 dark:text-orange-400"
         title="Party Master & Accounts"
         subtitle="Unified register for Customer & Supplier accounts, balances, and contact details"
         actions={

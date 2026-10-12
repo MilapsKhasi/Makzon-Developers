@@ -235,3 +235,20 @@ export async function getMetaIDB(key: string): Promise<any> {
     return null;
   }
 }
+
+export async function deleteMetaIDB(key: string): Promise<void> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('meta', 'readwrite');
+      const store = tx.objectStore('meta');
+      store.delete(key);
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (err) {
+    console.warn(`[IndexedDB] Error deleting meta ${key}:`, err);
+  }
+}
+
