@@ -327,20 +327,41 @@ app.post('/api/auth/device/enroll-pin', requireAuth, async (req: AuthenticatedRe
     const cleanPin = pin.trim();
     const encodedPinRecord = encodePinForStorage(cleanPin);
 
-    // 1. Update profiles table (z_pin column) with the new hashed value
+    // 1. Update profiles table (z_pin column) with the new hashed value and ensure trial dates exist
     try {
+      const now = new Date();
+      const trialStart = now.toISOString();
+      const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+      // Check existing profile first to determine start date from account creation
+      const { data: existingProf } = await userClient
+        .from('profiles')
+        .select('trial_start, trial_end, created_at, license_type, license_status')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const finalStart = existingProf?.created_at || existingProf?.trial_start || trialStart;
+      const finalEnd = new Date(new Date(finalStart).getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+      const upsertPayload: Record<string, any> = {
+        id: userId,
+        full_name: (email || '').split('@')[0] || 'User',
+        z_pin: encodedPinRecord,
+        trial_start: finalStart,
+        trial_end: finalEnd,
+        license_type: existingProf?.license_type || 'evaluation',
+        license_status: new Date(finalEnd).getTime() > Date.now() ? 'active' : 'expired'
+      };
+
       const { error: updErr } = await userClient
         .from('profiles')
-        .upsert({
-          id: userId,
-          z_pin: encodedPinRecord
-        }, { onConflict: 'id' });
+        .upsert(upsertPayload, { onConflict: 'id' });
 
       if (updErr) {
         console.warn('[Enroll] profiles upsert note, trying update:', updErr.message);
         await userClient
           .from('profiles')
-          .update({ z_pin: encodedPinRecord })
+          .update(upsertPayload)
           .eq('id', userId);
       }
     } catch (err) {

@@ -156,17 +156,42 @@ const Auth = () => {
         setAuthenticatedUser({ id: currentUserId, email: authData.user.email || '' });
 
         // 1. Fetch user's profile from profiles table to check if z_pin is NULL (Legacy Account Detection)
-        let profileRecord: { z_pin: string | null } | null = null;
+        let profileRecord: { z_pin: string | null; trial_start?: string | null; trial_end?: string | null; license_type?: string | null } | null = null;
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('z_pin')
+            .select('z_pin, trial_start, trial_end, license_type, license_status')
             .eq('id', currentUserId)
             .maybeSingle();
 
           profileRecord = profile;
+
+          // Ensure trial start date is strictly account creation date and expiry date is start date + 14 days
+          const accountCreatedAt = (authData.user as any)?.created_at || (profile as any)?.created_at || new Date().toISOString();
+          const trialStart = accountCreatedAt;
+          const trialEnd = new Date(new Date(trialStart).getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+          if (profile && (profile.trial_start !== trialStart || profile.trial_end !== trialEnd)) {
+            const isTrialValid = new Date(trialEnd).getTime() > Date.now();
+            await supabase
+              .from('profiles')
+              .update({
+                trial_start: trialStart,
+                trial_end: trialEnd,
+                license_type: profile.license_type || 'evaluation',
+                license_status: isTrialValid ? 'active' : 'expired'
+              })
+              .eq('id', currentUserId);
+
+            try {
+              localStorage.setItem('zenter_trial_created_at', trialStart);
+              localStorage.setItem('zenter_trial_expires_at', trialEnd);
+              localStorage.setItem('zenter_license_type', profile.license_type || 'evaluation');
+              localStorage.setItem('zenter_license_status', isTrialValid ? 'active' : 'expired');
+            } catch {}
+          }
         } catch (profErr) {
-          console.warn('Could not read profiles.z_pin directly:', profErr);
+          console.warn('Could not read/sync profiles record:', profErr);
         }
 
         const hasZPin = Boolean(profileRecord && profileRecord.z_pin && profileRecord.z_pin.trim().length > 0);
@@ -228,6 +253,10 @@ const Auth = () => {
       let msg = err.message || 'Authentication failed.';
       if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || err.name === 'TypeError') {
         msg = 'Connection Error: Unable to reach server. Please check your internet connection.';
+      } else if (msg.includes('Invalid login credentials')) {
+        msg = 'Invalid email or password. Please verify your credentials or create a new account.';
+      } else if (msg.includes('Email not confirmed')) {
+        msg = 'Email address not yet confirmed. Please check your email inbox to verify your account.';
       }
       setError(msg);
     } finally {
@@ -236,11 +265,11 @@ const Auth = () => {
   };
 
   // Step 1: Signup credentials validation -> Proceed to Z-PIN
-  const handleSignupNext = (e: React.FormEvent) => {
+  const handleSignupNext = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    const cleanEmail = email.trim();
+    const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) {
       setError('Please enter a valid email address.');
       return;
@@ -251,10 +280,104 @@ const Auth = () => {
       return;
     }
 
-    setAuthStep('zpin');
-    setTimeout(() => {
-      pinRefs.current[0]?.focus();
-    }, 150);
+    setLoading(true);
+
+    try {
+      // 1. Attempt signup with Supabase Auth
+      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password
+      });
+
+      if (signUpErr) {
+        const errMsg = (signUpErr.message || '').toLowerCase();
+        // If email is already registered, check if password matches existing account
+        if (errMsg.includes('already registered') || errMsg.includes('already exists') || errMsg.includes('user already exists')) {
+          const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password
+          });
+
+          if (!signInErr && signInData?.user) {
+            // Password matches! Check if account already has a Z-PIN in profiles
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('z_pin')
+              .eq('id', signInData.user.id)
+              .maybeSingle();
+
+            if (!prof?.z_pin) {
+              // Existing account without Z-PIN: proceed smoothly to Z-PIN setup!
+              setAuthenticatedUser({ id: signInData.user.id, email: cleanEmail });
+              setAuthStep('zpin');
+              setTimeout(() => { pinRefs.current[0]?.focus(); }, 150);
+              return;
+            } else {
+              // Account already has a Z-PIN enrolled: check browser authorization
+              setAuthenticatedUser({ id: signInData.user.id, email: cleanEmail });
+              const storedKey = await getStoredBrowserVerificationKey(signInData.user.id);
+              if (storedKey) {
+                const { data: verifs } = await supabase
+                  .from('login_verifications')
+                  .select('id, expires_at')
+                  .eq('user_id', signInData.user.id)
+                  .eq('browser_verification_key', storedKey.trim())
+                  .limit(1);
+
+                if (verifs && verifs.length > 0) {
+                  const isExpired = verifs[0].expires_at && new Date(verifs[0].expires_at).getTime() < Date.now();
+                  if (!isExpired) {
+                    setDeviceVerifiedSession(true);
+                    navigate('/companies');
+                    return;
+                  }
+                }
+              }
+
+              // Key not found or expired: show standard verification view
+              setAuthStep('verify-pin');
+              setTimeout(() => { verifyPinRefs.current[0]?.focus(); }, 150);
+              return;
+            }
+          } else {
+            // Email is already taken with a different password
+            setError('This email address is already registered. Please log in on the Login tab or use Forgot Password.');
+            return;
+          }
+        } else {
+          throw signUpErr;
+        }
+      }
+
+      if (signUpData?.user) {
+        setAuthenticatedUser({ id: signUpData.user.id, email: cleanEmail });
+        
+        // Ensure session token is active
+        if (!signUpData.session) {
+          try {
+            await supabase.auth.signInWithPassword({
+              email: cleanEmail,
+              password
+            });
+          } catch {}
+        }
+      }
+
+      // Smoothly transition to Step 2: 4-digit Z-PIN setup
+      setAuthStep('zpin');
+      setTimeout(() => {
+        pinRefs.current[0]?.focus();
+      }, 150);
+    } catch (err: any) {
+      console.error('Signup step 1 error:', err);
+      let msg = err.message || 'Failed to initialize account.';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || err.name === 'TypeError') {
+        msg = 'Connection Error: Unable to reach server. Please check your internet connection.';
+      }
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Step 2: Complete signup with 4-digit Z-PIN
@@ -280,48 +403,81 @@ const Auth = () => {
 
     try {
       const cleanEmail = email.trim().toLowerCase();
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password
-      });
 
-      if (signUpError) throw signUpError;
+      // Ensure active user session
+      let currentUserId = authenticatedUser?.id;
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData?.session) {
+        const { data: logRes } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password
+        });
+        if (logRes?.user) {
+          currentUserId = logRes.user.id;
+        }
+      } else if (!currentUserId) {
+        currentUserId = sessionData.session.user.id;
+      }
 
-      if (signUpData?.user) {
+      if (!currentUserId) {
+        // Fallback: Attempt sign in to obtain authenticated user ID
+        const { data: sData } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password
+        });
+        currentUserId = sData?.user?.id;
+      }
+
+      if (!currentUserId) {
+        setError('Unable to authenticate user session. Please return to login.');
+        return;
+      }
+
+      // Enroll Z-PIN on server and store device verification key in IndexedDB & Supabase
+      const enrollResult = await enrollZPinWithServer(pin, confirmPin, currentUserId);
+      if (!enrollResult.success && enrollResult.error && !enrollResult.error.includes('already')) {
+        console.warn('Enroll Z-PIN warning:', enrollResult.error);
+      }
+
+      // Ensure profiles and users tables are synchronized with clean, safe schema and 14-day evaluation trial
+      try {
         const now = new Date();
-        const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+        const trialStart = now.toISOString();
+        const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
-        try {
-          await supabase.from('users').upsert({
-            id: signUpData.user.id,
-            email: signUpData.user.email,
-            created_at: signUpData.user.created_at || now.toISOString()
-          });
-          await supabase.from('profiles').upsert({
-            id: signUpData.user.id,
-            trial_start: now.toISOString(),
-            trial_end: endDate.toISOString(),
-            license_type: 'evaluation',
-            license_status: 'active',
-            created_at: now.toISOString()
-          });
-        } catch (upsertErr) {
-          console.warn('Trial profile init note:', upsertErr);
-        }
+        await supabase.from('users').upsert({
+          id: currentUserId,
+          email: cleanEmail,
+          created_at: trialStart
+        }, { onConflict: 'id' });
 
-        // Enroll Z-PIN on server and store device verification key in IndexedDB for this account
+        await supabase.from('profiles').upsert({
+          id: currentUserId,
+          full_name: cleanEmail.split('@')[0],
+          trial_start: trialStart,
+          trial_end: trialEnd,
+          license_type: 'evaluation',
+          license_status: 'active',
+          created_at: trialStart
+        }, { onConflict: 'id' });
+
+        // Update localStorage as well for immediate synchronization
         try {
-          await enrollZPinWithServer(pin, confirmPin, signUpData.user.id);
-        } catch (enrollErr) {
-          console.warn('Failed to enroll Z-PIN on server:', enrollErr);
-        }
+          localStorage.setItem('zenter_trial_created_at', trialStart);
+          localStorage.setItem('zenter_trial_expires_at', trialEnd);
+          localStorage.setItem('zenter_license_type', 'evaluation');
+          localStorage.setItem('zenter_license_status', 'active');
+        } catch {}
+      } catch (profErr) {
+        console.warn('Profile initialization note:', profErr);
       }
 
       setDeviceVerifiedSession(true);
       navigate('/companies');
     } catch (err: any) {
-      console.error('Signup error:', err);
-      let msg = err.message || 'Registration failed.';
+      console.error('Complete setup error:', err);
+      let msg = err.message || 'Registration setup failed.';
       if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || err.name === 'TypeError') {
         msg = 'Connection Error: Unable to reach server. Please check your internet connection.';
       }
@@ -649,9 +805,17 @@ const Auth = () => {
 
                     <button
                       type="submit"
-                      className="w-full py-3.5 bg-[#1865E8] hover:bg-[#1357CE] text-white font-semibold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer mt-8"
+                      disabled={loading}
+                      className="w-full py-3.5 bg-[#1865E8] hover:bg-[#1357CE] text-white font-semibold text-sm rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer mt-8 disabled:opacity-50"
                     >
-                      <span>Next &gt;</span>
+                      {loading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          <span>Checking Account...</span>
+                        </>
+                      ) : (
+                        <span>Next &gt;</span>
+                      )}
                     </button>
                   </form>
                 )}

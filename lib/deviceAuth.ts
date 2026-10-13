@@ -300,33 +300,38 @@ export async function checkDeviceAuthorization(userId?: string | null): Promise<
 }
 
 export async function verifyZPinWithServer(pin: string, userId?: string | null): Promise<PinVerifyResult> {
-  const token = await getAuthToken();
+  let token = await getAuthToken();
   if (!token) {
-    return { verified: false, error: 'Unauthenticated session.' };
+    try {
+      const { data } = await supabase.auth.getSession();
+      token = data?.session?.access_token || null;
+    } catch {}
   }
 
-  try {
-    const response = await fetch('/api/auth/device/verify-pin', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        pin,
-        deviceName: getClientDeviceDescription()
-      })
-    });
+  if (token) {
+    try {
+      const response = await fetch('/api/auth/device/verify-pin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          pin,
+          deviceName: getClientDeviceDescription()
+        })
+      });
 
-    const data = await response.json();
-
-    if (data.verified && data.browser_verification_key) {
-      await storeBrowserVerificationKey(data.browser_verification_key, userId);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.verified && data.browser_verification_key) {
+          await storeBrowserVerificationKey(data.browser_verification_key, userId);
+        }
+        return data;
+      }
+    } catch (err: any) {
+      console.warn('[DeviceAuth] Server verify error, falling back to direct Supabase verification:', err);
     }
-
-    return data;
-  } catch (err: any) {
-    console.warn('[DeviceAuth] Server verify error, falling back to direct Supabase verification:', err);
   }
 
   // Direct Supabase Fallback: Timing-safe comparison against profiles.z_pin
@@ -399,34 +404,39 @@ export async function verifyZPinWithServer(pin: string, userId?: string | null):
 }
 
 export async function enrollZPinWithServer(pin: string, confirmPin: string, userId?: string | null): Promise<PinEnrollResult> {
-  const token = await getAuthToken();
+  let token = await getAuthToken();
   if (!token) {
-    return { success: false, error: 'Unauthenticated session.' };
+    try {
+      const { data } = await supabase.auth.getSession();
+      token = data?.session?.access_token || null;
+    } catch {}
   }
 
-  try {
-    const response = await fetch('/api/auth/device/enroll-pin', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        pin,
-        confirmPin,
-        deviceName: getClientDeviceDescription()
-      })
-    });
+  if (token) {
+    try {
+      const response = await fetch('/api/auth/device/enroll-pin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          pin,
+          confirmPin,
+          deviceName: getClientDeviceDescription()
+        })
+      });
 
-    const data = await response.json();
-
-    if (data.success && data.browser_verification_key) {
-      await storeBrowserVerificationKey(data.browser_verification_key, userId);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.browser_verification_key) {
+          await storeBrowserVerificationKey(data.browser_verification_key, userId);
+        }
+        return data;
+      }
+    } catch (err: any) {
+      console.warn('[DeviceAuth] Server enroll error, fallback to direct Supabase enroll:', err);
     }
-
-    return data;
-  } catch (err: any) {
-    console.warn('[DeviceAuth] Server enroll error, fallback to direct Supabase enroll:', err);
   }
 
   // Direct Supabase Fallback: Update profiles table and login_verifications
@@ -448,13 +458,46 @@ export async function enrollZPinWithServer(pin: string, confirmPin: string, user
       const hashHex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
       const encodedPin = `scrypt:${salt}:${hashHex}`;
 
-      // 1. Update profiles table (z_pin column)
-      await supabase
-        .from('profiles')
-        .upsert({
+      const userEmail = sessionData?.session?.user?.email || '';
+
+      // 1. Update profiles table (z_pin column and trial period)
+      try {
+        const now = new Date();
+        const trialStart = now.toISOString();
+        const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+        const { data: existingProf } = await supabase
+          .from('profiles')
+          .select('trial_start, trial_end, created_at, license_type, license_status')
+          .eq('id', effectiveUserId)
+          .maybeSingle();
+
+        const finalStart = existingProf?.created_at || existingProf?.trial_start || trialStart;
+        const finalEnd = new Date(new Date(finalStart).getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+        const upsertPayload: Record<string, any> = {
           id: effectiveUserId,
-          z_pin: encodedPin
-        }, { onConflict: 'id' });
+          full_name: userEmail ? userEmail.split('@')[0] : 'User',
+          z_pin: encodedPin,
+          trial_start: finalStart,
+          trial_end: finalEnd,
+          license_type: existingProf?.license_type || 'evaluation',
+          license_status: new Date(finalEnd).getTime() > Date.now() ? 'active' : 'expired'
+        };
+
+        const { error: upErr } = await supabase
+          .from('profiles')
+          .upsert(upsertPayload, { onConflict: 'id' });
+
+        if (upErr) {
+          await supabase
+            .from('profiles')
+            .update(upsertPayload)
+            .eq('id', effectiveUserId);
+        }
+      } catch (profErr) {
+        console.warn('[DeviceAuth] Direct profiles update note:', profErr);
+      }
 
       // 2. Generate browser_verification_key
       const rawKey = Array.from(crypto.getRandomValues(new Uint8Array(32)))

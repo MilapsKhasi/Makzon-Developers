@@ -58,9 +58,7 @@ export const LicenseSummaryBadge: React.FC = () => {
   const getRemainingText = () => {
     if (isBackendActive) return 'Activated License';
     if (isExpired) return 'Trial Expired';
-    if (daysRemaining > 1) return `${daysRemaining} Days Remaining`;
-    if (hoursRemaining > 1) return `${hoursRemaining} Hours Remaining`;
-    return `${minutesRemaining} Mins Remaining`;
+    return `${daysRemaining}/14 Days Left`;
   };
 
   return (

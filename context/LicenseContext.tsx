@@ -35,11 +35,17 @@ const getStoredTrialState = () => {
 
   const now = new Date();
 
-  if (start && end && type === 'evaluation') {
-    if (new Date(end).getTime() > now.getTime()) {
-      status = 'active';
+  if (type === 'evaluation') {
+    if (start) {
+      const calculatedEnd = new Date(new Date(start).getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+      end = calculatedEnd;
+      if (new Date(end).getTime() > now.getTime()) {
+        status = 'active';
+      } else {
+        status = 'expired';
+      }
     } else {
-      status = 'expired';
+      status = 'active';
     }
   }
 
@@ -182,40 +188,59 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const userWorkspaceCount = (companiesData || []).filter((c: any) => c.id !== 'local-company-1').length;
         setWorkspaceCount(userWorkspaceCount);
 
-        // Fetch official trial & license data directly from Supabase profiles (primary source)
-        if (profile) {
-          startIso = profile.trial_start || profile.trial_created_at || profile.created_at || profile.start_date || null;
-          endIso = profile.trial_end || profile.trial_expires_at || profile.expires_at || profile.end_date || null;
-          if (profile.license_type) type = profile.license_type;
-          if (profile.license_status) status = profile.license_status;
-        }
+        // Account creation date: profile created_at or user auth created_at or profile trial_start or current time
+        const accountCreatedAt =
+          profile?.created_at ||
+          user?.created_at ||
+          profile?.trial_start ||
+          new Date().toISOString();
 
-        // Fallback check on licenses table if profiles has no trial dates
-        if (!startIso || !endIso) {
-          if (licRow) {
-            if (!startIso) startIso = licRow.trial_start || licRow.start_date || licRow.created_at || null;
-            if (!endIso) endIso = licRow.trial_end || licRow.end_date || licRow.expires_at || null;
-            if (licRow.license_type) type = licRow.license_type;
-            if (licRow.license_status) status = licRow.license_status;
+        if (profile?.license_type) type = profile.license_type;
+        if (profile?.license_status) status = profile.license_status;
+
+        if (licRow?.license_type) type = licRow.license_type;
+        if (licRow?.license_status) status = licRow.license_status;
+
+        // If user is on Evaluation Edition:
+        // Start date is strictly the account creation date.
+        // Expiry date is strictly start date + 14 days (14 full days evaluation).
+        if (type === 'evaluation' || (!isDevVerified && !backendActive && type !== 'standard' && type !== 'advanced')) {
+          type = 'evaluation';
+          startIso = accountCreatedAt;
+          const startDateObj = new Date(startIso);
+          const expiryDateObj = new Date(startDateObj.getTime() + 14 * 24 * 60 * 60 * 1000);
+          endIso = expiryDateObj.toISOString();
+
+          // Trial only expires if current time is on or after the 14-day expiry date
+          if (now.getTime() >= expiryDateObj.getTime()) {
+            status = 'expired';
+          } else {
+            status = 'active';
           }
-        }
 
-        // Check login_verifications table if dates still missing
-        if (!startIso || !endIso) {
-          try {
-            const { data: verifications } = await supabase
-              .from('login_verifications')
-              .select('created_at, expires_at')
-              .eq('user_id', userId)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (verifications?.created_at && verifications?.expires_at) {
-              if (!startIso) startIso = verifications.created_at;
-              if (!endIso) endIso = verifications.expires_at;
+          // Persist these exact dates to Supabase profiles table so backend is 100% in sync
+          if (
+            profile &&
+            (profile.trial_start !== startIso ||
+              profile.trial_end !== endIso ||
+              profile.license_status !== status ||
+              profile.license_type !== 'evaluation')
+          ) {
+            try {
+              await supabase.from('profiles').update({
+                trial_start: startIso,
+                trial_end: endIso,
+                license_type: 'evaluation',
+                license_status: status,
+              }).eq('id', userId);
+            } catch (pUpdateErr) {
+              console.warn('[License] Could not sync trial dates in profiles:', pUpdateErr);
             }
-          } catch {}
+          }
+        } else {
+          // Purchased Standard or Advanced license
+          startIso = profile?.trial_start || profile?.created_at || user?.created_at || null;
+          endIso = profile?.trial_end || profile?.expires_at || null;
         }
       } else {
         // Offline or unauthenticated count from local companies
@@ -227,19 +252,25 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setWorkspaceCount(filtered.length);
           }
         } catch {}
-      }
 
-      // Fallback to localStorage ONLY if no dates were found in Supabase
-      if (!startIso) startIso = localStorage.getItem('zenter_trial_created_at');
-      if (!endIso) endIso = localStorage.getItem('zenter_trial_expires_at');
+        // Fallback to localStorage if unauthenticated
+        if (!startIso) startIso = localStorage.getItem('zenter_trial_created_at');
+        if (!endIso) {
+          if (startIso) {
+            endIso = new Date(new Date(startIso).getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+          } else {
+            const nowIso = new Date().toISOString();
+            startIso = nowIso;
+            endIso = new Date(new Date(nowIso).getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+          }
+        }
+      }
 
       // Calculate status strictly from current time vs endIso for evaluation trials
       if (isDevVerified) {
         type = 'advanced';
         status = 'active';
       } else if (backendActive) {
-        // When backend isActive is YES: account is activated without trial limit.
-        // Expiration date won't work / lockout. Converts evaluation to proper edition.
         status = 'active';
         const storedEdition = localStorage.getItem('zenter_edition') || localStorage.getItem('zenter_license_type');
         if (storedEdition === 'professional' || storedEdition === 'advanced' || profile?.license_type === 'advanced' || licRow?.license_type === 'advanced') {
@@ -251,27 +282,8 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const endTimeMs = new Date(endIso).getTime();
         if (now.getTime() < endTimeMs) {
           status = 'active';
-          if (userId && profile?.license_status === 'expired') {
-            try {
-              await supabase.from('profiles').update({ license_status: 'active' }).eq('id', userId);
-            } catch {}
-          }
         } else {
           status = 'expired';
-          if (userId && profile?.license_status !== 'expired') {
-            try {
-              await supabase.from('profiles').update({ license_status: 'expired' }).eq('id', userId);
-            } catch {}
-          }
-        }
-      } else if (endIso) {
-        const endTimeMs = new Date(endIso).getTime();
-        if (endTimeMs && now.getTime() >= endTimeMs) {
-          status = 'expired';
-        } else if (profile?.license_status) {
-          status = profile.license_status;
-        } else {
-          status = 'active';
         }
       }
 
@@ -367,11 +379,15 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const endTime = expiresAt ? new Date(expiresAt).getTime() : 0;
   const diffMs = Math.max(0, endTime - nowTime);
 
-  const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  // Strictly 14-day evaluation trial: remaining days cannot exceed 14 (14/14 days initially)
+  const daysRemaining = Math.min(14, Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24))));
   const hoursRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60)));
   const minutesRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60)));
 
-  const isExpired = !devMode && !isBackendActive && (licenseStatus === 'expired' || (licenseType === 'evaluation' && diffMs <= 0));
+  const isExpired =
+    !devMode &&
+    !isBackendActive &&
+    (licenseStatus === 'expired' || (licenseType === 'evaluation' && !!expiresAt && diffMs <= 0));
   const isReadOnly = isExpired;
   const isWorkspaceLimitReached = !devMode && !isBackendActive && licenseType === 'evaluation' && workspaceCount >= 1;
 
