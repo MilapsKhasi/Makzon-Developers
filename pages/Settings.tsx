@@ -17,6 +17,8 @@ import { exportFullDatabaseToFolder, downloadStandaloneOfflineLauncher, download
 import { useLicense } from '../context/LicenseContext';
 import { useCompany } from '../context/CompanyContext';
 import { listUserDevices, revokeUserDevice, RegisteredDeviceItem } from '../lib/deviceAuth';
+import { createFullWorkspaceBackup, downloadBackupPackage } from '../utils/backupRestoreHelper';
+import { BackupRestoreModal } from '../components/BackupRestoreModal';
 
 interface SettingsProps {
   onClose?: () => void;
@@ -72,6 +74,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [backupFolder, setBackupFolder] = useState('C:\\Users\\WELCOME\\Documents\\ZenterPrime\\Backups');
   const [backupStatusText, setBackupStatusText] = useState<string | null>(null);
   const [backupSnapshots, setBackupSnapshots] = useState<any[]>([]);
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
 
   // Recycle Bin State
   const [recycleTab, setRecycleTab] = useState('All');
@@ -1133,28 +1136,35 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                 <button
                   type="button"
                   onClick={async () => {
-                    await handleExportDiskFolder();
-                    setBackupStatusText("Manual backup generated and saved to folder successfully.");
+                    try {
+                      setBackupStatusText("Generating verified backup package...");
+                      const backup = await createFullWorkspaceBackup(cid);
+                      const filename = downloadBackupPackage(backup);
+                      setBackupStatusText(`✅ Full system backup (${filename}) created and downloaded successfully.`);
+                      await loadBackups();
+                    } catch (err: any) {
+                      setBackupStatusText(`❌ Error: ${err.message}`);
+                    }
                   }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <HardDrive className="w-3.5 h-3.5" />
-                  <span>Run Manual Backup Now</span>
+                  <span>Run Manual Backup (.xlsx)</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleDownloadOfflineHtml()}
-                  className="px-4 py-2 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+                  onClick={() => setIsRestoreModalOpen(true)}
+                  className="px-4 py-2 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 text-white text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Restore from JSON...</span>
+                  <span>Restore from Backup (Excel / JSON)...</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => loadBackups()}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 ml-auto"
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 ml-auto cursor-pointer"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Refresh</span>
@@ -1181,8 +1191,8 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                           <td className="py-2.5 px-3 font-mono">{snap.size}</td>
                           <td className="py-2.5 px-3 text-right">
                             <button
-                              onClick={() => alert(`Restoring backup snapshot ${snap.name} successful.`)}
-                              className="px-2.5 py-1 bg-primary/10 text-primary hover:bg-primary/20 rounded text-[11px] font-bold transition-colors"
+                              onClick={() => setIsRestoreModalOpen(true)}
+                              className="px-2.5 py-1 bg-primary/10 text-primary hover:bg-primary/20 rounded text-[11px] font-bold transition-colors cursor-pointer"
                             >
                               Restore
                             </button>
@@ -1314,6 +1324,15 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
         </button>
       </div>
 
+      <BackupRestoreModal
+        isOpen={isRestoreModalOpen}
+        onClose={() => setIsRestoreModalOpen(false)}
+        onSuccess={() => {
+          setIsRestoreModalOpen(false);
+          setBackupStatusText("✅ Workspace restore completed successfully.");
+          loadProfile();
+        }}
+      />
     </div>
   );
 };

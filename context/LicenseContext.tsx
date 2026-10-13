@@ -207,7 +207,7 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (type === 'evaluation' || (!isDevVerified && !backendActive && type !== 'standard' && type !== 'advanced')) {
           type = 'evaluation';
           startIso = accountCreatedAt;
-          const startDateObj = new Date(startIso);
+          const startDateObj = new Date(startIso || Date.now());
           const expiryDateObj = new Date(startDateObj.getTime() + 14 * 24 * 60 * 60 * 1000);
           endIso = expiryDateObj.toISOString();
 

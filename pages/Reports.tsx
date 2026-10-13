@@ -764,7 +764,7 @@ const Reports: React.FC = () => {
     gstrSummary
   ]);
 
-  const handleExport = (type: 'excel' | 'csv' | 'pdf') => {
+  const handleExport = async (type: 'excel' | 'csv' | 'pdf') => {
     if (!currentExportData.length || !companyInfo) return;
 
     const headers = Object.keys(currentExportData[0]);
@@ -785,7 +785,7 @@ const Reports: React.FC = () => {
         : 'All Time'
     };
 
-    if (type === 'excel') exportToExcel(headers, rows, config);
+    if (type === 'excel') await exportToExcel(headers, rows, config);
     else if (type === 'csv') exportToCSV(headers, rows, config);
     else if (type === 'pdf') {
       if (activeTab === 'Party Ledgers' && selectedParty) {

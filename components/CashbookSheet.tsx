@@ -274,11 +274,11 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
     }
   };
 
-  const handleExportXLSX = () => {
+  const handleExportXLSX = async () => {
     const companyName = localStorage.getItem('activeCompanyName') || 'Workspace';
     const cleanIncome = incomeRows.filter(r => r.particulars.trim() !== '' && r.amount !== '');
     const cleanExpense = expenseRows.filter(r => r.particulars.trim() !== '' && r.amount !== '');
-    exportCashbookEntryToExcel(cleanIncome, cleanExpense, { companyName, date: reportDate, openingBalance, openingDateText });
+    await exportCashbookEntryToExcel(cleanIncome, cleanExpense, { companyName, date: reportDate, openingBalance, openingDateText });
   };
 
   const handleExportPDF = () => {

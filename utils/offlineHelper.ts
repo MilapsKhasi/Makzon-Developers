@@ -22,7 +22,7 @@ export const fetchFullWorkspaceBackup = async () => {
 
   const tables = [
     'companies', 'sales_invoices', 'purchase_bills', 
-    'customers', 'vendors', 'stock_items', 'cashbook', 'duties_taxes'
+    'customers', 'vendors', 'stock_items', 'cashbooks', 'duties_taxes'
   ];
 
   const backup: { [key: string]: any[] } = {};
@@ -134,7 +134,7 @@ export const downloadStandaloneOfflineLauncher = async () => {
       </div>
       <div class="stat-card">
         <h3>Cashbook Entries</h3>
-        <p>${backup.cashbook?.length || 0}</p>
+        <p>${backup.cashbooks?.length || 0}</p>
       </div>
     </div>
 

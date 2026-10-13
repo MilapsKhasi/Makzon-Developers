@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, ReceiptText, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet, Truck, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, ReceiptText, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet, Truck, Sun, Moon, Download } from 'lucide-react';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import { useLicense } from '../context/LicenseContext';
@@ -12,8 +12,10 @@ import UpdateNotification from './UpdateNotification';
 import CreateNewModal from './CreateNewModal';
 import GlobalSearchModal from './GlobalSearchModal';
 import ImportExcelModal from './ImportExcelModal';
+import ExportDataModal from './ExportDataModal';
 import LicenseSummaryBadge from './LicenseSummaryBadge';
 import ActivationScreen from './ActivationScreen';
+import { BackupReminderBanner } from './BackupReminderBanner';
 import Settings from '../pages/Settings';
 import { processOfflineSyncQueue } from '../lib/syncEngine';
 import { useSecurityDemo } from '../context/SecurityDemoContext';
@@ -28,6 +30,7 @@ const Layout = () => {
   const [quickCreateType, setQuickCreateType] = useState<string | null>(null);
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
   const [isImportExcelOpen, setIsImportExcelOpen] = useState(false);
+  const [isExportDataOpen, setIsExportDataOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const { activeCompany, setCompany } = useCompany();
   const { isWorkspaceLimitReached, devMode, isReadOnly } = useLicense();
@@ -503,6 +506,7 @@ const Layout = () => {
       </aside>
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <BackupReminderBanner />
         <header className="h-12 liquid-glass-header flex items-center justify-between px-4 shrink-0 z-40">
           <div className="flex items-center space-x-4">
             {/* Desktop toggle sidebar */}
@@ -607,6 +611,14 @@ const Layout = () => {
               <span>Import Excel</span>
             </button>
             <button
+              onClick={() => setIsExportDataOpen(true)}
+              className="px-3.5 py-1.5 font-medium text-xs rounded capitalize flex items-center gap-1.5 shadow-xs transition-all bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer"
+              title="Export Workspace Data (Excel, CSV, JSON)"
+            >
+              <Download className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>Export Data</span>
+            </button>
+            <button
               disabled={isReadOnly}
               onClick={() => {
                 if (!isReadOnly) {
@@ -667,6 +679,10 @@ const Layout = () => {
             window.dispatchEvent(new Event('partiesUpdated'));
             window.dispatchEvent(new Event('stockUpdated'));
           }}
+        />
+        <ExportDataModal
+          isOpen={isExportDataOpen}
+          onClose={() => setIsExportDataOpen(false)}
         />
         <CreateNewModal
           isOpen={isCreateNewModalOpen}
