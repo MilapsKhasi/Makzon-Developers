@@ -386,10 +386,8 @@ const Layout = () => {
               <div className="flex flex-col">
                 <div className="flex items-center space-x-2">
                   <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">ZenterPrime</span>
+                  <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">v7.4.0</span>
                 </div>
-                {devMode && (
-                  <span className="inline-block px-1.5 py-0.5 bg-violet-100 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 text-[8.5px] font-medium uppercase tracking-wider rounded mt-0.5 leading-none w-fit border-0">Developer Mode</span>
-                )}
               </div>
             )}
           </div>
@@ -507,26 +505,34 @@ const Layout = () => {
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <BackupReminderBanner />
-        <header className="h-12 liquid-glass-header flex items-center justify-between px-4 shrink-0 z-40">
-          <div className="flex items-center space-x-4">
+        <header className="h-12 bg-[#312e81] flex items-center justify-between px-2.5 sm:px-4 shrink-0 z-40 gap-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-3 min-w-0">
             {/* Desktop toggle sidebar */}
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="hidden lg:block p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 dark:text-slate-400">
-              <Menu className="w-4 h-4" />
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+              className="hidden lg:flex items-center justify-center p-1.5 hover:bg-white/10 rounded cursor-pointer transition-colors"
+              title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+            >
+              <Menu className="w-4 h-4 text-white" />
             </button>
             {/* Mobile toggle menu */}
-            <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 dark:text-slate-400">
-              <Menu className="w-5 h-5" />
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)} 
+              className="lg:hidden flex items-center justify-center p-1.5 hover:bg-white/10 rounded cursor-pointer transition-colors"
+              title="Open Navigation Menu"
+            >
+              <Menu className="w-5 h-5 text-white" />
             </button>
             <div className="relative">
               <button
                 onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
-                className="flex items-center px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-sm hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+                className="flex items-center px-2.5 sm:px-3 py-1 bg-[#312e81] border border-indigo-400/40 rounded text-sm hover:bg-[#3d3999] transition-colors cursor-pointer"
               >
-                <Building2 className="w-3.5 h-3.5 text-slate-400 mr-2" />
-                <span className="font-medium text-slate-700 dark:text-slate-200 capitalize text-[11px] max-w-[100px] sm:max-w-[150px] truncate">
+                <Building2 className="w-3.5 h-3.5 text-white mr-1.5 shrink-0" />
+                <span className="font-medium text-white capitalize text-[11px] max-w-[75px] xs:max-w-[110px] sm:max-w-[160px] truncate">
                   {activeCompany?.name || 'Select Workspace'}
                 </span>
-                <ChevronDown className="ml-2 w-3 h-3 text-slate-400" />
+                <ChevronDown className="ml-1 sm:ml-2 w-3 h-3 text-white shrink-0" />
               </button>
               {showWorkspaceMenu && (
                 <div className="absolute top-full left-0 mt-1 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded shadow-lg overflow-hidden z-50">
@@ -573,23 +579,25 @@ const Layout = () => {
                 </div>
               )}
             </div>
-            <LicenseSummaryBadge />
+            <div className="hidden xl:block">
+              <LicenseSummaryBadge />
+            </div>
             {localStorage.getItem('use_offline_mode') === 'true' && (
-              <span className="flex items-center space-x-1 px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 font-bold rounded text-[10px] uppercase tracking-wider select-none">
-                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1"></span>
-                Offline Mode
+              <span className="hidden sm:flex items-center space-x-1 px-2 py-0.5 bg-amber-500/20 border border-amber-400/40 text-amber-200 font-bold rounded text-[9.5px] uppercase tracking-wider select-none">
+                <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mr-1"></span>
+                Offline
               </span>
             )}
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
             <button
               onClick={() => setIsGlobalSearchOpen(true)}
-              className="flex items-center space-x-2 px-3 py-1.5 h-[32px] bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-lg text-xs transition-all border border-slate-200 dark:border-slate-700 cursor-pointer shadow-2xs"
+              className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1.5 h-[32px] bg-[#312e81] hover:bg-[#3d3999] text-white rounded-md text-xs transition-all border border-indigo-400/40 cursor-pointer shadow-2xs"
               title="Global Search (Ctrl + K)"
             >
-              <Search className="w-3.5 h-3.5 text-slate-400" />
-              <span className="hidden sm:inline font-medium text-slate-600 dark:text-slate-300">Global Search...</span>
-              <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 bg-slate-50 dark:bg-slate-900 border-none rounded font-mono shadow-2xs">
+              <Search className="w-3.5 h-3.5 text-white shrink-0" />
+              <span className="hidden md:inline font-medium text-white text-[11.5px]">Search</span>
+              <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1 py-0.5 text-[9px] font-semibold text-indigo-100 bg-[#26236b] rounded font-mono">
                 Ctrl K
               </kbd>
             </button>
@@ -600,23 +608,23 @@ const Layout = () => {
                   verifyAction('Import Excel Data', () => setIsImportExcelOpen(true));
                 }
               }}
-              className={`px-3.5 py-1.5 font-medium text-xs rounded capitalize flex items-center gap-1.5 shadow-sm transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 font-medium text-xs rounded-md capitalize flex items-center gap-1.5 shadow-sm transition-all ${
                 isReadOnly
                   ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 border border-slate-300 dark:border-slate-700 cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-700 border border-emerald-600 hover:border-emerald-700 text-white cursor-pointer'
+                  : 'bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 text-white cursor-pointer'
               }`}
               title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'Import Excel / CSV Data'}
             >
-              {isReadOnly ? <Lock className="w-3.5 h-3.5" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
-              <span>Import Excel</span>
+              {isReadOnly ? <Lock className="w-3.5 h-3.5" /> : <FileSpreadsheet className="w-3.5 h-3.5 text-white" />}
+              <span className="hidden sm:inline text-[11.5px]">Import</span>
             </button>
             <button
               onClick={() => setIsExportDataOpen(true)}
-              className="px-3.5 py-1.5 font-medium text-xs rounded capitalize flex items-center gap-1.5 shadow-xs transition-all bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer"
+              className="px-2.5 sm:px-3 py-1.5 font-medium text-xs rounded-md capitalize flex items-center gap-1.5 shadow-xs transition-all bg-[#312e81] text-white border border-indigo-400/40 hover:bg-[#3d3999] cursor-pointer"
               title="Export Workspace Data (Excel, CSV, JSON)"
             >
-              <Download className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>Export Data</span>
+              <Download className="w-3.5 h-3.5 text-white" />
+              <span className="hidden md:inline text-[11.5px]">Export</span>
             </button>
             <button
               disabled={isReadOnly}
@@ -628,38 +636,38 @@ const Layout = () => {
                   });
                 }
               }}
-              className={`px-3.5 py-1.5 font-semibold text-xs rounded-md capitalize flex items-center gap-1.5 shadow-xs transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 font-semibold text-xs rounded-md capitalize flex items-center gap-1.5 shadow-xs transition-all ${
                 isReadOnly
                   ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 border border-slate-300 dark:border-slate-700 cursor-not-allowed'
-                  : 'bg-white dark:bg-slate-900 text-black dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80 cursor-pointer'
+                  : 'bg-[#312e81] text-white border border-indigo-400/40 hover:bg-[#3d3999] cursor-pointer'
               }`}
               title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'Quick Create'}
             >
-              {isReadOnly ? <Lock className="w-3.5 h-3.5 text-slate-400" /> : <Plus className="w-3.5 h-3.5 text-primary stroke-[2.5]" />}
-              <span>Quick Create</span>
+              {isReadOnly ? <Lock className="w-3.5 h-3.5 text-slate-300" /> : <Plus className="w-3.5 h-3.5 text-white stroke-[2.5]" />}
+              <span className="hidden sm:inline text-[11.5px]">Create</span>
             </button>
             <button
               onClick={toggleTheme}
-              className="p-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+              className="p-1.5 bg-[#312e81] hover:bg-[#3d3999] text-white rounded-md border border-indigo-400/40 transition-all cursor-pointer shadow-2xs"
               title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               aria-label="Toggle Theme"
             >
-              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+              {isDarkMode ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-white" />}
             </button>
             <button
               onClick={() => setIsSettingsModalOpen(true)}
-              className="p-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+              className="p-1.5 bg-[#312e81] hover:bg-[#3d3999] text-white rounded-md border border-indigo-400/40 transition-all cursor-pointer shadow-2xs"
               title="Workspace Settings"
               aria-label="Workspace Settings"
             >
-              <SettingsIcon className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+              <SettingsIcon className="w-4 h-4 text-white" />
             </button>
           </div>
         </header>
 
         {isSettingsModalOpen && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-            <div className="w-full max-w-[1000px] h-[640px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-none overflow-hidden flex flex-col">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+            <div className="w-full max-w-[1000px] h-[92vh] sm:h-[640px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-none overflow-hidden flex flex-col">
               <Settings onClose={() => setIsSettingsModalOpen(false)} />
             </div>
           </div>

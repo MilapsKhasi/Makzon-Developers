@@ -424,112 +424,112 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
       <div className="flex flex-1 flex-col md:flex-row min-h-[500px]">
         
         {/* Left Sidebar Tabs */}
-        <div className="w-full md:w-64 bg-slate-50/70 dark:bg-slate-900/50 border-r border-slate-200 dark:border-slate-800 p-3 flex flex-col space-y-1 shrink-0">
+        <div className="w-full md:w-64 bg-slate-50/70 dark:bg-slate-900/50 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 p-2 md:p-3 flex flex-row md:flex-col gap-1 overflow-x-auto md:overflow-x-visible shrink-0 custom-scrollbar">
           <button
             onClick={() => setActiveTab('business')}
-            className={`flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 md:space-x-3 whitespace-nowrap shrink-0 md:w-full px-3 md:px-3.5 py-2 md:py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'business'
                 ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
             }`}
           >
-            <Building2 className="w-4 h-4" />
+            <Building2 className="w-4 h-4 shrink-0" />
             <span>Business Profile</span>
           </button>
 
           <button
             onClick={() => setActiveTab('gst')}
-            className={`flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 md:space-x-3 whitespace-nowrap shrink-0 md:w-full px-3 md:px-3.5 py-2 md:py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'gst'
                 ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
             }`}
           >
-            <Percent className="w-4 h-4" />
+            <Percent className="w-4 h-4 shrink-0" />
             <span>GST & Taxes</span>
           </button>
 
           <button
             onClick={() => setActiveTab('appearance')}
-            className={`flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 md:space-x-3 whitespace-nowrap shrink-0 md:w-full px-3 md:px-3.5 py-2 md:py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'appearance'
                 ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
             }`}
           >
-            <Sun className="w-4 h-4" />
+            <Sun className="w-4 h-4 shrink-0" />
             <span>Appearance</span>
           </button>
 
           <button
             onClick={() => setActiveTab('devices')}
-            className={`flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 md:space-x-3 whitespace-nowrap shrink-0 md:w-full px-3 md:px-3.5 py-2 md:py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'devices'
                 ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
             }`}
           >
-            <Shield className="w-4 h-4" />
+            <Shield className="w-4 h-4 shrink-0" />
             <span>Registered Devices</span>
           </button>
 
           <button
             onClick={() => setActiveTab('license')}
-            className={`flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 md:space-x-3 whitespace-nowrap shrink-0 md:w-full px-3 md:px-3.5 py-2 md:py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'license'
                 ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
             }`}
           >
-            <ShieldCheck className="w-4 h-4" />
+            <ShieldCheck className="w-4 h-4 shrink-0" />
             <span>License & Plan</span>
           </button>
 
           <button
             onClick={() => setActiveTab('updates')}
-            className={`flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 md:space-x-3 whitespace-nowrap shrink-0 md:w-full px-3 md:px-3.5 py-2 md:py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'updates'
                 ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
             }`}
           >
-            <Cpu className="w-4 h-4" />
+            <Cpu className="w-4 h-4 shrink-0" />
             <span>Updates & Version</span>
           </button>
 
           <button
             onClick={() => setActiveTab('backup')}
-            className={`flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 md:space-x-3 whitespace-nowrap shrink-0 md:w-full px-3 md:px-3.5 py-2 md:py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'backup'
                 ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
             }`}
           >
-            <HardDrive className="w-4 h-4" />
+            <HardDrive className="w-4 h-4 shrink-0" />
             <span>Auto-Backup & Data</span>
           </button>
 
           <button
             onClick={() => setActiveTab('recycle')}
-            className={`flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 md:space-x-3 whitespace-nowrap shrink-0 md:w-full px-3 md:px-3.5 py-2 md:py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'recycle'
                 ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
             }`}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-4 h-4 shrink-0" />
             <span>Recycle Bin</span>
           </button>
 
           <button
             onClick={() => setActiveTab('danger')}
-            className={`flex items-center space-x-3 w-full px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center space-x-2 md:space-x-3 whitespace-nowrap shrink-0 md:w-full px-3 md:px-3.5 py-2 md:py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'danger'
                 ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 shadow-2xs'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
             }`}
           >
-            <AlertTriangle className="w-4 h-4 text-red-500" />
+            <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
             <span>Danger Zone</span>
           </button>
         </div>
@@ -970,7 +970,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-slate-500 pt-2">
-                  <span>Desktop Build: <strong>v7.3</strong> • <button type="button" onClick={() => alert("Already on latest v7.3 stable build.")} className="text-primary underline">Check for Updates</button></span>
+                  <span>Desktop Build: <strong>v7.4.0 (Early Access)</strong> • <button type="button" onClick={() => alert("Already on latest v7.4.0 (Early Access) build.")} className="text-primary underline">Check for Updates</button></span>
                   <button type="button" onClick={() => navigate('/companies')} className="text-slate-600 dark:text-slate-300 font-bold hover:underline">Switch Account / License</button>
                 </div>
               </div>
@@ -991,37 +991,37 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                     setCheckingUpdate(true);
                     setTimeout(() => {
                       setCheckingUpdate(false);
-                      setUpdateMsg('✅ Your software is up to date with v7.3 Stable release.');
+                      setUpdateMsg('✅ Your software is up to date with v7.4.0 (Early Access) release.');
                     }, 1200);
                   }}
                   disabled={checkingUpdate}
-                  className="flex items-center space-x-1.5 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm disabled:opacity-50"
+                  className="flex items-center space-x-1.5 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
                 >
                   {checkingUpdate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                   <span>Check for Updates</span>
                 </button>
               </div>
 
-              <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
+              <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 shrink-0">
                       <Cpu className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">ZenterPrime v7.3</h4>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-600 text-white uppercase tracking-wider">Stable Desktop Edition</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">ZenterPrime v7.4.0 (Early Access)</h4>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-600 text-white uppercase tracking-wider">v7.4.0 (Early Access)</span>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
-                        Build ID: 7.3.0.26401 • Released: 2026-08-31
+                        Build ID: 7.4.0.26401 • Released: 2026-10-14
                       </p>
                     </div>
                   </div>
                   <button
                     type="button"
-                    onClick={() => alert("System is fully up to date.")}
-                    className="px-3 py-1.5 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold rounded-lg transition-colors"
+                    onClick={() => alert("System is fully up to date with v7.4.0 (Early Access).")}
+                    className="px-3 py-1.5 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold rounded-lg transition-colors cursor-pointer w-fit"
                   >
                     Check Now
                   </button>
@@ -1032,14 +1032,14 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   <span className="text-emerald-600 font-bold">Server: Connected</span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Installed Build</span>
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-1 block">v7.3</span>
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-1 block">v7.4.0 (Early Access)</span>
                   </div>
                   <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Release Channel</span>
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-1 block">Stable Desktop Edition</span>
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-1 block">Early Access Edition</span>
                   </div>
                   <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Build Target</span>
@@ -1047,14 +1047,74 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-2">
-                  <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Release Highlights in v7.3:</h5>
-                  <ul className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
-                    <li className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> ZenterPrime v7.3 Enterprise Desktop Experience</li>
-                    <li className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Automated 14-Day Free Evaluation Engine with offline date-anchoring</li>
-                    <li className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Real-time Supabase dual-sync database with IndexedDB offline buffer</li>
-                    <li className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Automated JSON snapshot engine for disaster recovery & secondary folder redundancy</li>
-                  </ul>
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                    <h5 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Release Highlights in v7.4.0 (Early Access):</h5>
+                    <span className="text-[11px] font-mono font-semibold text-indigo-600 dark:text-indigo-400">Release Notes</span>
+                  </div>
+
+                  <div className="space-y-4 text-xs">
+                    {/* Item 1 */}
+                    <div className="bg-white dark:bg-slate-900 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <span className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wide">1. Flagship Security Feature — Z-PIN & Auth Redesign</span>
+                      </div>
+                      <ul className="pl-6 list-disc space-y-1 text-slate-600 dark:text-slate-400 text-[11.5px] leading-relaxed">
+                        <li>Redesigned the entire Login and Sign Up UI with a modern, clean, product-grade design.</li>
+                        <li>Introduced Z-PIN: A 4-digit security PIN setup required upon account creation.</li>
+                        <li>Device-Bound Security: Generates and saves a <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-[10.5px]">browser_verification_key</code> inside IndexedDB.</li>
+                        <li>Verification Engine: On login, if the stored IndexedDB key matches the server hash, the Z-PIN screen bypasses automatically. If missing or mismatched, the Z-PIN Smart Screen prompts the user for their 4-digit PIN before granting access.</li>
+                      </ul>
+                    </div>
+
+                    {/* Item 2 */}
+                    <div className="bg-white dark:bg-slate-900 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <span className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wide">2. Dashboard & UI Updates</span>
+                      </div>
+                      <ul className="pl-6 list-disc space-y-1 text-slate-600 dark:text-slate-400 text-[11.5px] leading-relaxed">
+                        <li>Added interactive visual charts and graphs directly onto the main dashboard.</li>
+                        <li>Remapped the Settings icon to the top-right corner of the top navigation bar.</li>
+                      </ul>
+                    </div>
+
+                    {/* Item 3 */}
+                    <div className="bg-white dark:bg-slate-900 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <span className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wide">3. Reports Overhaul & Exports</span>
+                      </div>
+                      <ul className="pl-6 list-disc space-y-1 text-slate-600 dark:text-slate-400 text-[11.5px] leading-relaxed">
+                        <li>Completely rebuilt the Reports section with a modern UI layout, modernized classic reports, and new reporting views.</li>
+                        <li>Reports exported to Excel now generate with a modern, clean visual layout using ExcelJS v4.4.0.</li>
+                      </ul>
+                    </div>
+
+                    {/* Item 4 */}
+                    <div className="bg-white dark:bg-slate-900 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <span className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wide">4. Data Mobility & Backup</span>
+                      </div>
+                      <ul className="pl-6 list-disc space-y-1 text-slate-600 dark:text-slate-400 text-[11.5px] leading-relaxed">
+                        <li>Added a universal 'Export Data' tool supporting CSV, Excel, and JSON formats.</li>
+                        <li>Upgraded 'Import Excel' engine to seamlessly import full datasets from exported CSV or Excel files.</li>
+                      </ul>
+                    </div>
+
+                    {/* Item 5 */}
+                    <div className="bg-white dark:bg-slate-900 p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <span className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wide">5. Bug Fixes & Stability</span>
+                      </div>
+                      <ul className="pl-6 list-disc space-y-1 text-slate-600 dark:text-slate-400 text-[11.5px] leading-relaxed">
+                        <li>Fixed underlying data filtering issues across lists and data tables.</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">

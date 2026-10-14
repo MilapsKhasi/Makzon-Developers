@@ -147,3 +147,6 @@ export interface AdditionalDutyTax {
   is_deleted: boolean;
   is_readonly?: boolean;
 }
+
+export const APP_VERSION = '7.4.0';
+export const APP_VERSION_LABEL = 'v7.4.0 (Early Access)';
