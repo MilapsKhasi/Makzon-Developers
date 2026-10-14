@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, ReceiptText, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet, Truck, Sun, Moon, Download } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, ReceiptText, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, X, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet, Truck, Sun, Moon, Download } from 'lucide-react';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import { useLicense } from '../context/LicenseContext';
@@ -39,6 +39,7 @@ const Layout = () => {
   const location = useLocation();
 
   const handleQuickCreate = (type: string) => {
+    setIsMobileMenuOpen(false);
     verifyAction('Create Document', () => {
       setQuickCreateType(type);
       setIsCreateNewModalOpen(true);
@@ -367,26 +368,30 @@ const Layout = () => {
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] lg:hidden"
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[60] lg:hidden transition-opacity duration-300"
           onClick={() => setIsMobileMenuOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-[70] lg:relative lg:z-50
-        ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-16 -translate-x-full lg:translate-x-0'}
-        ${isMobileMenuOpen ? 'translate-x-0 w-64' : ''}
-        bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300
+        fixed inset-y-0 left-0 z-[70] lg:static lg:z-30
+        transition-all duration-300 ease-in-out flex flex-col
+        bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800
+        ${isMobileMenuOpen ? 'translate-x-0 w-72 max-w-[85vw] shadow-2xl' : '-translate-x-full lg:translate-x-0'}
+        ${isSidebarOpen ? 'lg:w-64' : 'lg:w-16'}
       `}>
-        <div className="h-16 flex items-center px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center space-x-3">
             <Logo size={32} />
             {(isSidebarOpen || isMobileMenuOpen) && (
               <div className="flex flex-col">
                 <div className="flex items-center space-x-2">
                   <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">ZenterPrime</span>
-                  <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">v7.4.0</span>
+                  {!devMode && (
+                    <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">v7.4.0</span>
+                  )}
                 </div>
               </div>
             )}
@@ -394,9 +399,10 @@ const Layout = () => {
           {/* Close button for mobile menu */}
           <button 
             onClick={() => setIsMobileMenuOpen(false)}
-            className="lg:hidden ml-auto p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+            className="lg:hidden p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+            title="Close navigation"
           >
-            <Plus className="w-5 h-5 rotate-45" />
+            <X className="w-5 h-5" />
           </button>
         </div>
         
@@ -457,7 +463,7 @@ const Layout = () => {
                   <div
                     key={item.path || iIdx}
                     className={`flex items-center justify-between px-2.5 py-1.5 rounded transition-colors group ${isActive
-                      ? 'bg-primary text-white font-bold shadow-xs'
+                      ? 'bg-[#4338ca] text-white font-bold shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60'
                     }`}
                   >
@@ -505,7 +511,7 @@ const Layout = () => {
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <BackupReminderBanner />
-        <header className="h-12 bg-[#312e81] flex items-center justify-between px-2.5 sm:px-4 shrink-0 z-40 gap-2">
+        <header className="h-16 bg-[#4338ca] flex items-center justify-between px-2.5 sm:px-4 shrink-0 z-40 gap-2">
           <div className="flex items-center space-x-1.5 sm:space-x-3 min-w-0">
             {/* Desktop toggle sidebar */}
             <button 
@@ -526,7 +532,7 @@ const Layout = () => {
             <div className="relative">
               <button
                 onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
-                className="flex items-center px-2.5 sm:px-3 py-1 bg-[#312e81] border border-indigo-400/40 rounded text-sm hover:bg-[#3d3999] transition-colors cursor-pointer"
+                className="flex items-center px-2.5 sm:px-3 py-1 bg-[#4338ca] border border-indigo-400/30 rounded text-sm hover:bg-[#3b31b3] transition-colors cursor-pointer"
               >
                 <Building2 className="w-3.5 h-3.5 text-white mr-1.5 shrink-0" />
                 <span className="font-medium text-white capitalize text-[11px] max-w-[75px] xs:max-w-[110px] sm:max-w-[160px] truncate">
@@ -592,12 +598,12 @@ const Layout = () => {
           <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
             <button
               onClick={() => setIsGlobalSearchOpen(true)}
-              className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1.5 h-[32px] bg-[#312e81] hover:bg-[#3d3999] text-white rounded-md text-xs transition-all border border-indigo-400/40 cursor-pointer shadow-2xs"
+              className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1.5 h-[32px] bg-[#4338ca] hover:bg-[#3b31b3] text-white rounded-md text-xs transition-all border border-indigo-400/30 cursor-pointer shadow-2xs"
               title="Global Search (Ctrl + K)"
             >
               <Search className="w-3.5 h-3.5 text-white shrink-0" />
               <span className="hidden md:inline font-medium text-white text-[11.5px]">Search</span>
-              <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1 py-0.5 text-[9px] font-semibold text-indigo-100 bg-[#26236b] rounded font-mono">
+              <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1 py-0.5 text-[9px] font-semibold text-white bg-[#625ddc] rounded font-mono">
                 Ctrl K
               </kbd>
             </button>
@@ -610,8 +616,8 @@ const Layout = () => {
               }}
               className={`px-2.5 sm:px-3 py-1.5 font-medium text-xs rounded-md capitalize flex items-center gap-1.5 shadow-sm transition-all ${
                 isReadOnly
-                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 border border-slate-300 dark:border-slate-700 cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 text-white cursor-pointer'
+                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 border-0 cursor-not-allowed'
+                  : 'bg-[#009a71] hover:bg-[#008763] border-0 text-white cursor-pointer'
               }`}
               title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'Import Excel / CSV Data'}
             >
@@ -620,7 +626,7 @@ const Layout = () => {
             </button>
             <button
               onClick={() => setIsExportDataOpen(true)}
-              className="px-2.5 sm:px-3 py-1.5 font-medium text-xs rounded-md capitalize flex items-center gap-1.5 shadow-xs transition-all bg-[#312e81] text-white border border-indigo-400/40 hover:bg-[#3d3999] cursor-pointer"
+              className="px-2.5 sm:px-3 py-1.5 font-medium text-xs rounded-md capitalize flex items-center gap-1.5 shadow-xs transition-all bg-[#4338ca] text-white border border-indigo-400/30 hover:bg-[#3b31b3] cursor-pointer"
               title="Export Workspace Data (Excel, CSV, JSON)"
             >
               <Download className="w-3.5 h-3.5 text-white" />
@@ -636,19 +642,19 @@ const Layout = () => {
                   });
                 }
               }}
-              className={`px-2.5 sm:px-3 py-1.5 font-semibold text-xs rounded-md capitalize flex items-center gap-1.5 shadow-xs transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 text-xs rounded-md capitalize flex items-center gap-1.5 shadow-xs transition-all ${
                 isReadOnly
                   ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 border border-slate-300 dark:border-slate-700 cursor-not-allowed'
-                  : 'bg-[#312e81] text-white border border-indigo-400/40 hover:bg-[#3d3999] cursor-pointer'
+                  : 'bg-[#ffffff] text-[#000000] border border-white hover:bg-slate-100 cursor-pointer'
               }`}
               title={isReadOnly ? 'Evaluation Expired - Read Only Mode' : 'Quick Create'}
             >
-              {isReadOnly ? <Lock className="w-3.5 h-3.5 text-slate-300" /> : <Plus className="w-3.5 h-3.5 text-white stroke-[2.5]" />}
-              <span className="hidden sm:inline text-[11.5px]">Create</span>
+              {isReadOnly ? <Lock className="w-3.5 h-3.5 text-slate-300" /> : <Plus className="w-3.5 h-3.5 text-[#000000] stroke-[2.5]" />}
+              <span className="hidden sm:inline text-[11.5px] bg-[#ffffff] text-[#000000] font-normal">Create</span>
             </button>
             <button
               onClick={toggleTheme}
-              className="p-1.5 bg-[#312e81] hover:bg-[#3d3999] text-white rounded-md border border-indigo-400/40 transition-all cursor-pointer shadow-2xs"
+              className="p-1.5 bg-[#4338ca] hover:bg-[#3b31b3] text-white rounded-md border border-indigo-400/30 transition-all cursor-pointer shadow-2xs"
               title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               aria-label="Toggle Theme"
             >
@@ -656,7 +662,7 @@ const Layout = () => {
             </button>
             <button
               onClick={() => setIsSettingsModalOpen(true)}
-              className="p-1.5 bg-[#312e81] hover:bg-[#3d3999] text-white rounded-md border border-indigo-400/40 transition-all cursor-pointer shadow-2xs"
+              className="p-1.5 bg-[#4338ca] hover:bg-[#3b31b3] text-white rounded-md border border-indigo-400/30 transition-all cursor-pointer shadow-2xs"
               title="Workspace Settings"
               aria-label="Workspace Settings"
             >

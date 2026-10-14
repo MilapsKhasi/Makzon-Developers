@@ -511,22 +511,24 @@ const Parties = () => {
                       }} 
                       className={`p-4 rounded-[6px] cursor-pointer transition-all group ${
                         isSelected 
-                          ? 'bg-blue-600 text-white border-0 shadow-sm' 
+                          ? 'bg-amber-100/95 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700/70 text-slate-900 dark:text-amber-100 shadow-xs ring-1 ring-amber-400/40' 
                           : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-700/50'
                       }`}
                     >
                       <div className="flex justify-between items-start mb-1 gap-2">
-                        <h3 className={`text-xs font-bold capitalize truncate ${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{party.name}</h3>
+                        <h3 className={`text-xs font-bold capitalize truncate ${isSelected ? 'text-amber-950 dark:text-white' : 'text-slate-900 dark:text-white'}`}>{party.name}</h3>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-medium leading-none tracking-tight shrink-0 ${
-                          isSelected ? 'bg-white/20 text-white' : (isDebtor ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30')
+                          isSelected 
+                            ? 'bg-amber-200/90 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200 font-bold border border-amber-300/80 dark:border-amber-700/60' 
+                            : (isDebtor ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30')
                         }`}>
                           {isDebtor ? 'DR' : 'CR'}
                         </span>
                       </div>
                       
                       <div className="flex justify-between items-center text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-2">
-                        <span className={isSelected ? 'text-white/80' : ''}>{party.gstin || 'No GSTIN'}</span>
-                        <span className={`font-mono font-bold ${isSelected ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}>
+                        <span className={isSelected ? 'text-amber-800/80 dark:text-amber-300/80 font-medium' : ''}>{party.gstin || 'No GSTIN'}</span>
+                        <span className={`font-mono font-bold ${isSelected ? 'text-amber-950 dark:text-white' : 'text-slate-900 dark:text-slate-100'}`}>
                           ₹{absBal.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {drCrTag}
                         </span>
                       </div>

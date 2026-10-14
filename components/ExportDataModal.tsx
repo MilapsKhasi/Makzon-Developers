@@ -268,7 +268,7 @@ export const ExportDataModal: React.FC<ExportDataModalProps> = ({ isOpen, onClos
             <button
               onClick={handleExportExcel}
               disabled={loading || exportingFormat !== null}
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors shrink-0 shadow-2xs flex items-center space-x-1.5 cursor-pointer"
+              className="px-4 py-1.5 bg-primary hover:bg-primary-dark active:bg-indigo-900 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors shrink-0 shadow-2xs flex items-center space-x-1.5 cursor-pointer"
             >
               {exportingFormat === 'excel' ? (
                 <>
@@ -302,7 +302,7 @@ export const ExportDataModal: React.FC<ExportDataModalProps> = ({ isOpen, onClos
             <button
               onClick={handleExportCSV}
               disabled={loading || exportingFormat !== null}
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors shrink-0 shadow-2xs flex items-center space-x-1.5 cursor-pointer"
+              className="px-4 py-1.5 bg-primary hover:bg-primary-dark active:bg-indigo-900 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors shrink-0 shadow-2xs flex items-center space-x-1.5 cursor-pointer"
             >
               {exportingFormat === 'csv' ? (
                 <>
@@ -336,7 +336,7 @@ export const ExportDataModal: React.FC<ExportDataModalProps> = ({ isOpen, onClos
             <button
               onClick={handleExportJSON}
               disabled={loading || exportingFormat !== null}
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors shrink-0 shadow-2xs flex items-center space-x-1.5 cursor-pointer"
+              className="px-4 py-1.5 bg-primary hover:bg-primary-dark active:bg-indigo-900 disabled:opacity-50 text-white font-semibold text-xs rounded-lg transition-colors shrink-0 shadow-2xs flex items-center space-x-1.5 cursor-pointer"
             >
               {exportingFormat === 'json' ? (
                 <>

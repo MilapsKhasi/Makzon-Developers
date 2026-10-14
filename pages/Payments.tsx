@@ -784,9 +784,9 @@ const Payments: React.FC<PaymentsProps> = ({ typeFilter }) => {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                       }}
-                      className={`border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer ${
+                      className={`border-b border-slate-100 dark:border-slate-800/80 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors cursor-pointer ${
                         isHighlighted
-                          ? 'bg-amber-50/80 dark:bg-amber-950/40 font-semibold'
+                          ? 'bg-amber-100/90 dark:bg-amber-950/50 text-slate-900 dark:text-amber-100 font-semibold'
                           : ''
                       }`}
                       onClick={() => setHighlightedId(voucher.id)}

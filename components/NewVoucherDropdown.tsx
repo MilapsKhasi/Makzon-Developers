@@ -51,7 +51,7 @@ export const NewVoucherDropdown: React.FC<NewVoucherDropdownProps> = ({
         className={`px-4 py-2 font-medium text-xs rounded capitalize flex items-center justify-between gap-1.5 shadow-sm transition-none ${
           isReadOnly
             ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700'
-            : 'bg-primary text-white hover:bg-primary-dark cursor-pointer'
+            : 'bg-[#4338ca] text-white hover:bg-[#3730a3] cursor-pointer'
         }`}
       >
         {isReadOnly && <Lock className="w-3.5 h-3.5" />}

@@ -378,15 +378,15 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
                 <table className="w-full text-[12px] border-collapse min-w-[300px]">
                   <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700">
                     <tr className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[9px] tracking-widest">
-                      <th className="w-10 sm:w-12 py-2 border-r border-slate-200 dark:border-slate-700 text-center">SR</th>
+                      <th className="w-10 sm:w-12 py-2 border-r border-slate-200 dark:border-slate-700 text-center bg-amber-100/80 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold">SR</th>
                       <th className="py-2 px-3 text-left">PARTICULARS</th>
                       <th className="w-24 sm:w-32 py-2 px-3 text-right border-l border-slate-200 dark:border-slate-700">AMOUNT</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {incomeRows.map((row, idx) => (
-                      <tr key={row.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 group">
-                        <td className="py-1 border-r border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600 text-center font-mono select-none relative">
+                      <tr key={row.id} className="hover:bg-amber-50/40 dark:hover:bg-amber-900/10 group">
+                        <td className="py-1 border-r border-slate-200 dark:border-slate-700 bg-amber-50/50 dark:bg-amber-950/30 text-amber-900/80 dark:text-amber-300 text-center font-mono select-none relative font-medium">
                           <span className="group-hover:hidden">{idx + 1}</span>
                           <button type="button" onClick={() => removeRow('income', idx)} className="hidden group-hover:flex absolute inset-0 items-center justify-center text-rose-400 hover:text-rose-600"><Trash2 className="w-3 h-3" /></button>
                         </td>
@@ -414,15 +414,15 @@ const CashbookSheet: React.FC<CashbookSheetProps> = ({ initialData, existingEntr
                 <table className="w-full text-[12px] border-collapse min-w-[300px]">
                   <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700">
                     <tr className="text-slate-500 dark:text-slate-400 font-bold uppercase text-[9px] tracking-widest">
-                      <th className="w-10 sm:w-12 py-2 border-r border-slate-200 dark:border-slate-700 text-center">SR</th>
+                      <th className="w-10 sm:w-12 py-2 border-r border-slate-200 dark:border-slate-700 text-center bg-amber-100/80 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 font-bold">SR</th>
                       <th className="py-2 px-3 text-left">PARTICULARS</th>
                       <th className="w-24 sm:w-32 py-2 px-3 text-right border-l border-slate-200 dark:border-slate-700">AMOUNT</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {expenseRows.map((row, idx) => (
-                      <tr key={row.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 group">
-                        <td className="py-1 border-r border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600 text-center font-mono select-none relative">
+                      <tr key={row.id} className="hover:bg-amber-50/40 dark:hover:bg-amber-900/10 group">
+                        <td className="py-1 border-r border-slate-200 dark:border-slate-700 bg-amber-50/50 dark:bg-amber-950/30 text-amber-900/80 dark:text-amber-300 text-center font-mono select-none relative font-medium">
                           <span className="group-hover:hidden">{idx + 1}</span>
                           <button type="button" onClick={() => removeRow('expense', idx)} className="hidden group-hover:flex absolute inset-0 items-center justify-center text-rose-400 hover:text-rose-600"><Trash2 className="w-3 h-3" /></button>
                         </td>

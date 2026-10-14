@@ -17,6 +17,7 @@ const Invoices = () => {
   const [editingInvoice, setEditingInvoice] = useState<any | null>(null);
   const [printModalInvoice, setPrintModalInvoice] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; invoice: any | null }>({
     isOpen: false,
@@ -116,21 +117,32 @@ const Invoices = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filtered.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 group transition-all duration-200">
-                    <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-400">{formatDate(inv.date)}</td>
-                    <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 font-mono font-bold text-slate-900 dark:text-slate-100">{inv.invoice_number}</td>
-                    <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 font-bold text-slate-900 dark:text-slate-100 truncate max-w-[300px]">{inv.customer_name}</td>
-                    <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 text-right font-bold text-slate-900 dark:text-slate-100 text-lg">{formatCurrency(inv.grand_total)}</td>
-                    <td className="py-5 px-8 text-center">
-                      <div className="flex justify-center space-x-3 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => verifyAction('Print Invoice', () => setPrintModalInvoice(inv))} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all cursor-pointer" title="Print Invoice"><Printer className="w-5 h-5" /></button>
-                          <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all" title="Edit Invoice"><Edit className="w-5 h-5" /></button>
-                          <button onClick={() => verifyAction('Delete Invoice', () => setDeleteDialog({ isOpen: true, invoice: inv }))} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all cursor-pointer" title="Delete Invoice"><Trash2 className="w-5 h-5" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((inv) => {
+                  const isSelected = selectedId === inv.id;
+                  return (
+                    <tr 
+                      key={inv.id} 
+                      onClick={() => setSelectedId(isSelected ? null : inv.id)}
+                      className={`group transition-all duration-200 cursor-pointer ${
+                        isSelected 
+                          ? 'bg-amber-100/90 dark:bg-amber-950/50 text-slate-900 dark:text-amber-100 font-semibold' 
+                          : 'hover:bg-amber-50/50 dark:hover:bg-amber-950/20'
+                      }`}
+                    >
+                      <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 font-bold text-slate-600 dark:text-slate-400">{formatDate(inv.date)}</td>
+                      <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 font-mono font-bold text-slate-900 dark:text-slate-100">{inv.invoice_number}</td>
+                      <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 font-bold text-slate-900 dark:text-slate-100 truncate max-w-[300px]">{inv.customer_name}</td>
+                      <td className="py-5 px-8 border-r border-slate-100 dark:border-slate-800 text-right font-bold text-slate-900 dark:text-slate-100 text-lg">{formatCurrency(inv.grand_total)}</td>
+                      <td className="py-5 px-8 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-center space-x-3 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => verifyAction('Print Invoice', () => setPrintModalInvoice(inv))} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all cursor-pointer" title="Print Invoice"><Printer className="w-5 h-5" /></button>
+                            <button onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all" title="Edit Invoice"><Edit className="w-5 h-5" /></button>
+                            <button onClick={() => verifyAction('Delete Invoice', () => setDeleteDialog({ isOpen: true, invoice: inv }))} className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all cursor-pointer" title="Delete Invoice"><Trash2 className="w-5 h-5" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {filtered.length === 0 && <tr><td colSpan={5} className="py-40 text-center"><ReceiptText className="w-16 h-16 text-slate-100 dark:text-slate-800 mx-auto mb-4" /><p className="text-slate-300 dark:text-slate-700 italic font-medium">No sales invoices found.</p></td></tr>}
               </tbody>
             </table>

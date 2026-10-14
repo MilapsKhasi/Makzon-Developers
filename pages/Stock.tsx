@@ -300,15 +300,15 @@ const Stock = () => {
                       }} 
                       className={`p-4 rounded-[6px] cursor-pointer transition-all ${
                         isSelected 
-                          ? 'bg-blue-600 text-white border-0 shadow-sm' 
+                          ? 'bg-amber-100/95 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700/70 text-slate-900 dark:text-amber-100 shadow-xs ring-1 ring-amber-400/40' 
                           : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/80 hover:bg-slate-50 dark:hover:bg-slate-700/50'
                       }`}
                     >
-                        <h3 className={`font-medium capitalize text-[11px] truncate mb-1 ${isSelected ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{item.name}</h3>
+                        <h3 className={`font-medium capitalize text-[11px] truncate mb-1 ${isSelected ? 'text-amber-950 dark:text-white font-bold' : 'text-slate-700 dark:text-slate-200'}`}>{item.name}</h3>
                         <div className="flex justify-between items-end">
-                            <span className={`text-[10px] font-medium capitalize tracking-tighter ${isSelected ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'}`}>Hsn: {item.hsn || 'N/A'}</span>
-                            <span className={`font-mono text-lg font-bold leading-none ${isSelected ? 'text-white' : 'text-blue-600 dark:text-blue-400'}`}>
-                                {currentBalance.toFixed(0)} <span className={`text-[10px] opacity-75 font-sans ${isSelected ? 'text-white' : ''}`}>{item.unit || 'PCS'}</span>
+                            <span className={`text-[10px] font-medium capitalize tracking-tighter ${isSelected ? 'text-amber-800/80 dark:text-amber-300/80 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>Hsn: {item.hsn || 'N/A'}</span>
+                            <span className={`font-mono text-lg font-bold leading-none ${isSelected ? 'text-amber-950 dark:text-amber-300' : 'text-blue-600 dark:text-blue-400'}`}>
+                                {currentBalance.toFixed(0)} <span className={`text-[10px] opacity-75 font-sans ${isSelected ? 'text-amber-800 dark:text-amber-300' : ''}`}>{item.unit || 'PCS'}</span>
                             </span>
                         </div>
                     </div>

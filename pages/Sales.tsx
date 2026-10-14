@@ -324,16 +324,14 @@ const Sales = () => {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                       }}
-                      className={`border-b border-slate-100 dark:border-slate-800/80 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer ${
-                        isHighlighted
-                          ? 'bg-amber-50/80 dark:bg-amber-950/40 font-semibold'
-                          : selectedRowIdx === i 
-                            ? 'bg-blue-50/50 dark:bg-blue-950/20' 
-                            : ''
+                      className={`border-b border-slate-100 dark:border-slate-800/80 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 transition-colors cursor-pointer ${
+                        isHighlighted || selectedRowIdx === i
+                          ? 'bg-amber-100/90 dark:bg-amber-950/50 text-slate-900 dark:text-amber-100 font-semibold'
+                          : ''
                       }`}
                       onClick={() => { setSelectedRowIdx(i); setHighlightedId(inv.id); }}
                     >
-                      <td className="py-4 px-6 text-center text-slate-400 font-mono text-xs">{i + 1}</td>
+                      <td className={`py-4 px-6 text-center font-mono text-xs ${isHighlighted || selectedRowIdx === i ? 'text-amber-900 dark:text-amber-300 font-bold bg-amber-200/60 dark:bg-amber-900/40' : 'text-slate-400'}`}>{i + 1}</td>
                       <td className="py-4 px-6 font-mono text-sm">{formatDate(inv.date)}</td>
                       <td className="py-4 px-6 font-mono text-sm text-slate-700 dark:text-slate-300">{inv.bill_number}</td>
                       <td className="py-4 px-6 font-bold text-slate-900 dark:text-white capitalize text-sm">{inv.vendor_name}</td>

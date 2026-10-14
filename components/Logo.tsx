@@ -8,8 +8,8 @@ interface LogoProps {
 const Logo: React.FC<LogoProps> = ({ className = '', size = 40 }) => {
   return (
     <div 
-      className={`relative flex items-center justify-center rounded-[10px] overflow-hidden bg-primary ${className}`}
-      style={{ width: size, height: size }}
+      className={`relative flex items-center justify-center rounded-[5px] overflow-hidden bg-[#4338ca] ${className}`}
+      style={{ width: size, height: size, borderRadius: '5px' }}
     >
       <div className="relative w-full h-full flex flex-col items-center justify-center">
         <span className="text-white font-bold leading-none select-none" style={{ fontSize: size * 0.6, fontFamily: "'Dancing Script', cursive" }}>Z</span>

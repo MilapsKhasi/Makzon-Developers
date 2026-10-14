@@ -55,15 +55,15 @@
       (function() {
         try {
           var ed = localStorage.getItem('zenter_edition') || localStorage.getItem('zenter_license_type');
-          if (ed === 'professional' || ed === 'advanced') {
+          if (ed === 'professional') {
             document.documentElement.style.setProperty('--color-primary', '#2563EB');
             document.documentElement.style.setProperty('--color-primary-dark', '#1D4ED8');
             document.documentElement.style.setProperty('--color-primary-light', '#DBEAFE');
             document.documentElement.setAttribute('data-edition', 'professional');
           } else {
-            document.documentElement.style.setProperty('--color-primary', '#4338CA');
-            document.documentElement.style.setProperty('--color-primary-dark', '#3730A3');
-            document.documentElement.style.setProperty('--color-primary-light', '#E0E7FF');
+            document.documentElement.style.setProperty('--color-primary', '#4338ca');
+            document.documentElement.style.setProperty('--color-primary-dark', '#3730a3');
+            document.documentElement.style.setProperty('--color-primary-light', '#e0e7ff');
             document.documentElement.setAttribute('data-edition', 'standard');
           }
         } catch(e) {}
@@ -274,6 +274,32 @@
       input, select, textarea {
         border-radius: 2px !important;
         font-size: 13.5px !important;
+      }
+
+      /* Selector Yellow for Table Columns & Selection */
+      .selector-yellow,
+      .table-column-selector,
+      table th.selector-col,
+      table td.selector-col {
+        background-color: #FEF3C7 !important;
+        color: #78350F !important;
+        border-color: #FCD34D !important;
+      }
+      .dark .selector-yellow,
+      .dark .table-column-selector,
+      .dark table th.selector-col,
+      .dark table td.selector-col {
+        background-color: rgba(120, 53, 15, 0.35) !important;
+        color: #FDE68A !important;
+        border-color: rgba(245, 158, 11, 0.4) !important;
+      }
+      .table-row-selected {
+        background-color: #FEF9C3 !important;
+        color: #78350F !important;
+      }
+      .dark .table-row-selected {
+        background-color: rgba(120, 53, 15, 0.3) !important;
+        color: #FDE68A !important;
       }
 
       @media print {
