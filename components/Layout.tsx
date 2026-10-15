@@ -377,17 +377,17 @@ const Layout = () => {
         fixed inset-y-0 left-0 z-[70] lg:relative lg:z-50
         ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-16 -translate-x-full lg:translate-x-0'}
         ${isMobileMenuOpen ? 'translate-x-0 w-64' : ''}
-        bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300
+        bg-white dark:bg-slate-900 border-none flex flex-col transition-all duration-300
       `}>
-        <div className="h-[50px] flex items-center px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="h-[50px] bg-[#4338ca] flex items-center px-4 shrink-0 border-none">
           <div className="flex items-center space-x-3">
             <Logo size={32} className="-ml-1.5" />
             {(isSidebarOpen || isMobileMenuOpen) && (
               <div className="flex flex-col">
                 <div className="flex items-center space-x-2">
-                  <span className="text-[14px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">ZenterPrime</span>
+                  <span className="text-[14px] font-normal text-white tracking-tight leading-none">ZenterPrime</span>
                   {!devMode && (
-                    <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">v7.4.0</span>
+                    <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-white/15 text-white border border-white/20">v7.4.0</span>
                   )}
                 </div>
               </div>
@@ -396,7 +396,7 @@ const Layout = () => {
           {/* Close button for mobile menu */}
           <button 
             onClick={() => setIsMobileMenuOpen(false)}
-            className="lg:hidden ml-auto p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+            className="lg:hidden ml-auto p-2 text-white hover:bg-white/10 rounded"
           >
             <Plus className="w-5 h-5 rotate-45" />
           </button>
@@ -507,20 +507,12 @@ const Layout = () => {
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <BackupReminderBanner />
-        <header className="h-[50px] bg-[#4338ca] flex items-center justify-between px-2.5 sm:px-4 shrink-0 z-40 gap-2">
+        <header className="h-[50px] bg-[#4338ca] flex items-center justify-between px-2.5 sm:px-4 shrink-0 z-40 gap-2 border-none">
           <div className="flex items-center space-x-1.5 sm:space-x-3 min-w-0">
-            {/* Desktop toggle sidebar */}
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-              className="hidden lg:flex items-center justify-center p-1.5 hover:bg-white/10 rounded cursor-pointer transition-colors"
-              title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
-            >
-              <Menu className="w-4 h-4 text-white" />
-            </button>
             {/* Mobile toggle menu */}
             <button 
               onClick={() => setIsMobileMenuOpen(true)} 
-              className="lg:hidden flex items-center justify-center p-1.5 hover:bg-white/10 rounded cursor-pointer transition-colors"
+              className="lg:hidden flex items-center justify-center p-1.5 hover:bg-white/10 rounded cursor-pointer transition-colors shrink-0"
               title="Open Navigation Menu"
             >
               <Menu className="w-5 h-5 text-white" />
@@ -528,10 +520,10 @@ const Layout = () => {
             <div className="relative">
               <button
                 onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
-                className="flex items-center px-2.5 sm:px-3 py-1 bg-[#4338ca] border border-indigo-400/30 rounded text-sm hover:bg-[#3b31b3] transition-colors cursor-pointer"
+                className="flex items-center px-2.5 sm:px-3 py-1.5 bg-[#4338ca] border border-indigo-400/30 rounded text-sm hover:bg-[#3b31b3] transition-colors cursor-pointer"
               >
                 <Building2 className="w-3.5 h-3.5 text-white mr-1.5 shrink-0" />
-                <span className="font-medium text-white capitalize text-[11px] max-w-[75px] xs:max-w-[110px] sm:max-w-[160px] truncate">
+                <span className="font-medium text-white capitalize text-[11px] max-w-[100px] xs:max-w-[140px] sm:max-w-[200px] md:max-w-[240px] truncate">
                   {activeCompany?.name || 'Select Workspace'}
                 </span>
                 <ChevronDown className="ml-1 sm:ml-2 w-3 h-3 text-white shrink-0" />
