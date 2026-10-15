@@ -507,8 +507,8 @@ const Layout = () => {
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <BackupReminderBanner />
-        <header className="h-[50px] bg-[#4338ca] flex items-center justify-between px-2.5 sm:px-4 shrink-0 z-40 gap-2 border-none">
-          <div className="flex items-center space-x-1.5 sm:space-x-3 min-w-0">
+        <header className="h-[50px] bg-[#4338ca] flex items-center justify-between px-2.5 sm:px-4 shrink-0 z-40 gap-3 border-none">
+          <div className="flex items-center space-x-2 w-[55%] sm:w-[58%] md:w-[60%] max-w-[620px] min-w-0">
             {/* Mobile toggle menu */}
             <button 
               onClick={() => setIsMobileMenuOpen(true)} 
@@ -517,19 +517,47 @@ const Layout = () => {
             >
               <Menu className="w-5 h-5 text-white" />
             </button>
+
+            {/* Long search button covering 60% of topbar from left margin */}
+            <button
+              onClick={() => setIsGlobalSearchOpen(true)}
+              className="w-full flex items-center justify-between px-3 h-[32px] bg-[#3b31b3]/70 hover:bg-[#372ea3] text-white rounded-md text-xs transition-all border border-indigo-400/30 cursor-pointer shadow-2xs group"
+              title="Global Search (Ctrl + K)"
+            >
+              <div className="flex items-center space-x-2 text-white/90 min-w-0">
+                <Search className="w-3.5 h-3.5 text-white/90 shrink-0" />
+                <span className="font-normal text-white/90 text-[11.5px] truncate">
+                  Search vouchers, ledgers, items, parties...
+                </span>
+              </div>
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
+            <div className="hidden 2xl:block">
+              <LicenseSummaryBadge />
+            </div>
+            {localStorage.getItem('use_offline_mode') === 'true' && (
+              <span className="hidden sm:flex items-center space-x-1 px-2 py-0.5 bg-amber-500/20 border border-amber-400/40 text-amber-200 font-bold rounded text-[9.5px] uppercase tracking-wider select-none">
+                <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mr-1"></span>
+                Offline
+              </span>
+            )}
+
+            {/* Company dropdown beside Import button on its left side */}
             <div className="relative">
               <button
                 onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
-                className="flex items-center px-2.5 sm:px-3 py-1.5 bg-[#4338ca] border border-indigo-400/30 rounded text-sm hover:bg-[#3b31b3] transition-colors cursor-pointer"
+                className="flex items-center px-2.5 sm:px-3 py-1.5 h-[32px] bg-[#4338ca] border border-indigo-400/30 rounded text-sm hover:bg-[#3b31b3] transition-colors cursor-pointer"
               >
                 <Building2 className="w-3.5 h-3.5 text-white mr-1.5 shrink-0" />
-                <span className="font-medium text-white capitalize text-[11px] max-w-[100px] xs:max-w-[140px] sm:max-w-[200px] md:max-w-[240px] truncate">
+                <span className="font-medium text-white capitalize text-[11px] max-w-[85px] xs:max-w-[110px] sm:max-w-[150px] truncate">
                   {activeCompany?.name || 'Select Workspace'}
                 </span>
                 <ChevronDown className="ml-1 sm:ml-2 w-3 h-3 text-white shrink-0" />
               </button>
               {showWorkspaceMenu && (
-                <div className="absolute top-full left-0 mt-1 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded shadow-lg overflow-hidden z-50">
+                <div className="absolute top-full right-0 sm:right-auto sm:left-0 mt-1 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded shadow-lg overflow-hidden z-50">
                   <div className="max-h-60 overflow-y-auto custom-scrollbar py-1">
                     {workspaces.map((ws) => (
                       <div 
@@ -573,28 +601,8 @@ const Layout = () => {
                 </div>
               )}
             </div>
-            <div className="hidden xl:block">
-              <LicenseSummaryBadge />
-            </div>
-            {localStorage.getItem('use_offline_mode') === 'true' && (
-              <span className="hidden sm:flex items-center space-x-1 px-2 py-0.5 bg-amber-500/20 border border-amber-400/40 text-amber-200 font-bold rounded text-[9.5px] uppercase tracking-wider select-none">
-                <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mr-1"></span>
-                Offline
-              </span>
-            )}
-          </div>
-          <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
-            <button
-              onClick={() => setIsGlobalSearchOpen(true)}
-              className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1.5 h-[32px] bg-[#4338ca] hover:bg-[#3b31b3] text-white rounded-md text-xs transition-all border border-indigo-400/30 cursor-pointer shadow-2xs"
-              title="Global Search (Ctrl + K)"
-            >
-              <Search className="w-3.5 h-3.5 text-white shrink-0" />
-              <span className="hidden md:inline font-medium text-white text-[11.5px]">Search</span>
-              <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1 py-0.5 text-[9px] font-semibold text-white bg-[#625ddc] rounded font-mono">
-                Ctrl K
-              </kbd>
-            </button>
+
+            {/* Import Button */}
             <button
               disabled={isReadOnly}
               onClick={() => {
