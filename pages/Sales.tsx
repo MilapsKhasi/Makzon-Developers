@@ -303,7 +303,7 @@ const Sales = () => {
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-[#F8FAFC] dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  <th className="py-3.5 px-6 w-12 text-center">Sr</th>
+                  <th className="py-3.5 px-6 w-12 text-center bg-amber-100/70 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 font-bold border-r border-amber-200/50 dark:border-amber-900/30">Sr</th>
                   <th className="py-3.5 px-6">Date</th>
                   <th className="py-3.5 px-6">Invoice #</th>
                   <th className="py-3.5 px-6">Customer</th>

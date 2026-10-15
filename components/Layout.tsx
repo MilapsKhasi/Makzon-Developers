@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, ReceiptText, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, X, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet, Truck, Sun, Moon, Download } from 'lucide-react';
+import { LayoutDashboard, Users, UserSquare2, BadgeIndianRupee, Package, BarChart3, Settings as SettingsIcon, ShoppingCart, ReceiptText, Percent, BookOpen, ChevronDown, Building2, Menu, LogOut, Edit, Trash2, Save, Plus, ShieldCheck, AlertTriangle, MonitorPlay, Wallet, Contact, FileText, ArrowDownCircle, ArrowUpCircle, FolderPlus, Building, Crown, Lock, Search, FileSpreadsheet, Truck, Sun, Moon, Download } from 'lucide-react';
 import { supabase, getAuthUser } from '../lib/supabase';
 import { useCompany } from '../context/CompanyContext';
 import { useLicense } from '../context/LicenseContext';
@@ -39,7 +39,6 @@ const Layout = () => {
   const location = useLocation();
 
   const handleQuickCreate = (type: string) => {
-    setIsMobileMenuOpen(false);
     verifyAction('Create Document', () => {
       setQuickCreateType(type);
       setIsCreateNewModalOpen(true);
@@ -368,23 +367,21 @@ const Layout = () => {
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[60] lg:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
-          aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-[70] lg:static lg:z-30
-        transition-all duration-300 ease-in-out flex flex-col
-        bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800
-        ${isMobileMenuOpen ? 'translate-x-0 w-72 max-w-[85vw] shadow-2xl' : '-translate-x-full lg:translate-x-0'}
-        ${isSidebarOpen ? 'lg:w-64' : 'lg:w-16'}
+        fixed inset-y-0 left-0 z-[70] lg:relative lg:z-50
+        ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-16 -translate-x-full lg:translate-x-0'}
+        ${isMobileMenuOpen ? 'translate-x-0 w-64' : ''}
+        bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300
       `}>
-        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="h-[50px] flex items-center px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center space-x-3">
-            <Logo size={32} />
+            <Logo size={32} className="-ml-1.5" />
             {(isSidebarOpen || isMobileMenuOpen) && (
               <div className="flex flex-col">
                 <div className="flex items-center space-x-2">
@@ -399,10 +396,9 @@ const Layout = () => {
           {/* Close button for mobile menu */}
           <button 
             onClick={() => setIsMobileMenuOpen(false)}
-            className="lg:hidden p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-            title="Close navigation"
+            className="lg:hidden ml-auto p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
           >
-            <X className="w-5 h-5" />
+            <Plus className="w-5 h-5 rotate-45" />
           </button>
         </div>
         
@@ -511,7 +507,7 @@ const Layout = () => {
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <BackupReminderBanner />
-        <header className="h-16 bg-[#4338ca] flex items-center justify-between px-2.5 sm:px-4 shrink-0 z-40 gap-2">
+        <header className="h-[50px] bg-[#4338ca] flex items-center justify-between px-2.5 sm:px-4 shrink-0 z-40 gap-2">
           <div className="flex items-center space-x-1.5 sm:space-x-3 min-w-0">
             {/* Desktop toggle sidebar */}
             <button 
